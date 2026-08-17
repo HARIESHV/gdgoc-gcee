@@ -6,6 +6,7 @@ import type { AuthRequest } from '../middleware/auth';
 import { todayIST } from '../utils/dates';
 import { generateQRCodeDataURL } from '../utils/qr';
 import { connectDB } from '../config/db';
+import { eventQuery } from './event.controller';
 
 const ATTENDANCE_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -37,9 +38,7 @@ export async function adminGetEventAttendance(req: any, res: Response) {
   try {
     await connectDB();
 
-    const event = await EventModel.findOne({
-      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
-    });
+    const event = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
@@ -93,9 +92,7 @@ export async function adminMarkAttendance(req: any, res: Response) {
   try {
     await connectDB();
 
-    const event = await EventModel.findOne({
-      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
-    });
+    const event = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
@@ -157,9 +154,7 @@ export async function adminGetAttendanceQrToken(req: any, res: Response) {
   try {
     await connectDB();
 
-    const event = await EventModel.findOne({
-      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
-    });
+    const event = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
@@ -330,7 +325,14 @@ export async function adminListAttendance(req: any, res: Response) {
     const { status, eventId } = req.query;
     const filter: Record<string, unknown> = {};
     if (status) filter.status = status;
-    if (eventId) filter.eventId = eventId;
+    if (eventId) {
+      const event = await EventModel.findOne(eventQuery(String(eventId)));
+      if (!event) {
+        res.status(404).json({ success: false, message: 'Event not found.' });
+        return;
+      }
+      filter.eventId = event._id;
+    }
 
     const records = await Attendance.find(filter)
       .populate('studentId', 'name email rollNumber department year')

@@ -1,7 +1,8 @@
 import type { Response } from 'express';
-import { GalleryItem } from '../models';
+import { GalleryItem, EventModel } from '../models';
 import { bufferToDataURL } from '../middleware/upload';
 import { connectDB } from '../config/db';
+import { eventQuery } from './event.controller';
 
 // GET /api/gallery  (public)
 export async function listGallery(req: any, res: Response) {
@@ -39,12 +40,18 @@ export async function createGalleryItem(req: any, res: Response) {
       return;
     }
 
+    let resolvedEventId: any = null;
+    if (req.body.eventId) {
+      const event = await EventModel.findOne(eventQuery(req.body.eventId));
+      if (event) resolvedEventId = event._id;
+    }
+
     const item = await GalleryItem.create({
       title: title || '',
       category: category || 'Meetups',
       image,
       uploadedBy: req.adminId || null,
-      eventId: req.body.eventId || null,
+      eventId: resolvedEventId,
     });
 
     res.status(201).json({ success: true, message: 'Image uploaded to gallery.', item });

@@ -1,9 +1,17 @@
 import type { Response } from 'express';
+import mongoose from 'mongoose';
 import { EventModel, Registration } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { nextEventId } from '../utils/ids';
 import { todayIST, isDateBefore } from '../utils/dates';
 import { connectDB } from '../config/db';
+
+export function eventQuery(identifier: string) {
+  if (mongoose.Types.ObjectId.isValid(identifier)) {
+    return { _id: identifier };
+  }
+  return { eventId: identifier };
+}
 
 export function serializeEvent(event: any) {
   const today = todayIST();
@@ -94,9 +102,7 @@ export async function getEvent(req: AuthRequest, res: Response) {
   try {
     await connectDB();
 
-    const event = await EventModel.findOne({
-      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
-    }).lean();
+    const event = await EventModel.findOne(eventQuery(req.params.eventId)).lean();
 
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
@@ -125,9 +131,7 @@ export async function registerForEvent(req: AuthRequest, res: Response) {
   try {
     await connectDB();
 
-    const event = await EventModel.findOne({
-      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
-    });
+    const event = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
@@ -181,9 +185,7 @@ export async function unregisterFromEvent(req: AuthRequest, res: Response) {
   try {
     await connectDB();
 
-    const event = await EventModel.findOne({
-      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
-    });
+    const event = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
@@ -257,9 +259,7 @@ export async function adminGetEvent(req: any, res: Response) {
   try {
     await connectDB();
 
-    const event = await EventModel.findOne({
-      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
-    }).lean();
+    const event = await EventModel.findOne(eventQuery(req.params.eventId)).lean();
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
@@ -316,9 +316,7 @@ export async function adminUpdateEvent(req: any, res: Response) {
   try {
     await connectDB();
 
-    const existing = await EventModel.findOne({
-      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
-    });
+    const existing = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!existing) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
@@ -348,9 +346,7 @@ export async function adminDeleteEvent(req: any, res: Response) {
   try {
     await connectDB();
 
-    const event = await EventModel.findOne({
-      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
-    });
+    const event = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
