@@ -76,6 +76,8 @@ export function Footer() {
         <div className="container-x flex flex-col items-center justify-between gap-3 py-6 text-center text-xs text-white/40 sm:flex-row sm:text-left">
           <p>© {new Date().getFullYear()} GDGoC on Campus — Government College of Engineering, Erode.</p>
           <p className="flex items-center gap-3">
+            <Link to="/admin/login" className="transition hover:text-white/70">Admin</Link>
+            <span className="text-white/20">|</span>
             <span className="flex items-center gap-1">
               <Mail className="h-3.5 w-3.5" /> gdgoc@gcee.ac.in
             </span>
