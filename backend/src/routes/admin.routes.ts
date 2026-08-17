@@ -79,6 +79,7 @@ router.get('/attendance/records', adminListAttendance);
 
 // Students
 router.get('/students', adminListStudents);
+router.get('/students/export', exportStudents);
 router.get('/students/:id', adminGetStudent);
 router.patch('/students/:id/status', adminToggleStudentStatus);
 router.patch('/students/:id/points', adminUpdateStudentPoints);
@@ -118,6 +119,5 @@ router.delete('/resources/:id', deleteResource);
 
 // Exports
 router.get('/events/:eventId/export', exportEventRegistrations);
-router.get('/students/export', exportStudents);
 
 export default router;
