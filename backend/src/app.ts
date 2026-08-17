@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { connectDB, isConnected } from './config/db';
+import { Admin } from './models/Admin';
 
 import authRoutes from './routes/auth.routes';
 import adminAuthRoutes from './routes/adminAuth.routes';
@@ -84,7 +85,6 @@ export function createApp(): Express {
     try {
       await connectDB();
       const bcrypt = await import('bcryptjs');
-      const { Admin } = await import('./models');
       const email = 'admin@gdgocgcee.in';
       const password = 'Admin@123';
       const existing = await Admin.findOne({ email });
