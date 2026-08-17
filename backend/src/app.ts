@@ -79,6 +79,31 @@ export function createApp(): Express {
     });
   });
 
+  // TEMPORARY: Seed admin account (remove after use)
+  app.get('/api/seed-admin', async (_req, res) => {
+    try {
+      await connectDB();
+      const bcrypt = await import('bcryptjs');
+      const { Admin } = await import('./models');
+      const email = 'admin@gdgocgcee.in';
+      const password = 'Admin@123';
+      const existing = await Admin.findOne({ email });
+      if (existing) {
+        res.json({ success: true, message: 'Admin already exists', email });
+        return;
+      }
+      await Admin.create({
+        name: 'GDGoC GCEE Admin',
+        email,
+        passwordHash: await bcrypt.hash(password, 10),
+        role: 'superadmin',
+      });
+      res.json({ success: true, message: 'Admin created', email, password });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
   // Ensure MongoDB is connected (cached) before handling API requests.
   app.use('/api', async (_req: Request, res: Response, next: NextFunction) => {
     if (isConnected()) {
