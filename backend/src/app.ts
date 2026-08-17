@@ -84,7 +84,7 @@ export function createApp(): Express {
   app.get('/api/seed-admin', async (_req, res) => {
     try {
       await connectDB();
-      const bcrypt = await import('bcryptjs');
+      const { default: bcrypt } = await import('bcryptjs');
       const email = 'admin@gdgocgcee.in';
       const password = 'Admin@123';
       const existing = await Admin.findOne({ email });
