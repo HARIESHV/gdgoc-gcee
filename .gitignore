@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Build outputs
+frontend/dist/
+backend/dist/
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Env files
+.env
+.env.local
+.env.production
+
+# Uploads / generated files
+backend/uploads/*.pdf
+!backend/uploads/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel/

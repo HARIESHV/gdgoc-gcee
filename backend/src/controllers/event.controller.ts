@@ -1,0 +1,364 @@
+import type { Response } from 'express';
+import { EventModel, Registration } from '../models';
+import type { AuthRequest } from '../middleware/auth';
+import { nextEventId } from '../utils/ids';
+import { todayIST, isDateBefore } from '../utils/dates';
+import { connectDB } from '../config/db';
+
+export function serializeEvent(event: any) {
+  const today = todayIST();
+  let effectiveStatus = event.status;
+  if (event.status !== 'CANCELLED') {
+    if (isDateBefore(event.date, today)) effectiveStatus = 'COMPLETED';
+    else if (event.date === today) effectiveStatus = 'ONGOING';
+    else effectiveStatus = 'UPCOMING';
+  }
+  return {
+    _id: event._id,
+    eventId: event.eventId,
+    title: event.title,
+    description: event.description,
+    shortDescription: event.shortDescription,
+    banner: event.banner,
+    date: event.date,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    venue: event.venue,
+    speaker: event.speaker,
+    speakerBio: event.speakerBio,
+    category: event.category,
+    technologies: event.technologies,
+    registrationEnabled: event.registrationEnabled,
+    registrationDeadline: event.registrationDeadline,
+    capacity: event.capacity,
+    isCertificateEligible: event.isCertificateEligible,
+    isInauguration: event.isInauguration,
+    status: event.status,
+    effectiveStatus,
+    registeredCount: event.registeredCount ?? 0,
+    createdAt: event.createdAt,
+    updatedAt: event.updatedAt,
+  };
+}
+
+// GET /api/events  (public)
+export async function listEvents(req: AuthRequest, res: Response) {
+  try {
+    await connectDB();
+
+    const { category, status, q, limit } = req.query;
+    const filter: Record<string, unknown> = {};
+    if (category) filter.category = category;
+    if (status) filter.status = status;
+
+    const today = todayIST();
+    if (status === 'UPCOMING') {
+      filter.date = { $gte: today };
+      delete filter.status;
+    } else if (status === 'COMPLETED') {
+      filter.date = { $lte: today };
+      delete filter.status;
+    }
+
+    if (q) {
+      filter.$or = [
+        { title: { $regex: String(q), $options: 'i' } },
+        { description: { $regex: String(q), $options: 'i' } },
+        { speaker: { $regex: String(q), $options: 'i' } },
+      ];
+    }
+
+    const events = await EventModel.find(filter)
+      .sort({ date: 1, startTime: 1 })
+      .limit(Number(limit) || 100)
+      .lean();
+
+    const ids = events.map((e) => e._id);
+    const regCounts = await Registration.aggregate([
+      { $match: { eventId: { $in: ids }, status: 'REGISTERED' } },
+      { $group: { _id: '$eventId', count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(regCounts.map((r) => [String(r._id), r.count]));
+
+    res.json({
+      success: true,
+      events: events.map((e) => serializeEvent({ ...e, registeredCount: countMap.get(String(e._id)) || 0 })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// GET /api/events/:eventId  (public)
+export async function getEvent(req: AuthRequest, res: Response) {
+  try {
+    await connectDB();
+
+    const event = await EventModel.findOne({
+      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
+    }).lean();
+
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    const registeredCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
+
+    let isRegistered = false;
+    if (req.studentId) {
+      isRegistered = (await Registration.countDocuments({ eventId: event._id, studentId: req.studentId, status: 'REGISTERED' })) > 0;
+    }
+
+    res.json({
+      success: true,
+      event: serializeEvent({ ...event, registeredCount }),
+      isRegistered,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// POST /api/events/:eventId/register  (student)
+export async function registerForEvent(req: AuthRequest, res: Response) {
+  try {
+    await connectDB();
+
+    const event = await EventModel.findOne({
+      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
+    });
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    if (!event.registrationEnabled) {
+      res.status(400).json({ success: false, message: 'Registration for this event is closed.' });
+      return;
+    }
+
+    const today = todayIST();
+    if (event.registrationDeadline && event.registrationDeadline < today) {
+      res.status(400).json({ success: false, message: 'The registration deadline has passed.' });
+      return;
+    }
+
+    if (event.capacity > 0) {
+      const count = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
+      if (count >= event.capacity) {
+        res.status(400).json({ success: false, message: 'This event has reached its maximum capacity.' });
+        return;
+      }
+    }
+
+    const existing = await Registration.findOne({ studentId: req.studentId, eventId: event._id });
+    if (existing) {
+      if (existing.status === 'CANCELLED') {
+        existing.status = 'REGISTERED';
+        existing.registeredAt = new Date();
+        await existing.save();
+        res.json({ success: true, message: 'Registration restored. You are registered again!' });
+        return;
+      }
+      res.status(400).json({ success: false, message: 'You are already registered for this event.' });
+      return;
+    }
+
+    await Registration.create({ studentId: req.studentId, eventId: event._id, status: 'REGISTERED' });
+    res.status(201).json({ success: true, message: 'You are registered for this event. See you there!' });
+  } catch (err: any) {
+    if (err.code === 11000) {
+      res.status(400).json({ success: false, message: 'You are already registered for this event.' });
+      return;
+    }
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// DELETE /api/events/:eventId/register  (student)
+export async function unregisterFromEvent(req: AuthRequest, res: Response) {
+  try {
+    await connectDB();
+
+    const event = await EventModel.findOne({
+      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
+    });
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+    const today = todayIST();
+    if (event.date < today) {
+      res.status(400).json({ success: false, message: 'Cannot cancel registration after the event date.' });
+      return;
+    }
+
+    const updated = await Registration.findOneAndUpdate(
+      { studentId: req.studentId, eventId: event._id },
+      { status: 'CANCELLED' },
+      { new: true }
+    );
+    if (!updated) {
+      res.status(400).json({ success: false, message: 'You are not registered for this event.' });
+      return;
+    }
+    res.json({ success: true, message: 'Registration cancelled.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// GET /api/events/my/registered  (student)
+export async function myEvents(req: AuthRequest, res: Response) {
+  try {
+    await connectDB();
+
+    const registrations = await Registration.find({ studentId: req.studentId, status: 'REGISTERED' })
+      .populate('eventId')
+      .sort({ registeredAt: -1 })
+      .lean();
+
+    const events = registrations
+      .filter((r) => r.eventId)
+      .map((r) => serializeEvent(r.eventId));
+
+    res.json({ success: true, events });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// ---------- ADMIN ----------
+
+// GET /api/admin/events
+export async function adminListEvents(_: any, res: Response) {
+  try {
+    await connectDB();
+
+    const events = await EventModel.find().sort({ date: -1 }).lean();
+    const ids = events.map((e) => e._id);
+    const regCounts = await Registration.aggregate([
+      { $match: { eventId: { $in: ids }, status: 'REGISTERED' } },
+      { $group: { _id: '$eventId', count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(regCounts.map((r) => [String(r._id), r.count]));
+    res.json({
+      success: true,
+      events: events.map((e) => serializeEvent({ ...e, registeredCount: countMap.get(String(e._id)) || 0 })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// GET /api/admin/events/:eventId
+export async function adminGetEvent(req: any, res: Response) {
+  try {
+    await connectDB();
+
+    const event = await EventModel.findOne({
+      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
+    }).lean();
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+    const registeredCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
+    res.json({ success: true, event: serializeEvent({ ...event, registeredCount }) });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// POST /api/admin/events
+export async function adminCreateEvent(req: any, res: Response) {
+  try {
+    await connectDB();
+
+    const { title, date } = req.body;
+    if (!title || !date) {
+      res.status(400).json({ success: false, message: 'Title and date are required.' });
+      return;
+    }
+
+    const eventId = await nextEventId();
+    const event = await EventModel.create({
+      eventId,
+      title,
+      description: req.body.description || '',
+      shortDescription: req.body.shortDescription || '',
+      banner: req.body.banner || '',
+      date,
+      startTime: req.body.startTime || '',
+      endTime: req.body.endTime || '',
+      venue: req.body.venue || '',
+      speaker: req.body.speaker || '',
+      speakerBio: req.body.speakerBio || '',
+      category: req.body.category || 'Workshop',
+      technologies: req.body.technologies || [],
+      registrationEnabled: req.body.registrationEnabled ?? true,
+      registrationDeadline: req.body.registrationDeadline || '',
+      capacity: Number(req.body.capacity) || 0,
+      isCertificateEligible: Boolean(req.body.isCertificateEligible),
+      isInauguration: Boolean(req.body.isInauguration),
+      status: req.body.status || 'UPCOMING',
+    });
+
+    res.status(201).json({ success: true, message: 'Event created successfully.', event: serializeEvent(event) });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// PUT /api/admin/events/:eventId
+export async function adminUpdateEvent(req: any, res: Response) {
+  try {
+    await connectDB();
+
+    const existing = await EventModel.findOne({
+      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
+    });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    const allowed = [
+      'title', 'description', 'shortDescription', 'banner', 'date', 'startTime', 'endTime', 'venue',
+      'speaker', 'speakerBio', 'category', 'technologies', 'registrationEnabled', 'registrationDeadline',
+      'capacity', 'isCertificateEligible', 'isInauguration', 'status',
+    ];
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) {
+        (existing as any)[key] = key === 'capacity' ? Number(req.body[key]) || 0 : req.body[key];
+      }
+    }
+    await existing.save();
+
+    const registeredCount = await Registration.countDocuments({ eventId: existing._id, status: 'REGISTERED' });
+    res.json({ success: true, message: 'Event updated successfully.', event: serializeEvent({ ...existing.toObject(), registeredCount }) });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// DELETE /api/admin/events/:eventId
+export async function adminDeleteEvent(req: any, res: Response) {
+  try {
+    await connectDB();
+
+    const event = await EventModel.findOne({
+      $or: [{ eventId: req.params.eventId }, { _id: req.params.eventId }],
+    });
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+    await Registration.deleteMany({ eventId: event._id });
+    await EventModel.deleteOne({ _id: event._id });
+    res.json({ success: true, message: 'Event deleted.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
