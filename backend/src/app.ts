@@ -4,7 +4,6 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { connectDB, isConnected } from './config/db';
-import { Admin } from './models/Admin';
 
 import authRoutes from './routes/auth.routes';
 import adminAuthRoutes from './routes/adminAuth.routes';
@@ -78,30 +77,6 @@ export function createApp(): Express {
       message: 'GDGoC GCEE API',
       time: new Date().toISOString(),
     });
-  });
-
-  // TEMPORARY: Seed admin account (remove after use)
-  app.get('/api/seed-admin', async (_req, res) => {
-    try {
-      await connectDB();
-      const { default: bcrypt } = await import('bcryptjs');
-      const email = 'admin@gdgocgcee.in';
-      const password = 'Admin@123';
-      const existing = await Admin.findOne({ email });
-      if (existing) {
-        res.json({ success: true, message: 'Admin already exists', email });
-        return;
-      }
-      await Admin.create({
-        name: 'GDGoC GCEE Admin',
-        email,
-        passwordHash: await bcrypt.hash(password, 10),
-        role: 'superadmin',
-      });
-      res.json({ success: true, message: 'Admin created', email, password });
-    } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
-    }
   });
 
   // Ensure MongoDB is connected (cached) before handling API requests.
