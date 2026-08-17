@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Users, Search, UserX, UserCheck, Trash2, Zap } from 'lucide-react';
+import { Users, Search, UserX, UserCheck, Trash2, Zap, Download } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { api, getErrorMessage } from '../../lib/api';
-import { cn } from '../../lib/utils';
+import { cn, downloadBlob } from '../../lib/utils';
 
 interface Row {
   id: string;
@@ -76,9 +76,29 @@ export default function AdminStudents() {
 
   const activeCount = rows.filter((r) => r.isActive).length;
 
+  const exportStudents = async () => {
+    try {
+      const res = await api.get('/admin/students/export', { responseType: 'blob' });
+      downloadBlob(res.data as Blob, `students-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success('Students exported successfully.');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Students" subtitle={`${rows.length} accounts · ${activeCount} active`} />
+      <PageHeader
+        title="Students"
+        subtitle={`${rows.length} accounts · ${activeCount} active`}
+        actions={
+          rows.length > 0 ? (
+            <button onClick={exportStudents} className="btn-outline">
+              <Download className="h-4 w-4" /> Export Excel
+            </button>
+          ) : undefined
+        }
+      />
 
       <div className="flex items-center gap-2 rounded-xl border border-navy-200 bg-white px-3">
         <Search className="h-4 w-4 shrink-0 text-ink-faint" />

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, QrCode, Check, X, AlertTriangle, User2 } from 'lucide-react';
+import { ArrowLeft, QrCode, Check, X, AlertTriangle, User2, Download } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Modal } from '../../components/ui/Modal';
 import { api, getErrorMessage } from '../../lib/api';
-import { cn, formatHumanDate } from '../../lib/utils';
+import { cn, formatHumanDate, downloadBlob } from '../../lib/utils';
 
 interface AttendanceStudent {
   studentId: string;
@@ -96,6 +96,16 @@ export default function AdminAttendance() {
     }
   };
 
+  const exportRegistrations = async () => {
+    try {
+      const res = await api.get(`/admin/events/${eventId}/export`, { responseType: 'blob' });
+      downloadBlob(res.data as Blob, `registrations-${eventId}.xlsx`);
+      toast.success('Registrations exported successfully.');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   const presentCount = students.filter((s) => s.status === 'PRESENT').length;
 
   if (loading) return <PageLoader label="Loading attendance…" />;
@@ -115,6 +125,11 @@ export default function AdminAttendance() {
             <Link to={`/admin/events/${eventId}`} className="btn-outline">
               <ArrowLeft className="h-4 w-4" /> Edit event
             </Link>
+            {students.length > 0 && (
+              <button onClick={exportRegistrations} className="btn-outline">
+                <Download className="h-4 w-4" /> Export Excel
+              </button>
+            )}
             <button onClick={openQr} className="btn-dark" disabled={!meta.attendanceOpen}>
               <QrCode className="h-4 w-4" /> QR attendance
             </button>

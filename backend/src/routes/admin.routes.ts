@@ -55,6 +55,7 @@ import {
   deleteResource,
 } from '../controllers/resource.controller';
 import { adminDashboard } from '../controllers/dashboard.controller';
+import { exportEventRegistrations, exportStudents } from '../controllers/export.controller';
 
 const router = Router();
 
@@ -114,5 +115,9 @@ router.get('/resources', adminListResources);
 router.post('/resources', createResource);
 router.put('/resources/:id', updateResource);
 router.delete('/resources/:id', deleteResource);
+
+// Exports
+router.get('/events/:eventId/export', exportEventRegistrations);
+router.get('/students/export', exportStudents);
 
 export default router;
