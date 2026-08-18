@@ -68,10 +68,7 @@ export default function Contact() {
                 </div>
               </div>
             ))}
-            <div className="card p-5">
-              <p className="text-sm font-semibold text-navy-900">Faculty Advisor</p>
-              <p className="mt-1 text-sm text-ink-muted">Department of Computer Science and Engineering, GCEE</p>
-            </div>
+
           </div>
 
           <div className="card p-6 sm:p-8 lg:col-span-3">
