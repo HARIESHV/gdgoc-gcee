@@ -1,27 +1,42 @@
 import PDFDocument from 'pdfkit';
-import { formatDotDate } from './dates';
+import { formatFullDate } from './dates';
 
 export interface CertificatePdfData {
   certificateId: string;
   studentName: string;
-  organization: string;
-  institution: string;
-  firstEligibleEventDate: string;
-  lastEligibleEventDate: string;
-  eventsAttended: number;
-  attendancePercentage: number;
+  eventName: string;
+  eventDate: string;
   issueDate: string;
   qrCodeDataURL: string;
   verificationUrl: string;
 }
 
 const NAVY = '#0b1b33';
+const GOLD = '#c5a53a';
 const GRAY = '#5f6b7a';
-const LIGHT = '#9aa5b1';
-const BLUE = '#4285F4';
-const GREEN = '#34A853';
-const YELLOW = '#FBBC05';
-const RED = '#EA4335';
+
+function drawCorner(doc: PDFKit.PDFDocument, cx: number, cy: number, dirX: number, dirY: number) {
+  const len = 40;
+  const goldW = 3;
+  const navyW = 2;
+
+  const x1 = cx;
+  const y1 = cy;
+  const x2 = cx + dirX * len;
+  const y2 = cy;
+  const x3 = cx;
+  const y3 = cy + dirY * len;
+
+  doc.save();
+
+  doc.lineWidth(goldW).moveTo(x1, y1).lineTo(x2, y1).stroke(GOLD);
+  doc.lineWidth(goldW).moveTo(x1, y1).lineTo(x1, y3).stroke(GOLD);
+
+  doc.lineWidth(navyW).moveTo(x1 + dirX * 6, y1 + dirY * 6).lineTo(x2 - dirX * 4, y1 + dirY * 6).stroke(NAVY);
+  doc.lineWidth(navyW).moveTo(x1 + dirX * 6, y1 + dirY * 6).lineTo(x1 + dirX * 6, y3 - dirY * 4).stroke(NAVY);
+
+  doc.restore();
+}
 
 /**
  * Build a premium A4 landscape certificate PDF and resolve with a Buffer.
@@ -45,133 +60,131 @@ export async function generateCertificatePDF(data: CertificatePdfData): Promise<
   const W = doc.page.width; // 841.89
   const H = doc.page.height; // 595.28
 
-  // Outer background
+  // White background
   doc.rect(0, 0, W, H).fill('#ffffff');
 
-  // Decorative frame
-  doc.rect(18, 18, W - 36, H - 36).lineWidth(1.4).stroke(NAVY);
-  doc.rect(26, 26, W - 52, H - 52).lineWidth(0.6).stroke(LIGHT);
+  // Outer thin gold border
+  doc.rect(20, 20, W - 40, H - 40).lineWidth(2).stroke(GOLD);
+  // Inner thin navy border
+  doc.rect(26, 26, W - 52, H - 52).lineWidth(1).stroke(NAVY);
 
-  // Top 4-color bar (Google-inspired accent)
-  const bar = 10;
-  const seg = (W - 36) / 4;
-  const colors = [BLUE, GREEN, YELLOW, RED];
-  colors.forEach((c, i) => {
-    doc.rect(18 + i * seg, 18, seg, bar).fill(c);
-  });
+  // Geometric corner decorations
+  drawCorner(doc, 20, 20, 1, 1);
+  drawCorner(doc, W - 20, 20, -1, 1);
+  drawCorner(doc, 20, H - 20, 1, -1);
+  drawCorner(doc, W - 20, H - 20, -1, -1);
 
   const center = W / 2;
 
-  // Organization header
-  doc.font('Helvetica-Bold').fontSize(22).fillColor(NAVY).text('GDGoC GCEE', center, 74, { align: 'center' });
-  doc.font('Helvetica').fontSize(11).fillColor(GRAY).text('Google Developer Groups on Campus', center, 100, {
-    align: 'center',
-  });
+  // GDGoC GCEE header
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(24)
+    .fillColor(NAVY)
+    .text('GDGoC GCEE', center, 70, { align: 'center' });
+
+  // Institution subheader
   doc
     .font('Helvetica')
-    .fontSize(10.5)
+    .fontSize(11)
     .fillColor(GRAY)
-    .text(data.institution, center, 115, { align: 'center' });
+    .text('Government College of Engineering, Erode', center, 96, { align: 'center' });
 
   // Main heading
   doc
     .font('Helvetica-Bold')
-    .fontSize(27)
-    .fillColor(BLUE)
-    .text('CERTIFICATE OF PARTICIPATION', center, 152, { align: 'center' });
+    .fontSize(28)
+    .fillColor(NAVY)
+    .text('CERTIFICATE OF PARTICIPATION', center, 135, { align: 'center' });
 
-  doc.moveTo(center - 120, 190).lineTo(center + 120, 190).lineWidth(1.2).stroke(GREEN);
+  // Gold decorative line under heading
+  doc
+    .moveTo(center - 130, 170)
+    .lineTo(center + 130, 170)
+    .lineWidth(2)
+    .stroke(GOLD);
 
   // Presentation line
   doc
     .font('Helvetica')
     .fontSize(11.5)
     .fillColor(GRAY)
-    .text('This certificate is proudly presented to', center, 208, { align: 'center' });
+    .text('This certificate is proudly presented to', center, 190, { align: 'center' });
 
   // Student name
   doc
     .font('Helvetica-Bold')
     .fontSize(30)
     .fillColor(NAVY)
-    .text(data.studentName.toUpperCase(), center, 228, { align: 'center', width: W - 200, ellipsis: true });
+    .text(data.studentName.toUpperCase(), center, 215, { align: 'center', width: W - 200, ellipsis: true });
 
-  // Description
+  // Participation line
   doc
     .font('Helvetica')
     .fontSize(11)
     .fillColor(GRAY)
-    .text(
-      'for active participation and contribution to the GDGoC GCEE community and its eligible technical events.',
-      center,
-      278,
-      { align: 'center', width: W - 240 }
-    );
+    .text('for outstanding participation in', center, 260, { align: 'center' });
 
-  // Participation period
-  const period = `${formatDotDate(data.firstEligibleEventDate)} — ${formatDotDate(data.lastEligibleEventDate)}`;
+  // Event name
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(16)
+    .fillColor(NAVY)
+    .text(data.eventName, center, 282, { align: 'center', width: W - 240, ellipsis: true });
+
+  // Event date
+  const formattedDate = formatFullDate(data.eventDate);
   doc
     .font('Helvetica-Bold')
     .fontSize(14)
     .fillColor(NAVY)
-    .text(`Participation Period: ${period}`, center, 330, { align: 'center' });
+    .text(formattedDate, center, 310, { align: 'center' });
 
-  // Stats
-  doc
-    .font('Helvetica')
-    .fontSize(11.5)
-    .fillColor(GRAY)
-    .text(
-      `Events Attended: ${data.eventsAttended}      |      Attendance: ${data.attendancePercentage}%`,
-      center,
-      356,
-      { align: 'center' }
-    );
+  // Gold badge/seal at bottom left
+  const badgeX = 130;
+  const badgeY = 440;
+  const badgeR = 42;
 
-  // Signature area
-  const sigY = 416;
-  doc.moveTo(120, sigY + 30).lineTo(300, sigY + 30).lineWidth(0.8).stroke(LIGHT);
-  doc
-    .font('Helvetica')
-    .fontSize(10)
-    .fillColor(GRAY)
-    .text('Community Lead', 120, sigY + 34, { align: 'center', width: 180 });
+  doc.save();
+  doc.circle(badgeX, badgeY, badgeR).lineWidth(2.5).stroke(GOLD);
+  doc.circle(badgeX, badgeY, badgeR - 6).lineWidth(1).stroke(GOLD);
 
-  doc.moveTo(W - 300, sigY + 30).lineTo(W - 120, sigY + 30).lineWidth(0.8).stroke(LIGHT);
-  doc
-    .font('Helvetica')
-    .fontSize(10)
-    .fillColor(GRAY)
-    .text('Faculty Coordinator', W - 300, sigY + 34, { align: 'center', width: 180 });
-
-  // Footer: certificate ID (left)
-  doc
-    .font('Helvetica')
-    .fontSize(9.5)
-    .fillColor(NAVY)
-    .text(`Certificate ID: ${data.certificateId}`, 60, H - 64, { align: 'left' });
-  doc
-    .font('Helvetica')
-    .fontSize(9)
-    .fillColor(GRAY)
-    .text(`Issued On: ${formatDotDate(data.issueDate)}`, 60, H - 50, { align: 'left' });
-
-  // Footer: verification URL (center)
-  doc
-    .font('Helvetica-Oblique')
-    .fontSize(9)
-    .fillColor(BLUE)
-    .text(data.verificationUrl, center, H - 60, { align: 'center', width: 400 });
-
-  // QR code (right)
-  if (data.qrCodeDataURL) {
-    doc.image(data.qrCodeDataURL, W - 130, H - 108, { width: 72, height: 72 });
-    doc
-      .font('Helvetica')
-      .fontSize(8)
-      .fillColor(GRAY)
-      .text('Scan to verify', W - 130, H - 32, { align: 'center', width: 72 });
+  // Star inside badge
+  const starPoints = 5;
+  const outerR = 22;
+  const innerR = 10;
+  doc.moveTo(badgeX, badgeY - outerR);
+  for (let i = 0; i < starPoints * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = (Math.PI * i) / starPoints - Math.PI / 2;
+    doc.lineTo(badgeX + r * Math.cos(angle), badgeY + r * Math.sin(angle));
   }
+  doc.closePath().lineWidth(1.5).fillAndStroke(GOLD, GOLD);
+
+  // Text around badge
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(7)
+    .fillColor(NAVY)
+    .text('GDGoC GCEE', badgeX, badgeY + badgeR + 8, { align: 'center', width: badgeR * 2 });
+  doc
+    .font('Helvetica')
+    .fontSize(6)
+    .fillColor(GRAY)
+    .text('Certificate of Participation', badgeX, badgeY + badgeR + 18, { align: 'center', width: badgeR * 2 });
+  doc.restore();
+
+  // QR code at bottom right
+  if (data.qrCodeDataURL) {
+    doc.image(data.qrCodeDataURL, W - 130, 420, { width: 80, height: 80 });
+  }
+
+  // Certificate ID at bottom center
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .fillColor(NAVY)
+    .text(`Certificate ID: ${data.certificateId}`, center, 530, { align: 'center' });
 
   doc.end();
   return done;

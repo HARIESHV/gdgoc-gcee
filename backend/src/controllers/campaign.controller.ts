@@ -116,18 +116,17 @@ async function buildCertificateDoc(campaign: any, student: any, eligibility: Eli
   const firstEligibleEventDate = eligibility.eligibleEvents[0]?.date || '';
   const lastEligibleEventDate = eligibility.eligibleEvents[eligibility.eligibleEvents.length - 1]?.date || '';
 
+  const eventDate = firstEligibleEventDate;
+  const eventName = eligibility.eligibleEvents[0]?.title || 'GDGoC GCEE Community Participation';
+
   const issueDate = todayIST();
 
   // Build the PDF buffer so generation errors surface here during generation.
   await generateCertificatePDF({
     certificateId,
     studentName: student.name,
-    organization: 'GDGoC GCEE',
-    institution: 'Government College of Engineering, Erode',
-    firstEligibleEventDate,
-    lastEligibleEventDate,
-    eventsAttended: attended.attended,
-    attendancePercentage: attended.attendancePercentage,
+    eventName,
+    eventDate,
     issueDate,
     qrCodeDataURL: qrCode,
     verificationUrl,
@@ -143,6 +142,8 @@ async function buildCertificateDoc(campaign: any, student: any, eligibility: Eli
     institution: 'Government College of Engineering, Erode',
     firstEligibleEventDate,
     lastEligibleEventDate,
+    eventDate,
+    eventName,
     eventsEligible: eligibility.eligibleEvents.length,
     eventsAttended: attended.attended,
     attendancePercentage: attended.attendancePercentage,

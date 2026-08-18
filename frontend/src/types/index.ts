@@ -75,6 +75,9 @@ export interface Certificate {
   lastEligibleEventDate: string;
   firstEligibleEventDateLabel: string;
   lastEligibleEventDateLabel: string;
+  eventDate: string;
+  eventDateLabel: string;
+  eventName: string;
   eventsEligible: number;
   eventsAttended: number;
   attendancePercentage: number;

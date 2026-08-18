@@ -15,6 +15,9 @@ const certificateSchema = new Schema(
     firstEligibleEventDate: { type: String, required: true },
     lastEligibleEventDate: { type: String, required: true },
 
+    eventDate: { type: String, default: '' },
+    eventName: { type: String, default: '' },
+
     eventsEligible: { type: Number, required: true },
     eventsAttended: { type: Number, required: true },
     attendancePercentage: { type: Number, required: true },

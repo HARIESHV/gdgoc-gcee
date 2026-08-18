@@ -46,25 +46,40 @@ export default function MyCertificates() {
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {certs.map((cert) => {
             const revoked = cert.status === 'REVOKED';
+            const eventName = cert.eventName || cert.campaignName || 'GDGoC GCEE';
+            const dateLabel = cert.eventDateLabel || cert.firstEligibleEventDateLabel || '';
+            const lastDateLabel = cert.lastEligibleEventDateLabel || '';
             return (
               <div key={cert.certificateId} className={cn('card overflow-hidden', revoked && 'opacity-90')}>
                 <div className={cn('p-5 text-white', revoked ? 'bg-gradient-to-br from-g-red to-red-700' : 'bg-gradient-to-br from-navy-900 to-navy-700')}>
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-display text-lg font-bold">Certificate of Participation</p>
-                      <p className="text-xs text-white/70">{cert.campaignName || 'GDGoC GCEE'}</p>
+                      <p className="text-xs text-white/70">{eventName}</p>
                     </div>
                     {revoked ? <ShieldX className="h-6 w-6 text-white/80" /> : <Award className="h-6 w-6 text-g-yellow" />}
                   </div>
-                  <div className="mt-4 flex items-center justify-between font-mono text-[11px] text-white/70">
-                    <span>{cert.firstEligibleEventDateLabel}</span>
-                    <span>—</span>
-                    <span>{cert.lastEligibleEventDateLabel}</span>
-                  </div>
+                  {dateLabel && (
+                    <div className="mt-4 flex items-center justify-between font-mono text-[11px] text-white/70">
+                      <span>{dateLabel}</span>
+                      {lastDateLabel && (
+                        <>
+                          <span>—</span>
+                          <span>{lastDateLabel}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-5">
                   <dl className="space-y-2 text-sm">
+                    {cert.eventName && (
+                      <div className="flex justify-between">
+                        <dt className="text-ink-muted">Event</dt>
+                        <dd className="font-semibold text-navy-900">{cert.eventName}</dd>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <dt className="text-ink-muted">Events attended</dt>
                       <dd className="font-semibold text-navy-900">{cert.eventsAttended}</dd>
@@ -84,7 +99,7 @@ export default function MyCertificates() {
                       <Eye className="h-4 w-4" /> View
                     </button>
                     <div className="flex gap-2">
-                      <Link to={`/verify/${cert.certificateId}`} className="btn-outline flex-1 !py-2">
+                      <Link to={`/certificate/${cert.certificateId}`} className="btn-outline flex-1 !py-2">
                         <BadgeCheck className="h-4 w-4" /> Verify
                       </Link>
                       {!revoked && (
@@ -109,7 +124,6 @@ export default function MyCertificates() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-display text-xl font-bold">GDGoC GCEE</p>
-                    <p className="text-xs text-white/70">Google Developer Groups on Campus</p>
                     <p className="text-xs text-white/70">Government College of Engineering, Erode</p>
                   </div>
                   {preview.qrCode ? (
@@ -119,16 +133,21 @@ export default function MyCertificates() {
                   )}
                 </div>
                 <div className="mt-8 text-center">
-                  <p className="text-base font-bold tracking-widest text-g-blue">CERTIFICATE OF PARTICIPATION</p>
+                  <p className="text-base font-bold tracking-widest" style={{ color: '#c5a53a' }}>CERTIFICATE OF PARTICIPATION</p>
                   <p className="mt-4 text-sm text-white/60">proudly presented to</p>
                   <p className="mt-1 font-display text-2xl font-bold">{preview.studentName}</p>
-                  <p className="mt-4 font-mono text-sm text-g-green">{preview.firstEligibleEventDateLabel} — {preview.lastEligibleEventDateLabel}</p>
+                  {(preview.eventDateLabel || preview.firstEligibleEventDateLabel) && (
+                    <p className="mt-4 font-mono text-sm text-g-green">
+                      {preview.eventDateLabel || preview.firstEligibleEventDateLabel}
+                      {preview.lastEligibleEventDateLabel && ` — ${preview.lastEligibleEventDateLabel}`}
+                    </p>
+                  )}
                   <p className="mt-2 text-xs text-white/70">Events Attended: {preview.eventsAttended} · Attendance: {preview.attendancePercentage}%</p>
                 </div>
               </div>
             </div>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <Link to={`/verify/${preview.certificateId}`} className="btn-outline flex-1">
+              <Link to={`/certificate/${preview.certificateId}`} className="btn-outline flex-1">
                 <BadgeCheck className="h-4 w-4" /> Verify
               </Link>
               {preview.status !== 'REVOKED' && (

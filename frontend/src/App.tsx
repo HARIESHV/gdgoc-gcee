@@ -83,6 +83,7 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/certificates" element={<Certificates />} />
         <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
+        <Route path="/certificate/:certificateId" element={<VerifyCertificate />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
       </Route>

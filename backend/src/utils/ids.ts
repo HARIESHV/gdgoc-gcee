@@ -22,12 +22,17 @@ export async function nextEventId(): Promise<string> {
   return `${prefix}${padNumber(seq, 4)}`;
 }
 
-/** Generate the next sequential certificateId like GDG-GCEE-2026-000001 */
+/** Generate certificateId like GDGCEE-20260818-A1B2 */
 export async function nextCertificateId(): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `GDG-GCEE-${year}-`;
-  const count = await Certificate.countDocuments({
-    certificateId: { $regex: `^${prefix}` },
-  });
-  return `${prefix}${padNumber(count + 1, 6)}`;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${year}${month}${day}`;
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let suffix = '';
+  for (let i = 0; i < 4; i++) {
+    suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `GDGCEE-${dateStr}-${suffix}`;
 }

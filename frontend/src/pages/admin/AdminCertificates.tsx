@@ -12,6 +12,9 @@ interface Row {
   studentName: string;
   studentEmail: string;
   campaignName: string;
+  eventName?: string;
+  eventDate?: string;
+  eventDateLabel?: string;
   eventsAttended: number;
   eventsEligible: number;
   attendancePercentage: number;
@@ -99,6 +102,7 @@ export default function AdminCertificates() {
                 <th className="p-4 font-medium">Certificate</th>
                 <th className="p-4 font-medium">Student</th>
                 <th className="p-4 font-medium">Campaign</th>
+                <th className="p-4 font-medium">Event</th>
                 <th className="p-4 font-medium">Attended</th>
                 <th className="p-4 font-medium">Attendance</th>
                 <th className="p-4 font-medium">Issued</th>
@@ -115,6 +119,16 @@ export default function AdminCertificates() {
                     <p className="text-xs text-ink-muted">{c.studentEmail}</p>
                   </td>
                   <td className="p-4 text-ink-soft">{c.campaignName || '—'}</td>
+                  <td className="p-4">
+                    {c.eventName ? (
+                      <div>
+                        <p className="font-medium text-navy-900">{c.eventName}</p>
+                        {c.eventDateLabel && <p className="text-xs text-ink-muted">{c.eventDateLabel}</p>}
+                      </div>
+                    ) : (
+                      <span className="text-ink-muted">—</span>
+                    )}
+                  </td>
                   <td className="p-4 text-ink-soft">{c.eventsAttended} / {c.eventsEligible}</td>
                   <td className="p-4 text-ink-soft">{c.attendancePercentage}%</td>
                   <td className="p-4 text-ink-soft">{formatDotDate(c.issueDate)}</td>
@@ -126,7 +140,7 @@ export default function AdminCertificates() {
                   <td className="p-4">
                     <div className="flex justify-end gap-1.5">
                       <a
-                        href={`/verify/${c.certificateId}`}
+                        href={`/certificate/${c.certificateId}`}
                         target="_blank"
                         rel="noreferrer"
                         className="rounded-lg p-2 text-ink-soft transition hover:bg-g-blue/10 hover:text-g-blue"

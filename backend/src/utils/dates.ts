@@ -49,6 +49,20 @@ export function formatDotDate(dateStr: string): string {
   return `${d}.${m}.${y}`;
 }
 
+/** Convert YYYY-MM-DD to "18 August 2026" */
+export function formatFullDate(dateStr: string): string {
+  const iso = normalizeDate(dateStr);
+  if (!iso) return '';
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-IN', {
+    timeZone: 'UTC',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 /** Convert YYYY-MM-DD to a human readable label e.g. "20 Aug 2026" */
 export function formatHumanDate(dateStr: string): string {
   const iso = normalizeDate(dateStr);
