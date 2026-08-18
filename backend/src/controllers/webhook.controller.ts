@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { GoogleFormRegistration, AdminNotification } from '../models';
 import { connectDB } from '../config/db';
 import { env } from '../config/env';
+import { sendRegistrationNotificationEmail } from '../utils/email';
 
 export async function googleFormWebhook(req: Request, res: Response) {
   try {
@@ -82,6 +83,20 @@ export async function googleFormWebhook(req: Request, res: Response) {
       });
     } catch (notifErr: any) {
       console.error('[webhook] Notification creation failed but registration saved:', notifErr.message);
+    }
+
+    try {
+      const submittedAtIST = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
+      await sendRegistrationNotificationEmail({
+        studentName: name || 'Student',
+        studentEmail: email || '',
+        department,
+        year,
+        college,
+        submittedAt: submittedAtIST,
+      });
+    } catch (emailErr: any) {
+      console.error('[webhook] Registration email notification failed but registration saved:', emailErr.message);
     }
 
     console.log(`[webhook] New registration saved: ${name} (${email}) — ${registration._id}`);

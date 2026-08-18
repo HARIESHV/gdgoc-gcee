@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Plus,
   ArrowRight,
+  ClipboardList,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -33,7 +34,7 @@ import {
 import { PageHeader, StatCard } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { api, getErrorMessage } from '../../lib/api';
-import { formatDotDate } from '../../lib/utils';
+import { formatDotDate, formatHumanDateTime } from '../../lib/utils';
 import type { AdminStats } from '../../types';
 
 const COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#1b3a66', '#3b6fc4'];
@@ -87,6 +88,7 @@ export default function AdminDashboard() {
         <StatCard label="Certificates Generated" value={s.certificates} icon={<Award className="h-5 w-5" />} color="bg-g-blue/10 text-g-blue" />
         <StatCard label="Certificates Valid" value={s.validCertificates} icon={<BadgeCheck className="h-5 w-5" />} color="bg-g-green/10 text-green-700" />
         <StatCard label="Community Members" value={s.members} icon={<UsersRound className="h-5 w-5" />} color="bg-g-yellow/15 text-yellow-700" />
+        <StatCard label="Form Registrations" value={s.totalFormRegistrations} icon={<ClipboardList className="h-5 w-5" />} color="bg-g-blue/10 text-g-blue" />
       </div>
 
       {/* Charts row 1 */}
@@ -192,6 +194,48 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Recent form registrations */}
+      {data.recentFormRegistrations?.length > 0 && (
+        <div className="card overflow-x-auto">
+          <div className="border-b border-navy-50 p-5 flex items-center justify-between">
+            <h3 className="font-display text-base font-bold text-navy-900 flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-g-blue" /> Recent form registrations
+            </h3>
+            <Link to="/admin/form-registrations" className="text-sm font-semibold text-g-blue hover:underline flex items-center gap-1">
+              View all <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <table className="w-full min-w-[560px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-navy-100 text-xs uppercase tracking-wide text-ink-faint">
+                <th className="p-4 font-medium">Status</th>
+                <th className="p-4 font-medium">Student</th>
+                <th className="p-4 font-medium">Email</th>
+                <th className="p-4 font-medium">Department</th>
+                <th className="p-4 font-medium">Submitted</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-navy-50">
+              {data.recentFormRegistrations.map((r: any) => (
+                <tr key={r._id} className="transition hover:bg-navy-50/50">
+                  <td className="p-4">
+                    {r.isRead ? (
+                      <span className="chip bg-navy-50 text-ink-faint">Read</span>
+                    ) : (
+                      <span className="chip bg-g-blue/10 text-g-blue font-semibold">New</span>
+                    )}
+                  </td>
+                  <td className="p-4 font-semibold text-navy-900">{r.name || '—'}</td>
+                  <td className="p-4 text-ink-soft">{r.email || '—'}</td>
+                  <td className="p-4 text-ink-soft">{r.department || '—'}</td>
+                  <td className="p-4 text-ink-muted text-xs">{formatHumanDateTime(r.submittedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Recent campaigns */}
       {data.campaigns?.length > 0 && (

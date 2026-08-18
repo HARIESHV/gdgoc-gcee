@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { Student, EventModel, Registration, Attendance, Certificate, CertificateCampaign, Member } from '../models';
+import { Student, EventModel, Registration, Attendance, Certificate, CertificateCampaign, Member, GoogleFormRegistration } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { todayIST, formatHumanDate } from '../utils/dates';
 import { connectDB } from '../config/db';
@@ -83,6 +83,8 @@ export async function adminDashboard(_: any, res: Response) {
       validCertificates,
       members,
       campaigns,
+      totalFormRegistrations,
+      recentFormRegistrations,
     ] = await Promise.all([
       Student.countDocuments({ isActive: true }),
       EventModel.countDocuments(),
@@ -93,6 +95,8 @@ export async function adminDashboard(_: any, res: Response) {
       Certificate.countDocuments({ status: 'VALID' }),
       Member.countDocuments({ isActive: true }),
       CertificateCampaign.find().sort({ createdAt: -1 }).lean(),
+      GoogleFormRegistration.countDocuments(),
+      GoogleFormRegistration.find().sort({ submittedAt: -1 }).limit(5).lean(),
     ]);
 
     // Chart: registrations per event (top 8)
@@ -170,6 +174,7 @@ export async function adminDashboard(_: any, res: Response) {
         validCertificates,
         pendingCertificates: Math.max(certificates - validCertificates, 0),
         members,
+        totalFormRegistrations,
       },
       charts: {
         registrationTrends,
@@ -178,6 +183,15 @@ export async function adminDashboard(_: any, res: Response) {
         certByStatus,
         attendanceByEvent,
       },
+      recentFormRegistrations: recentFormRegistrations.map((r) => ({
+        _id: r._id,
+        name: r.name,
+        email: r.email,
+        department: r.department,
+        year: r.year,
+        isRead: r.isRead,
+        submittedAt: r.submittedAt,
+      })),
       campaigns,
     });
   } catch (err: any) {

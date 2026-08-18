@@ -148,3 +148,60 @@ export async function sendCertificateEmail(opts: {
 
   console.log('[email] Certificate email sent to', opts.to, 'Resend ID:', data?.id);
 }
+
+export async function sendRegistrationNotificationEmail(opts: {
+  studentName: string;
+  studentEmail: string;
+  department?: string;
+  year?: string;
+  college?: string;
+  submittedAt: string;
+}): Promise<void> {
+  const resend = getResend();
+  if (!resend) {
+    console.log('[email] Resend not configured — skipping registration notification email');
+    return;
+  }
+
+  const safeName = escapeHtml(opts.studentName);
+  const safeEmail = escapeHtml(opts.studentEmail);
+  const safeDept = escapeHtml(opts.department || '—');
+  const safeYear = escapeHtml(opts.year || '—');
+  const safeCollege = escapeHtml(opts.college || '—');
+
+  const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+    <div style="background:#0b1b33; padding: 18px 24px; color:#fff;">
+      <h2 style="margin:0; font-size:18px;">New Student Registration</h2>
+    </div>
+    <div style="padding: 24px;">
+      <p style="margin-top:0; color:#374151;">A new student has submitted the GDGoC GCEE registration form.</p>
+      <p style="color:#374151;"><strong>Student Name:</strong> ${safeName}</p>
+      <p style="color:#374151;"><strong>Email:</strong> <a href="mailto:${safeEmail}">${safeEmail}</a></p>
+      <p style="color:#374151;"><strong>Department:</strong> ${safeDept}</p>
+      <p style="color:#374151;"><strong>Year:</strong> ${safeYear}</p>
+      <p style="color:#374151;"><strong>College:</strong> ${safeCollege}</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />
+      <p style="color:#9aa5b1;font-size:12px;">Submitted at ${opts.submittedAt} IST</p>
+      <p style="color:#9aa5b1;font-size:12px;">View all registrations in the Admin Dashboard.</p>
+    </div>
+  </div>
+  `;
+
+  const fromAddress = getFromAddress();
+  const adminEmail = env.adminEmail || 'gdgocgcee@gmail.com';
+
+  const { data, error } = await resend.emails.send({
+    from: fromAddress,
+    to: adminEmail,
+    subject: `New GDGoC GCEE Registration: ${opts.studentName}`,
+    html,
+  });
+
+  if (error) {
+    console.error('[email] Registration notification email error:', JSON.stringify(error));
+    return;
+  }
+
+  console.log('[email] Registration notification email sent to', adminEmail, 'Resend ID:', data?.id);
+}
