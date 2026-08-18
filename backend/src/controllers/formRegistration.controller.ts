@@ -80,37 +80,3 @@ export async function adminMarkFormRegistrationRead(req: any, res: Response) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
-
-// GET /api/admin/notifications
-export async function adminListNotifications(req: any, res: Response) {
-  try {
-    await connectDB();
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
-    const [items, unreadCount] = await Promise.all([
-      AdminNotification.find().sort({ createdAt: -1 }).limit(limit).lean(),
-      AdminNotification.countDocuments({ isRead: false }),
-    ]);
-    res.json({ success: true, notifications: items, unreadCount });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-}
-
-// PATCH /api/admin/notifications/:id/read
-export async function adminMarkNotificationRead(req: any, res: Response) {
-  try {
-    await connectDB();
-    const item = await AdminNotification.findByIdAndUpdate(
-      req.params.id,
-      { isRead: true },
-      { new: true }
-    ).lean();
-    if (!item) {
-      res.status(404).json({ success: false, message: 'Notification not found.' });
-      return;
-    }
-    res.json({ success: true, notification: item });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-}

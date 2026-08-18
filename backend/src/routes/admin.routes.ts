@@ -57,8 +57,6 @@ import {
   adminListFormRegistrations,
   adminGetFormRegistration,
   adminMarkFormRegistrationRead,
-  adminListNotifications,
-  adminMarkNotificationRead,
 } from '../controllers/formRegistration.controller';
 
 const router = Router();
@@ -125,9 +123,5 @@ router.get('/events/:eventId/export', exportEventRegistrations);
 router.get('/form-registrations', adminListFormRegistrations);
 router.get('/form-registrations/:id', adminGetFormRegistration);
 router.patch('/form-registrations/:id/read', adminMarkFormRegistrationRead);
-
-// Notifications
-router.get('/notifications', adminListNotifications);
-router.patch('/notifications/:id/read', adminMarkNotificationRead);
 
 export default router;

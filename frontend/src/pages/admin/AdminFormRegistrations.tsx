@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Bell, Eye, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -17,7 +17,7 @@ export default function AdminFormRegistrations() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
 
-  const load = async (p = page) => {
+  const load = useCallback(async (p = page) => {
     setLoading(true);
     try {
       const res = await api.get(`/admin/form-registrations?page=${p}&limit=15`);
@@ -30,13 +30,21 @@ export default function AdminFormRegistrations() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
 
   useEffect(() => {
     load(1);
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      load(page);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [page, load]);
 
   const refresh = () => load(page);
 

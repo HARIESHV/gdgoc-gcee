@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
 import { Logo } from '../ui/Logo';
@@ -18,45 +18,38 @@ const NAV = [
 ];
 
 export function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { student, logoutStudent } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  const close = useCallback(() => setOpen(false), []);
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
-    return () => {
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
   }, [open]);
+
+  useEffect(() => {
+    const handleResize = () => { if (window.innerWidth >= 768) close(); };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [close]);
 
   const handleLogout = async () => {
     await logoutStudent();
     navigate('/');
-    setOpen(false);
+    close();
   };
 
+  const onNavClick = () => close();
+
   return (
-    <header
-      className={cn(
-        'fixed inset-x-0 top-0 z-50 border-b transition-all duration-300',
-        scrolled
-          ? 'border-navy-100 bg-white shadow-sm backdrop-blur-md'
-          : 'border-transparent bg-white/95 backdrop-blur-md'
-      )}
-    >
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-transparent bg-white/95 backdrop-blur-md">
       <div className="container-x flex h-16 items-center justify-between gap-4">
         <Logo />
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-0.5 md:flex" aria-label="Primary">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
@@ -74,13 +67,10 @@ export function Navbar() {
         </nav>
 
         {/* Desktop right buttons */}
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden items-center gap-3 md:flex">
           {student ? (
             <>
-              <Link
-                to="/dashboard"
-                className="btn-outline !px-3.5 !py-2"
-              >
+              <Link to="/dashboard" className="btn-outline !px-3.5 !py-2">
                 <LayoutDashboard className="h-4 w-4" />
                 Dashboard
               </Link>
@@ -91,28 +81,22 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login" className="btn-ghost !px-3.5 !py-2">
-                Login
-              </Link>
-              <Link to="/register" className="btn-primary !px-4">
-                Join Community
-              </Link>
+              <Link to="/login" className="btn-ghost !px-3.5 !py-2">Login</Link>
+              <Link to="/register" className="btn-primary !px-4">Join Community</Link>
             </>
           )}
         </div>
 
-        {/* Mobile right buttons + hamburger */}
-        <div className="flex items-center gap-2 lg:hidden">
+        {/* Mobile: Dashboard/Login button + hamburger */}
+        <div className="flex items-center gap-2 md:hidden">
           {student ? (
-            <>
-              <Link
-                to="/dashboard"
-                className="flex items-center gap-1.5 rounded-lg bg-g-blue px-3 py-1.5 text-sm font-semibold text-white"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                Dashboard
-              </Link>
-            </>
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-1.5 rounded-lg bg-g-blue px-3 py-1.5 text-sm font-semibold text-white"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </Link>
           ) : (
             <>
               <Link to="/login" className="rounded-lg px-3 py-1.5 text-sm font-medium text-ink-soft">
@@ -135,50 +119,50 @@ export function Navbar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="fixed inset-x-0 top-16 bottom-0 z-40 overflow-y-auto bg-white lg:hidden">
-          <div className="container-x flex flex-col gap-1 py-6">
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'rounded-lg px-3 py-3 text-base font-medium transition-colors',
-                    isActive ? 'bg-g-blue/10 text-g-blue' : 'text-ink-soft hover:bg-navy-50'
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-            <div className="my-3 h-px bg-navy-100" />
-            {student ? (
-              <>
-                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-primary w-full">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="btn-outline mt-2 w-full"
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={close} />
+          <nav className="fixed inset-x-0 top-16 bottom-0 z-50 overflow-y-auto bg-white md:hidden shadow-lg">
+            <div className="container-x flex flex-col gap-1 py-4">
+              {NAV.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={onNavClick}
+                  className={({ isActive }) =>
+                    cn(
+                      'rounded-lg px-4 py-3 text-base font-medium transition-colors',
+                      isActive ? 'bg-g-blue/10 text-g-blue' : 'text-ink-soft hover:bg-navy-50'
+                    )
+                  }
                 >
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" onClick={() => setOpen(false)} className="btn-outline w-full">
-                  Login
-                </Link>
-                <Link to="/register" onClick={() => setOpen(false)} className="btn-primary mt-2 w-full">
-                  Join Community
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
+                  {item.label}
+                </NavLink>
+              ))}
+              <div className="my-3 h-px bg-navy-100" />
+              {student ? (
+                <>
+                  <Link to="/dashboard" onClick={onNavClick} className="btn-primary w-full">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Dashboard
+                  </Link>
+                  <button onClick={handleLogout} className="btn-outline mt-2 w-full">
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" onClick={onNavClick} className="btn-outline w-full">
+                    Login
+                  </Link>
+                  <Link to="/register" onClick={onNavClick} className="btn-primary mt-2 w-full">
+                    Join Community
+                  </Link>
+                </>
+              )}
+            </div>
+          </nav>
+        </>
       )}
     </header>
   );

@@ -9,7 +9,6 @@ export interface NavItem {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   end?: boolean;
-  badge?: number;
 }
 
 export function DashboardShell({
@@ -33,6 +32,8 @@ export function DashboardShell({
     navigate(basePath === '/dashboard' ? '/login' : '/admin/login');
   };
 
+  const close = () => setOpen(false);
+
   const content = (
     <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3" aria-label="Sidebar">
       {navItems.map((item) => (
@@ -40,7 +41,7 @@ export function DashboardShell({
           key={item.to}
           to={item.to}
           end={item.end}
-          onClick={() => setOpen(false)}
+          onClick={close}
           className={({ isActive }) =>
             cn(
               'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
@@ -51,12 +52,7 @@ export function DashboardShell({
           }
         >
           <item.icon className="h-[18px] w-[18px]" />
-          <span className="flex-1">{item.label}</span>
-          {item.badge && item.badge > 0 ? (
-            <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-g-blue px-1.5 text-[10px] font-bold text-white">
-              {item.badge > 99 ? '99+' : item.badge}
-            </span>
-          ) : null}
+          {item.label}
         </NavLink>
       ))}
     </nav>
@@ -65,7 +61,7 @@ export function DashboardShell({
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-navy-950 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-navy-950 md:flex">
         <div className="flex h-16 items-center px-5">
           <Logo light to={basePath} />
         </div>
@@ -90,8 +86,8 @@ export function DashboardShell({
         </div>
       </aside>
 
-      {/* Mobile top bar + drawer */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between bg-navy-950 px-4 lg:hidden">
+      {/* Mobile top bar */}
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between bg-navy-950 px-4 md:hidden">
         <Logo light to={basePath} />
         <button
           onClick={() => setOpen((v) => !v)}
@@ -102,24 +98,28 @@ export function DashboardShell({
         </button>
       </div>
 
+      {/* Mobile sidebar drawer */}
       {open && (
-        <div className="fixed inset-0 z-30 flex flex-col bg-navy-950 pt-14 lg:hidden">
-          <div className="flex flex-1 flex-col overflow-y-auto">{content}</div>
-          <div className="border-t border-white/10 p-4">
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/70 transition hover:bg-g-red/90 hover:text-white"
-            >
-              <LogOut className="h-[18px] w-[18px]" />
-              Logout
-            </button>
+        <>
+          <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={close} />
+          <div className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-navy-950 pt-14 md:hidden">
+            {content}
+            <div className="border-t border-white/10 p-4">
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/60 transition hover:bg-g-red/90 hover:text-white"
+              >
+                <LogOut className="h-[18px] w-[18px]" />
+                Logout
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-64">
-        <main className="min-h-screen px-4 pb-16 pt-20 sm:px-6 lg:px-10 lg:pt-8">
+      <div className="flex-1 md:ml-64">
+        <main className="min-h-screen px-4 pb-16 pt-20 sm:px-6 md:px-10 md:pt-8">
           <Outlet />
         </main>
       </div>
