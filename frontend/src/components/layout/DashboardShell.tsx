@@ -9,6 +9,7 @@ export interface NavItem {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   end?: boolean;
+  badge?: number;
 }
 
 export function DashboardShell({
@@ -50,7 +51,12 @@ export function DashboardShell({
           }
         >
           <item.icon className="h-[18px] w-[18px]" />
-          {item.label}
+          <span className="flex-1">{item.label}</span>
+          {item.badge && item.badge > 0 ? (
+            <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-g-blue px-1.5 text-[10px] font-bold text-white">
+              {item.badge > 99 ? '99+' : item.badge}
+            </span>
+          ) : null}
         </NavLink>
       ))}
     </nav>

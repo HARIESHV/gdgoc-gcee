@@ -19,6 +19,7 @@ export const env = {
     apiKey: process.env.RESEND_API_KEY || '',
     fromEmail: process.env.RESEND_FROM_EMAIL || '',
   },
+  googleFormWebhookSecret: process.env.GOOGLE_FORM_WEBHOOK_SECRET || '',
 };
 
 export const CLUB = {

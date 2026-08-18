@@ -17,6 +17,7 @@ import leaderboardRoutes from './routes/leaderboard.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import publicRoutes from './routes/public.routes';
 import adminRoutes from './routes/admin.routes';
+import googleFormRoutes from './routes/googleForm.routes';
 import { notFound, errorHandler } from './middleware/error';
 
 export function createApp(): Express {
@@ -104,6 +105,7 @@ export function createApp(): Express {
   app.use('/api/leaderboard', leaderboardRoutes);
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/google-form', googleFormRoutes);
   app.use('/api', publicRoutes);
 
   app.use(notFound);
