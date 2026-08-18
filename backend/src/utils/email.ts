@@ -11,7 +11,7 @@ function getResend(): Resend | null {
 }
 
 export const emailIsConfigured = (): boolean => {
-  return Boolean(env.resend.apiKey && env.resend.fromEmail);
+  return Boolean(env.resend.apiKey);
 };
 
 export function getEmailConfigStatus() {
@@ -20,8 +20,8 @@ export function getEmailConfigStatus() {
     hasFromEmail: Boolean(env.resend.fromEmail),
     hasAdminEmail: Boolean(env.adminEmail),
     configured: emailIsConfigured(),
-    adminEmail: env.adminEmail || 'admin@gdgocgcee.in',
-    fromEmail: env.resend.fromEmail || '(not set)',
+    adminEmail: env.adminEmail || 'gdgocgcee@gmail.com',
+    fromEmail: env.resend.fromEmail || 'onboarding@resend.dev',
   };
 }
 
@@ -34,25 +34,25 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
+function getFromAddress(): string {
+  const configured = env.resend.fromEmail;
+  if (configured) return `GDGoC GCEE <${configured}>`;
+  return 'GDGoC GCEE <onboarding@resend.dev>';
+}
+
 export async function sendContactEmail(opts: {
   fromName: string;
   fromEmail: string;
   subject: string;
   message: string;
-}) {
+}): Promise<{ id: string }> {
   const resend = getResend();
-  if (!resend || !env.resend.fromEmail) {
-    const status = getEmailConfigStatus();
-    const missing = [
-      !status.hasApiKey ? 'RESEND_API_KEY' : null,
-      !status.hasFromEmail ? 'RESEND_FROM_EMAIL' : null,
-    ].filter(Boolean);
-    const detail = missing.length ? ` Missing: ${missing.join(', ')}` : '';
-    console.error(`[email] Resend not configured.${detail}`);
-    throw new Error(`Email service is not configured.${detail}`);
+  if (!resend) {
+    console.error('[email] Resend API key not configured.');
+    throw new Error('Email service is not configured.');
   }
 
-  const adminEmail = env.adminEmail || 'admin@gdgocgcee.in';
+  const adminEmail = env.adminEmail || 'gdgocgcee@gmail.com';
   const safeName = escapeHtml(opts.fromName);
   const safeEmail = escapeHtml(opts.fromEmail);
   const safeSubject = escapeHtml(opts.subject);
@@ -76,19 +76,29 @@ export async function sendContactEmail(opts: {
     </div>
   `;
 
-  try {
-    await resend.emails.send({
-      from: env.resend.fromEmail,
-      to: adminEmail,
-      replyTo: opts.fromEmail,
-      subject: `Student Contact: ${opts.subject}`,
-      html: htmlBody,
-    });
-    console.log(`[email] Contact email sent to ${adminEmail} from student ${opts.fromName} <${opts.fromEmail}>`);
-  } catch (err) {
-    console.error('[email] Failed to send contact email:', (err as Error).message);
-    throw err;
+  const fromAddress = getFromAddress();
+  console.log(`[email] Sending contact email from="${fromAddress}" to="${adminEmail}" replyTo="${opts.fromEmail}"`);
+
+  const { data, error } = await resend.emails.send({
+    from: fromAddress,
+    to: adminEmail,
+    replyTo: opts.fromEmail,
+    subject: `GDGoC GCEE Contact Form: ${opts.subject}`,
+    html: htmlBody,
+  });
+
+  if (error) {
+    console.error('[email] Resend API error:', JSON.stringify(error));
+    throw new Error(error.message || 'Resend rejected the email request.');
   }
+
+  if (!data || !data.id) {
+    console.error('[email] Resend returned no error but no email ID either.');
+    throw new Error('Email was not accepted by the mail service.');
+  }
+
+  console.log(`[email] Contact email sent successfully. Resend ID: ${data.id} to ${adminEmail}`);
+  return { id: data.id };
 }
 
 export async function sendCertificateEmail(opts: {
@@ -99,7 +109,7 @@ export async function sendCertificateEmail(opts: {
   downloadUrl: string;
 }): Promise<void> {
   const resend = getResend();
-  if (!resend || !env.resend.fromEmail) {
+  if (!resend) {
     console.log('[email] Resend not configured — skipping certificate email for', opts.to);
     return;
   }
@@ -122,15 +132,19 @@ export async function sendCertificateEmail(opts: {
   </div>
   `;
 
-  try {
-    await resend.emails.send({
-      from: env.resend.fromEmail,
-      to: opts.to,
-      subject: 'Your GDGoC GCEE Certificate is Ready',
-      html,
-    });
-    console.log('[email] Certificate email sent to', opts.to);
-  } catch (err) {
-    console.error('[email] Failed to send certificate email:', (err as Error).message);
+  const fromAddress = getFromAddress();
+
+  const { data, error } = await resend.emails.send({
+    from: fromAddress,
+    to: opts.to,
+    subject: 'Your GDGoC GCEE Certificate is Ready',
+    html,
+  });
+
+  if (error) {
+    console.error('[email] Resend certificate email error:', JSON.stringify(error));
+    return;
   }
+
+  console.log('[email] Certificate email sent to', opts.to, 'Resend ID:', data?.id);
 }

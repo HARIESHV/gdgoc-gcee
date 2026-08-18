@@ -46,12 +46,14 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        'fixed inset-x-0 top-0 z-50 transition-all duration-300',
-        scrolled ? 'border-b border-navy-100 bg-white/90 shadow-sm backdrop-blur-md' : 'bg-transparent'
+        'fixed inset-x-0 top-0 z-50 border-b transition-all duration-300',
+        scrolled
+          ? 'border-navy-100 bg-white shadow-sm backdrop-blur-md'
+          : 'border-transparent bg-white/95 backdrop-blur-md'
       )}
     >
       <div className="container-x flex h-16 items-center justify-between gap-4">
-        <Logo light={!scrolled} />
+        <Logo />
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Primary">
@@ -62,13 +64,7 @@ export function Navbar() {
               className={({ isActive }) =>
                 cn(
                   'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  scrolled
-                    ? isActive
-                      ? 'text-g-blue'
-                      : 'text-ink-soft hover:text-navy-900'
-                    : isActive
-                      ? 'text-white'
-                      : 'text-white/80 hover:text-white'
+                  isActive ? 'text-g-blue' : 'text-ink-soft hover:text-navy-900'
                 )
               }
             >
@@ -82,51 +78,22 @@ export function Navbar() {
             <>
               <Link
                 to="/dashboard"
-                className={cn(
-                  'rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors',
-                  scrolled
-                    ? 'border-navy-200 bg-white text-navy-900 hover:border-g-blue hover:text-g-blue'
-                    : 'border-white/30 bg-white/10 text-white hover:bg-white/20'
-                )}
+                className="btn-outline !px-3.5 !py-2"
               >
-                <LayoutDashboard className="inline h-4 w-4 mr-1.5" />
+                <LayoutDashboard className="h-4 w-4" />
                 Dashboard
               </Link>
-              <button
-                onClick={handleLogout}
-                className={cn(
-                  'rounded-lg px-3.5 py-2 text-sm font-medium transition-colors',
-                  scrolled
-                    ? 'text-ink-soft hover:bg-navy-50 hover:text-navy-900'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
-                )}
-              >
-                <LogOut className="inline h-4 w-4 mr-1.5" />
+              <button onClick={handleLogout} className="btn-ghost !px-3.5 !py-2">
+                <LogOut className="h-4 w-4" />
                 Logout
               </button>
             </>
           ) : (
             <>
-              <Link
-                to="/login"
-                className={cn(
-                  'rounded-lg px-3.5 py-2 text-sm font-medium transition-colors',
-                  scrolled
-                    ? 'text-ink-soft hover:bg-navy-50 hover:text-navy-900'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
-                )}
-              >
+              <Link to="/login" className="btn-ghost !px-3.5 !py-2">
                 Login
               </Link>
-              <Link
-                to="/register"
-                className={cn(
-                  'rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
-                  scrolled
-                    ? 'bg-navy-900 text-white hover:bg-navy-800'
-                    : 'bg-white text-navy-900 hover:bg-white/90'
-                )}
-              >
+              <Link to="/register" className="btn-primary !px-4">
                 Join Community
               </Link>
             </>
@@ -135,10 +102,7 @@ export function Navbar() {
 
         {/* Mobile toggle */}
         <button
-          className={cn(
-            'rounded-lg p-2 transition lg:hidden',
-            scrolled ? 'text-navy-900 hover:bg-navy-50' : 'text-white hover:bg-white/10'
-          )}
+          className="rounded-lg p-2 text-navy-900 transition hover:bg-navy-50 lg:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle navigation"
         >
