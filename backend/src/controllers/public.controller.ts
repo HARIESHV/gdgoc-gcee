@@ -67,8 +67,8 @@ export async function contactForm(req: any, res: Response) {
     await connectDB();
     const { name, email, subject, message } = req.body;
 
-    if (!name || !email || !message) {
-      res.status(400).json({ success: false, message: 'Name, email and message are required.' });
+    if (!name || !email || !subject || !message) {
+      res.status(400).json({ success: false, message: 'Name, email, subject and message are required.' });
       return;
     }
 
@@ -80,6 +80,11 @@ export async function contactForm(req: any, res: Response) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
+      return;
+    }
+
+    if (typeof subject !== 'string' || subject.trim().length < 3 || subject.length > 200) {
+      res.status(400).json({ success: false, message: 'Subject must be between 3 and 200 characters.' });
       return;
     }
 
@@ -102,7 +107,7 @@ export async function contactForm(req: any, res: Response) {
       return;
     }
 
-    const sanitizedSubject = (subject && subject.trim()) || 'General Inquiry';
+    const sanitizedSubject = subject.trim();
 
     await sendContactEmail({
       fromName: name.trim(),

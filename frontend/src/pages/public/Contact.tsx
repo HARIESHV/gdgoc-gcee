@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Mail, MapPin, Clock3, Send } from 'lucide-react';
+import { Mail, MapPin, Clock3, Send, ExternalLink } from 'lucide-react';
 import { api, getErrorMessage } from '../../lib/api';
+
+const MAPS_URL = 'https://www.google.com/maps/search/Government+College+of+Engineering+Erode+Vasavi+College+Post+Erode+638316+Tamil+Nadu+India';
+const MAPS_EMBED = 'https://maps.google.com/maps?q=Government+College+of+Engineering+Erode+Vasavi+College+Post+Erode+638316+Tamil+Nadu+India&t=&z=15&ie=UTF8&iwloc=&output=embed';
 
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
@@ -52,23 +55,66 @@ export default function Contact() {
       <section className="bg-slate-50 py-16">
         <div className="container-x grid gap-10 lg:grid-cols-5">
           <div className="space-y-5 lg:col-span-2">
-            {[
-              { icon: Mail, title: 'Email', value: 'gdgocgcee@gmail.com', hint: 'For general inquiries' },
-              { icon: MapPin, title: 'Location', value: 'Government College of Engineering, Erode', hint: 'Tamil Nadu, India' },
-              { icon: Clock3, title: 'Community hours', value: 'Weekly meetups', hint: 'Check the events page for schedules' },
-            ].map(({ icon: Icon, title, value, hint }) => (
-              <div key={title} className="card flex items-start gap-4 p-5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-navy-900 text-white">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-semibold text-navy-900">{title}</p>
-                  <p className="mt-0.5 text-sm text-ink-soft">{value}</p>
-                  <p className="mt-0.5 text-xs text-ink-faint">{hint}</p>
+            <div className="card flex items-start gap-4 p-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-navy-900 text-white">
+                <Mail className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-navy-900">Email</p>
+                <p className="mt-0.5 text-sm text-ink-soft">gdgocgcee@gmail.com</p>
+                <p className="mt-0.5 text-xs text-ink-faint">For general inquiries</p>
+              </div>
+            </div>
+
+            <div className="card overflow-hidden p-0">
+              <div className="p-5 pb-3">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-navy-900 text-white">
+                    <MapPin className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-navy-900">Location</p>
+                    <p className="mt-0.5 text-sm text-ink-soft">Government College of Engineering, Erode</p>
+                    <p className="mt-0.5 text-xs text-ink-faint">Vasavi College Post, Erode – 638316, Tamil Nadu, India</p>
+                  </div>
                 </div>
               </div>
-            ))}
+              <div className="relative h-56 w-full overflow-hidden">
+                <iframe
+                  src={MAPS_EMBED}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Government College of Engineering, Erode"
+                  className="absolute inset-0 h-full w-full"
+                />
+              </div>
+              <div className="p-4">
+                <a
+                  href={MAPS_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-navy-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-navy-800"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View on Google Maps
+                </a>
+              </div>
+            </div>
 
+            <div className="card flex items-start gap-4 p-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-navy-900 text-white">
+                <Clock3 className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-navy-900">Community hours</p>
+                <p className="mt-0.5 text-sm text-ink-soft">Weekly meetups</p>
+                <p className="mt-0.5 text-xs text-ink-faint">Check the events page for schedules</p>
+              </div>
+            </div>
           </div>
 
           <div className="card p-6 sm:p-8 lg:col-span-3">
@@ -97,12 +143,12 @@ export default function Contact() {
                   className="input resize-y"
                   value={form.message}
                   onChange={(e) => update('message', e.target.value)}
-                  placeholder="Tell us what you need help with…"
+                  placeholder="Tell us what you need help with..."
                 />
               </div>
               <button type="submit" disabled={sending} className="btn-primary !px-6 !py-3">
                 <Send className="h-4 w-4" />
-                {sending ? 'Sending…' : 'Send Message'}
+                {sending ? 'Sending...' : 'Send Message'}
               </button>
             </form>
           </div>
