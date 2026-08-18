@@ -73,6 +73,7 @@ export function Navbar() {
           ))}
         </nav>
 
+        {/* Desktop right buttons */}
         <div className="hidden items-center gap-3 lg:flex">
           {student ? (
             <>
@@ -100,14 +101,36 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile toggle */}
-        <button
-          className="rounded-lg p-2 text-navy-900 transition hover:bg-navy-50 lg:hidden"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle navigation"
-        >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        {/* Mobile right buttons + hamburger */}
+        <div className="flex items-center gap-2 lg:hidden">
+          {student ? (
+            <>
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-1.5 rounded-lg bg-g-blue px-3 py-1.5 text-sm font-semibold text-white"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="rounded-lg px-3 py-1.5 text-sm font-medium text-ink-soft">
+                Login
+              </Link>
+              <Link to="/register" className="rounded-lg bg-g-blue px-3 py-1.5 text-sm font-semibold text-white">
+                Join
+              </Link>
+            </>
+          )}
+          <button
+            className="rounded-lg p-2 text-navy-900 transition hover:bg-navy-50"
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Toggle navigation"
+          >
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
