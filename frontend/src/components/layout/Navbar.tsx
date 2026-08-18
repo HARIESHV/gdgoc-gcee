@@ -51,7 +51,7 @@ export function Navbar() {
       )}
     >
       <div className="container-x flex h-16 items-center justify-between gap-4">
-        <Logo />
+        <Logo light={!scrolled} />
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Primary">
@@ -62,7 +62,13 @@ export function Navbar() {
               className={({ isActive }) =>
                 cn(
                   'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive ? 'text-g-blue' : 'text-ink-soft hover:text-navy-900'
+                  scrolled
+                    ? isActive
+                      ? 'text-g-blue'
+                      : 'text-ink-soft hover:text-navy-900'
+                    : isActive
+                      ? 'text-white'
+                      : 'text-white/80 hover:text-white'
                 )
               }
             >
@@ -76,22 +82,51 @@ export function Navbar() {
             <>
               <Link
                 to="/dashboard"
-                className="btn-outline !px-3.5 !py-2"
+                className={cn(
+                  'rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors',
+                  scrolled
+                    ? 'border-navy-200 bg-white text-navy-900 hover:border-g-blue hover:text-g-blue'
+                    : 'border-white/30 bg-white/10 text-white hover:bg-white/20'
+                )}
               >
-                <LayoutDashboard className="h-4 w-4" />
+                <LayoutDashboard className="inline h-4 w-4 mr-1.5" />
                 Dashboard
               </Link>
-              <button onClick={handleLogout} className="btn-ghost !px-3.5 !py-2">
-                <LogOut className="h-4 w-4" />
+              <button
+                onClick={handleLogout}
+                className={cn(
+                  'rounded-lg px-3.5 py-2 text-sm font-medium transition-colors',
+                  scrolled
+                    ? 'text-ink-soft hover:bg-navy-50 hover:text-navy-900'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white'
+                )}
+              >
+                <LogOut className="inline h-4 w-4 mr-1.5" />
                 Logout
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" className="btn-ghost !px-3.5 !py-2">
+              <Link
+                to="/login"
+                className={cn(
+                  'rounded-lg px-3.5 py-2 text-sm font-medium transition-colors',
+                  scrolled
+                    ? 'text-ink-soft hover:bg-navy-50 hover:text-navy-900'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white'
+                )}
+              >
                 Login
               </Link>
-              <Link to="/register" className="btn-primary !px-4">
+              <Link
+                to="/register"
+                className={cn(
+                  'rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
+                  scrolled
+                    ? 'bg-navy-900 text-white hover:bg-navy-800'
+                    : 'bg-white text-navy-900 hover:bg-white/90'
+                )}
+              >
                 Join Community
               </Link>
             </>
@@ -100,7 +135,10 @@ export function Navbar() {
 
         {/* Mobile toggle */}
         <button
-          className="rounded-lg p-2 text-navy-900 transition hover:bg-navy-50 lg:hidden"
+          className={cn(
+            'rounded-lg p-2 transition lg:hidden',
+            scrolled ? 'text-navy-900 hover:bg-navy-50' : 'text-white hover:bg-white/10'
+          )}
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle navigation"
         >
