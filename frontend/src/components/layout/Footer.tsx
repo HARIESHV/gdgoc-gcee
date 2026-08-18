@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Mail, MapPin, Instagram, Github, Linkedin, Twitter } from 'lucide-react';
+import { Mail, MapPin, Github } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 
 const footerCols = [
@@ -37,18 +37,16 @@ export function Footer() {
           </p>
           <div className="mt-5 flex gap-3">
             {[
-              { icon: Github, href: 'https://github.com' },
-              { icon: Linkedin, href: 'https://linkedin.com' },
-              { icon: Instagram, href: 'https://instagram.com' },
-              { icon: Twitter, href: 'https://x.com' },
-            ].map(({ icon: Icon, href }, i) => (
+              { icon: Github, href: 'https://github.com/HARIESHV', label: 'GitHub' },
+              { icon: Mail, href: 'mailto:gdgocgcee@gmail.com', label: 'Email us' },
+            ].map(({ icon: Icon, href, label }, i) => (
               <a
                 key={i}
                 href={href}
-                target="_blank"
+                target={href.startsWith('mailto') ? undefined : '_blank'}
                 rel="noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white/70 transition hover:bg-g-blue hover:text-white"
-                aria-label="Social link"
+                aria-label={label}
               >
                 <Icon className="h-4 w-4" />
               </a>
@@ -79,7 +77,8 @@ export function Footer() {
             <Link to="/admin/login" className="transition hover:text-white/70">Admin</Link>
             <span className="text-white/20">|</span>
             <span className="flex items-center gap-1">
-              <Mail className="h-3.5 w-3.5" /> gdgocgcee@gmail.com
+              <Mail className="h-3.5 w-3.5" />
+              <a href="mailto:gdgocgcee@gmail.com" className="transition hover:text-white/70">gdgocgcee@gmail.com</a>
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="h-3.5 w-3.5" /> Erode, Tamil Nadu
