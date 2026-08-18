@@ -1,9 +1,8 @@
 import type { Response } from 'express';
-import { EventModel, Registration, Attendance, Certificate, Member, Student, ContactMessage } from '../models';
+import { EventModel, Registration, Attendance, Certificate, Member, Student } from '../models';
 import { todayIST } from '../utils/dates';
-import { env } from '../config/env';
-import { emailIsConfigured } from '../utils/email';
 import { connectDB } from '../config/db';
+import { sendContactEmail, emailIsConfigured } from '../utils/email';
 
 // GET /api/stats  (public — homepage)
 export async function publicStats(_: any, res: Response) {
@@ -57,25 +56,45 @@ export async function contactForm(req: any, res: Response) {
   try {
     await connectDB();
     const { name, email, subject, message } = req.body;
+
     if (!name || !email || !message) {
       res.status(400).json({ success: false, message: 'Name, email and message are required.' });
       return;
     }
 
-    await ContactMessage.create({ name, email, subject: subject || 'General Inquiry', message });
-
-    if (emailIsConfigured()) {
-      const { sendContactEmail } = await import('../utils/email');
-      sendContactEmail({
-        to: env.email.from.split('<')[1]?.replace('>', '') || 'admin@gdgocgcee.in',
-        fromName: name,
-        fromEmail: email,
-        message,
-      });
+    if (typeof name !== 'string' || name.length < 2 || name.length > 200) {
+      res.status(400).json({ success: false, message: 'Name must be between 2 and 200 characters.' });
+      return;
     }
 
-    res.json({ success: true, message: 'Thank you! We will get back to you soon.' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
+      return;
+    }
+
+    if (typeof message !== 'string' || message.length < 10 || message.length > 5000) {
+      res.status(400).json({ success: false, message: 'Message must be between 10 and 5000 characters.' });
+      return;
+    }
+
+    if (!emailIsConfigured()) {
+      res.status(503).json({ success: false, message: 'Email service is not configured. Please try again later.' });
+      return;
+    }
+
+    const sanitizedSubject = (subject && subject.trim()) || 'General Inquiry';
+
+    await sendContactEmail({
+      fromName: name.trim(),
+      fromEmail: email.trim().toLowerCase(),
+      subject: sanitizedSubject,
+      message: message.trim(),
+    });
+
+    res.json({ success: true, message: 'Thank you! Your message has been sent. We will get back to you soon.' });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error('[contact] Failed to send contact email:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to send your message. Please try again later.' });
   }
 }

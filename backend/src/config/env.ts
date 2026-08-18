@@ -15,13 +15,9 @@ export const env = {
   adminEmail: process.env.ADMIN_EMAIL || 'admin@gdgocgcee.in',
   adminPassword: process.env.ADMIN_PASSWORD || 'Admin@123',
   adminName: process.env.ADMIN_NAME || 'GDGoC GCEE Admin',
-  email: {
-    host: process.env.EMAIL_HOST || '',
-    port: parseInt(process.env.EMAIL_PORT || '587', 10),
-    user: process.env.EMAIL_USER || '',
-    pass: process.env.EMAIL_PASS || '',
-    from: process.env.EMAIL_FROM || 'GDGoC GCEE <noreply@gdgocgcee.in>',
-    secure: process.env.EMAIL_SECURE === 'true',
+  resend: {
+    apiKey: process.env.RESEND_API_KEY || '',
+    fromEmail: process.env.RESEND_FROM_EMAIL || '',
   },
 };
 

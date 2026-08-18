@@ -8,5 +8,3 @@ export { Certificate, CERTIFICATE_STATUSES } from './Certificate';
 export { Member, TEAMS, DEPARTMENTS } from './Member';
 export { GalleryItem, GALLERY_CATEGORIES } from './GalleryItem';
 export { Resource, RESOURCE_CATEGORIES } from './Resource';
-export { ContactMessage } from './ContactMessage';
-export { GoogleForm } from './GoogleForm';

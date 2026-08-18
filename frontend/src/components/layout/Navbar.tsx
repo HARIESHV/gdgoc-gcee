@@ -14,6 +14,7 @@ const NAV = [
   { label: 'Gallery', to: '/gallery' },
   { label: 'Resources', to: '/resources' },
   { label: 'Certificates', to: '/certificates' },
+  { label: 'Contact', to: '/contact' },
 ];
 
 export function Navbar() {
