@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Plus, ClipboardCheck, Pencil, Trash2, CalendarX2, Sparkles, Award } from 'lucide-react';
+import { Plus, Pencil, Trash2, CalendarX2, ExternalLink } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -89,7 +89,7 @@ export default function AdminEvents() {
                 <th className="p-4 font-medium">Date</th>
                 <th className="p-4 font-medium">Category</th>
                 <th className="p-4 font-medium">Registrations</th>
-                <th className="p-4 font-medium">Flags</th>
+                <th className="p-4 font-medium">Google Form</th>
                 <th className="p-4 font-medium">Status</th>
                 <th className="p-4 font-medium">Actions</th>
               </tr>
@@ -108,19 +108,19 @@ export default function AdminEvents() {
                     {ev.capacity > 0 ? ` / ${ev.capacity}` : ''}
                   </td>
                   <td className="p-4">
-                    <div className="flex flex-wrap gap-1.5">
-                      {ev.isInauguration && <span className="chip bg-g-yellow/15 text-yellow-700" title="Inauguration"><Sparkles className="h-3 w-3" /></span>}
-                      {ev.isCertificateEligible && <span className="chip bg-g-green/10 text-green-700" title="Certificate eligible"><Award className="h-3 w-3" /></span>}
-                    </div>
+                    {ev.googleFormUrl ? (
+                      <a href={ev.googleFormUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-g-blue hover:underline">
+                        <ExternalLink className="h-3 w-3" /> View form
+                      </a>
+                    ) : (
+                      <span className="text-xs text-ink-faint">—</span>
+                    )}
                   </td>
                   <td className="p-4"><StatusBadge status={ev.status} /></td>
                   <td className="p-4">
                     <div className="flex items-center gap-1.5">
                       <Link to={`/admin/events/${ev.eventId}`} className="rounded-lg p-2 text-ink-soft transition hover:bg-g-blue/10 hover:text-g-blue" title="Edit">
                         <Pencil className="h-4 w-4" />
-                      </Link>
-                      <Link to={`/admin/events/${ev.eventId}/attendance`} className="rounded-lg p-2 text-ink-soft transition hover:bg-g-green/10 hover:text-green-700" title="Attendance">
-                        <ClipboardCheck className="h-4 w-4" />
                       </Link>
                       <button onClick={() => remove(ev._id, ev.title)} className="rounded-lg p-2 text-ink-soft transition hover:bg-g-red/10 hover:text-g-red" title="Delete">
                         <Trash2 className="h-4 w-4" />

@@ -46,6 +46,8 @@ export interface GEvent {
   registrationEnabled: boolean;
   registrationDeadline: string;
   capacity: number;
+  googleFormUrl: string;
+  manualRegistrationCount: number;
   isCertificateEligible: boolean;
   isInauguration: boolean;
   status: EventStatus;

@@ -32,7 +32,6 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminEvents from './pages/admin/AdminEvents';
 import AdminEventCreate from './pages/admin/AdminEventCreate';
 import AdminEventDetail from './pages/admin/AdminEventDetail';
-import AdminAttendance from './pages/admin/AdminAttendance';
 import AdminStudents from './pages/admin/AdminStudents';
 import AdminMembers from './pages/admin/AdminMembers';
 import AdminCertificates from './pages/admin/AdminCertificates';
@@ -41,11 +40,8 @@ import AdminCampaignDetail from './pages/admin/AdminCampaignDetail';
 import AdminGallery from './pages/admin/AdminGallery';
 import AdminResources from './pages/admin/AdminResources';
 import AdminSettings from './pages/admin/AdminSettings';
-
 import AdminGoogleForms from './pages/admin/AdminGoogleForms';
 import AdminContactMessages from './pages/admin/AdminContactMessages';
-import AdminEventRegistrations from './pages/admin/AdminEventRegistrations';
-import AdminEventAttended from './pages/admin/AdminEventAttended';
 
 function RequireStudent({ children }: { children: React.ReactNode }) {
   const { student, loading } = useAuth();
@@ -126,9 +122,6 @@ export default function App() {
         <Route path="events" element={<AdminEvents />} />
         <Route path="events/create" element={<AdminEventCreate />} />
         <Route path="events/:eventId" element={<AdminEventDetail />} />
-        <Route path="events/:eventId/attendance" element={<AdminAttendance />} />
-        <Route path="registrations" element={<AdminEventRegistrations />} />
-        <Route path="attended" element={<AdminEventAttended />} />
         <Route path="google-forms" element={<AdminGoogleForms />} />
         <Route path="contact-messages" element={<AdminContactMessages />} />
         <Route path="students" element={<AdminStudents />} />

@@ -10,12 +10,6 @@ import {
   adminDeleteEvent,
 } from '../controllers/event.controller';
 import {
-  adminGetEventAttendance,
-  adminMarkAttendance,
-  adminGetAttendanceQrToken,
-  adminListAttendance,
-} from '../controllers/attendance.controller';
-import {
   listCampaigns,
   getCampaign,
   createCampaign,
@@ -35,7 +29,6 @@ import {
   adminListStudents,
   adminGetStudent,
   adminToggleStudentStatus,
-  adminUpdateStudentPoints,
   adminDeleteStudent,
 } from '../controllers/studentAdmin.controller';
 import {
@@ -64,8 +57,6 @@ import {
   adminCreateGoogleForm,
   adminUpdateGoogleForm,
   adminDeleteGoogleForm,
-  adminListRegistrations,
-  adminListAttended,
 } from '../controllers/adminDashboard.controller';
 
 const router = Router();
@@ -82,18 +73,11 @@ router.post('/events', adminCreateEvent);
 router.put('/events/:eventId', adminUpdateEvent);
 router.delete('/events/:eventId', adminDeleteEvent);
 
-// Event attendance
-router.get('/events/:eventId/attendance', adminGetEventAttendance);
-router.post('/events/:eventId/attendance', adminMarkAttendance);
-router.get('/events/:eventId/attendance/qr-token', adminGetAttendanceQrToken);
-router.get('/attendance/records', adminListAttendance);
-
 // Students
 router.get('/students', adminListStudents);
 router.get('/students/export', exportStudents);
 router.get('/students/:id', adminGetStudent);
 router.patch('/students/:id/status', adminToggleStudentStatus);
-router.patch('/students/:id/points', adminUpdateStudentPoints);
 router.delete('/students/:id', adminDeleteStudent);
 
 // Members
@@ -138,12 +122,6 @@ router.get('/google-forms', adminListGoogleForms);
 router.post('/google-forms', adminCreateGoogleForm);
 router.put('/google-forms/:id', adminUpdateGoogleForm);
 router.delete('/google-forms/:id', adminDeleteGoogleForm);
-
-// Registrations list
-router.get('/registrations', adminListRegistrations);
-
-// Attended list
-router.get('/attended', adminListAttended);
 
 // Exports
 router.get('/events/:eventId/export', exportEventRegistrations);

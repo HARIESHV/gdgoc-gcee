@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Users, Search, UserX, UserCheck, Trash2, Zap, Download } from 'lucide-react';
+import { Users, Search, UserX, UserCheck, Trash2, Download } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -16,9 +16,6 @@ interface Row {
   department?: string;
   year?: string;
   isActive: boolean;
-  eventsAttended: number;
-  eventsRegistered: number;
-  points: number;
 }
 
 export default function AdminStudents() {
@@ -48,16 +45,6 @@ export default function AdminStudents() {
       const res = await api.patch(`/admin/students/${id}/status`);
       toast.success(res.data.message);
       setRows((r) => r.map((x) => (x.id === id ? { ...x, isActive: !isActive } : x)));
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    }
-  };
-
-  const setPoints = async (id: string, points: number) => {
-    try {
-      const res = await api.patch(`/admin/students/${id}/points`, { points });
-      toast.success(res.data.message);
-      setRows((r) => r.map((x) => (x.id === id ? { ...x, points } : x)));
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -111,14 +98,11 @@ export default function AdminStudents() {
         <EmptyState icon={<Users className="h-7 w-7" />} title="No students found" description="Students who register on the platform will appear here." />
       ) : (
         <div className="card overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
+          <table className="w-full min-w-[600px] text-left text-sm">
             <thead>
               <tr className="border-b border-navy-100 text-xs uppercase tracking-wide text-ink-faint">
                 <th className="p-4 font-medium">Student</th>
                 <th className="p-4 font-medium">Department</th>
-                <th className="p-4 font-medium">Registered</th>
-                <th className="p-4 font-medium">Attended</th>
-                <th className="p-4 font-medium">Points</th>
                 <th className="p-4 font-medium">Status</th>
                 <th className="p-4 text-right font-medium">Actions</th>
               </tr>
@@ -131,20 +115,6 @@ export default function AdminStudents() {
                     <p className="text-xs text-ink-muted">{s.email} · {s.rollNumber || '—'}</p>
                   </td>
                   <td className="p-4 text-ink-soft">{s.department || '—'}</td>
-                  <td className="p-4 text-ink-soft">{s.eventsRegistered}</td>
-                  <td className="p-4 text-ink-soft">{s.eventsAttended}</td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-1.5">
-                      <Zap className="h-3.5 w-3.5 text-g-yellow" />
-                      <input
-                        type="number"
-                        value={s.points}
-                        onBlur={(e) => setPoints(s.id, Number(e.target.value) || 0)}
-                        onChange={(e) => setRows((r) => r.map((x) => (x.id === s.id ? { ...x, points: Number(e.target.value) } : x)))}
-                        className="w-20 rounded-lg border border-navy-200 px-2 py-1 text-sm focus:border-g-blue focus:outline-none"
-                      />
-                    </div>
-                  </td>
                   <td className="p-4">
                     <span className={cn('chip', s.isActive ? 'bg-g-green/10 text-green-700' : 'bg-slate-100 text-slate-500')}>
                       {s.isActive ? 'Active' : 'Disabled'}

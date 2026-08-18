@@ -39,6 +39,8 @@ export function serializeEvent(event: any) {
     registrationEnabled: event.registrationEnabled,
     registrationDeadline: event.registrationDeadline,
     capacity: event.capacity,
+    googleFormUrl: event.googleFormUrl || '',
+    manualRegistrationCount: event.manualRegistrationCount || 0,
     isCertificateEligible: event.isCertificateEligible,
     isInauguration: event.isInauguration,
     status: event.status,
@@ -300,6 +302,8 @@ export async function adminCreateEvent(req: any, res: Response) {
       registrationEnabled: req.body.registrationEnabled ?? true,
       registrationDeadline: req.body.registrationDeadline || '',
       capacity: Number(req.body.capacity) || 0,
+      googleFormUrl: req.body.googleFormUrl || '',
+      manualRegistrationCount: Number(req.body.manualRegistrationCount) || 0,
       isCertificateEligible: Boolean(req.body.isCertificateEligible),
       isInauguration: Boolean(req.body.isInauguration),
       status: req.body.status || 'UPCOMING',
@@ -325,11 +329,11 @@ export async function adminUpdateEvent(req: any, res: Response) {
     const allowed = [
       'title', 'description', 'shortDescription', 'banner', 'date', 'startTime', 'endTime', 'venue',
       'speaker', 'speakerBio', 'category', 'technologies', 'registrationEnabled', 'registrationDeadline',
-      'capacity', 'isCertificateEligible', 'isInauguration', 'status',
+      'capacity', 'googleFormUrl', 'manualRegistrationCount', 'isCertificateEligible', 'isInauguration', 'status',
     ];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
-        (existing as any)[key] = key === 'capacity' ? Number(req.body[key]) || 0 : req.body[key];
+        (existing as any)[key] = (key === 'capacity' || key === 'manualRegistrationCount') ? Number(req.body[key]) || 0 : req.body[key];
       }
     }
     await existing.save();

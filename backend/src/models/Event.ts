@@ -32,6 +32,8 @@ const eventSchema = new Schema(
     registrationEnabled: { type: Boolean, default: true },
     registrationDeadline: { type: String, default: '' },
     capacity: { type: Number, default: 0 },
+    googleFormUrl: { type: String, default: '' },
+    manualRegistrationCount: { type: Number, default: 0 },
     isCertificateEligible: { type: Boolean, default: false },
     isInauguration: { type: Boolean, default: false },
     status: { type: String, enum: EVENT_STATUSES, default: 'UPCOMING' },

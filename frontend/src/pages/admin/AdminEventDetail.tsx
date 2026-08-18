@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EventForm } from '../../components/admin/EventForm';
@@ -35,14 +35,9 @@ export default function AdminEventDetail() {
         title="Edit Event"
         subtitle={`${event.eventId} — ${event.title}`}
         actions={
-          <>
-            <Link to="/admin/events" className="btn-outline">
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Link>
-            <Link to={`/admin/events/${event.eventId}/attendance`} className="btn-green">
-              <ClipboardCheck className="h-4 w-4" /> Attendance
-            </Link>
-          </>
+          <Link to="/admin/events" className="btn-outline">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Link>
         }
       />
       <EventForm event={event} onSaved={() => setReloadKey((k) => k + 1)} />

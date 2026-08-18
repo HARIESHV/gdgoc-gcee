@@ -21,6 +21,8 @@ import {
   Terminal,
   CalendarDays,
   ChevronRight,
+  Mail,
+  MapPin,
 } from 'lucide-react';
 import { Hero } from '../../components/home/Hero';
 import { EventCard } from '../../components/events/EventCard';
@@ -466,6 +468,53 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* Contact Us */}
+      <section className="bg-white py-20">
+        <div className="container-x">
+          <Reveal>
+            <SectionHeading
+              eyebrow="Get in touch"
+              title="Contact Us"
+              subtitle="Have questions about events, membership, or certificates? We'd love to hear from you."
+            />
+          </Reveal>
+          <Reveal delay={100}>
+            <div className="mx-auto max-w-2xl">
+              <div className="card p-8 text-center">
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-g-blue/10 text-g-blue">
+                  <Mail className="h-8 w-8" />
+                </div>
+                <h3 className="font-display text-xl font-bold text-navy-900">Let's connect</h3>
+                <p className="mt-2 text-sm text-ink-muted">
+                  Whether you have a question about our events, want to collaborate, or just want to say hello — reach out to us.
+                </p>
+                <div className="mt-6 flex flex-col items-center gap-3 text-sm text-ink-soft sm:flex-row sm:justify-center">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-g-blue" />
+                    <span>gdgocgcee@gmail.com</span>
+                  </div>
+                  <div className="hidden h-1 w-1 rounded-full bg-ink-faint sm:block" />
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-g-green" />
+                    <span>Government College of Engineering, Erode</span>
+                  </div>
+                </div>
+                <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                  <Link to="/contact" className="btn-primary">
+                    Contact us
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <a href="mailto:gdgocgcee@gmail.com" className="btn-outline">
+                    <Mail className="h-4 w-4" />
+                    Send email
+                  </a>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
 
       {/* CTA */}
       <section className="relative overflow-hidden bg-navy-950 py-24">

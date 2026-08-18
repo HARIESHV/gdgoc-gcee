@@ -9,10 +9,8 @@ import {
   Users,
   Award,
   Sparkles,
-  Check,
-  X,
   ArrowLeft,
-  Ticket,
+  ExternalLink,
   AlertTriangle,
   Building2,
 } from 'lucide-react';
@@ -21,16 +19,12 @@ import { StatusBadge } from '../../components/ui/Badge';
 import { api, getErrorMessage } from '../../lib/api';
 import { formatHumanDate, formatHumanDateTime } from '../../lib/utils';
 import { cn } from '../../lib/utils';
-import { useAuth } from '../../context/AuthContext';
 import type { GEvent } from '../../types';
 
 export default function EventDetail() {
   const { eventId } = useParams();
-  const { student } = useAuth();
   const [event, setEvent] = useState<GEvent | null>(null);
-  const [isRegistered, setIsRegistered] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -40,7 +34,6 @@ export default function EventDetail() {
         const res = await api.get(`/events/${eventId}`);
         if (!mounted) return;
         setEvent(res.data.event);
-        setIsRegistered(res.data.isRegistered);
       } catch (err) {
         toast.error(getErrorMessage(err));
       } finally {
@@ -52,34 +45,6 @@ export default function EventDetail() {
       mounted = false;
     };
   }, [eventId]);
-
-  const handleRegister = async () => {
-    setBusy(true);
-    try {
-      const res = await api.post(`/events/${eventId}/register`);
-      toast.success(res.data.message);
-      setIsRegistered(true);
-      setEvent((e) => (e ? { ...e, registeredCount: e.registeredCount + 1 } : e));
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleUnregister = async () => {
-    setBusy(true);
-    try {
-      const res = await api.delete(`/events/${eventId}/register`);
-      toast.success(res.data.message);
-      setIsRegistered(false);
-      setEvent((e) => (e ? { ...e, registeredCount: Math.max(e.registeredCount - 1, 0) } : e));
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -102,8 +67,9 @@ export default function EventDetail() {
     );
   }
 
-  const seatsLeft = event.capacity > 0 ? Math.max(event.capacity - event.registeredCount, 0) : null;
   const isUpcoming = event.effectiveStatus === 'UPCOMING' || event.effectiveStatus === 'ONGOING';
+  const hasGoogleForm = Boolean(event.googleFormUrl);
+  const totalRegistered = event.registeredCount + (event.manualRegistrationCount || 0);
 
   return (
     <>
@@ -199,12 +165,11 @@ export default function EventDetail() {
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-sm text-ink-soft">
                   <Users className="h-4 w-4 text-g-blue" />
-                  {event.registeredCount}
-                  {event.capacity > 0 ? ` / ${event.capacity}` : ''} registered
+                  {totalRegistered} registered
                 </div>
-                {seatsLeft !== null && isUpcoming && (
-                  <p className={cn('mt-1 text-xs', seatsLeft <= 10 ? 'font-semibold text-g-red' : 'text-ink-muted')}>
-                    {seatsLeft} {seatsLeft === 1 ? 'seat' : 'seats'} remaining
+                {event.capacity > 0 && (
+                  <p className="mt-1 text-xs text-ink-muted">
+                    {Math.max(event.capacity - totalRegistered, 0)} {event.capacity - totalRegistered === 1 ? 'seat' : 'seats'} remaining
                   </p>
                 )}
                 {event.registrationDeadline && (
@@ -228,35 +193,20 @@ export default function EventDetail() {
                   </div>
                 )}
 
-                {!student ? (
-                  <div className="space-y-2">
-                    <Link to={`/login?redirect=/events/${event.eventId}`} className="btn-primary w-full">
-                      <Ticket className="h-4 w-4" /> Login to register
-                    </Link>
-                    <Link to="/register" className="btn-outline w-full">
-                      Create an account
-                    </Link>
-                  </div>
-                ) : event.effectiveStatus === 'CANCELLED' ? (
+                {event.effectiveStatus === 'CANCELLED' ? (
                   <p className="rounded-lg bg-g-red/10 p-3 text-center text-sm font-medium text-g-red">Event cancelled</p>
-                ) : isRegistered ? (
-                  <>
-                    <p className="flex items-center justify-center gap-2 rounded-lg bg-g-green/10 p-3 text-sm font-medium text-green-700">
-                      <Check className="h-4 w-4" /> You are registered
-                    </p>
-                    {event.effectiveStatus === 'UPCOMING' && (
-                      <button onClick={handleUnregister} disabled={busy} className="btn-outline w-full">
-                        <X className="h-4 w-4" /> Cancel registration
-                      </button>
-                    )}
-                  </>
-                ) : event.effectiveStatus === 'UPCOMING' && event.registrationEnabled ? (
-                  <button onClick={handleRegister} disabled={busy} className="btn-primary w-full">
-                    <Ticket className="h-4 w-4" /> Register for this event
-                  </button>
+                ) : hasGoogleForm && isUpcoming ? (
+                  <a
+                    href={event.googleFormUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-primary flex w-full items-center justify-center gap-2"
+                  >
+                    Register Now <ExternalLink className="h-4 w-4" />
+                  </a>
                 ) : (
                   <p className="rounded-lg bg-navy-50 p-3 text-center text-sm text-ink-muted">
-                    Registration closed
+                    {isUpcoming ? 'Registration opens soon' : 'Registration closed'}
                   </p>
                 )}
               </div>
