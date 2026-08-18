@@ -85,12 +85,9 @@ export default function Login() {
           </div>
 
           <div className="mt-6 space-y-3 text-center">
-            <p className="text-sm text-ink-soft">
-              New here?{' '}
-              <Link to="/register" className="font-semibold text-g-blue hover:underline">
-                Join Community
-              </Link>
-            </p>
+            <Link to="/register" className="inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white transition-colors hover:opacity-90" style={{ backgroundColor: '#0D6EFD' }}>
+              Join Community
+            </Link>
             <p className="flex items-center justify-center gap-1 text-xs text-ink-faint">
               <GraduationCap className="h-3.5 w-3.5" />
               Open to all GCEE students
