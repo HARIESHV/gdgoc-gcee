@@ -2,7 +2,7 @@ import type { Response } from 'express';
 import { EventModel, Registration, Attendance, Certificate, Member, Student } from '../models';
 import { todayIST } from '../utils/dates';
 import { connectDB } from '../config/db';
-import { sendContactEmail, emailIsConfigured } from '../utils/email';
+import { sendContactEmail, emailIsConfigured, getEmailConfigStatus } from '../utils/email';
 
 // GET /api/stats  (public — homepage)
 export async function publicStats(_: any, res: Response) {
@@ -51,6 +51,16 @@ export async function publicStats(_: any, res: Response) {
   }
 }
 
+// GET /api/email-status  (public — diagnostic, no secrets exposed)
+export async function emailStatus(_req: any, res: Response) {
+  try {
+    const status = getEmailConfigStatus();
+    res.json({ success: true, ...status });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
 // POST /api/contact
 export async function contactForm(req: any, res: Response) {
   try {
@@ -79,7 +89,16 @@ export async function contactForm(req: any, res: Response) {
     }
 
     if (!emailIsConfigured()) {
-      res.status(503).json({ success: false, message: 'Email service is not configured. Please try again later.' });
+      const status = getEmailConfigStatus();
+      const missing = [
+        !status.hasApiKey ? 'RESEND_API_KEY' : null,
+        !status.hasFromEmail ? 'RESEND_FROM_EMAIL' : null,
+      ].filter(Boolean);
+      console.error(`[contact] Email not configured. Missing env vars: ${missing.join(', ') || 'unknown'}`);
+      res.status(503).json({
+        success: false,
+        message: `Email service is not configured. Missing: ${missing.join(', ') || 'check server environment'}. Please contact the administrator.`,
+      });
       return;
     }
 
@@ -92,7 +111,7 @@ export async function contactForm(req: any, res: Response) {
       message: message.trim(),
     });
 
-    res.json({ success: true, message: 'Thank you! Your message has been sent. We will get back to you soon.' });
+    res.json({ success: true, message: 'Message sent successfully. We will get back to you soon.' });
   } catch (err: any) {
     console.error('[contact] Failed to send contact email:', err.message);
     res.status(500).json({ success: false, message: 'Failed to send your message. Please try again later.' });

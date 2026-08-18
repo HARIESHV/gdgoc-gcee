@@ -14,6 +14,17 @@ export const emailIsConfigured = (): boolean => {
   return Boolean(env.resend.apiKey && env.resend.fromEmail);
 };
 
+export function getEmailConfigStatus() {
+  return {
+    hasApiKey: Boolean(env.resend.apiKey),
+    hasFromEmail: Boolean(env.resend.fromEmail),
+    hasAdminEmail: Boolean(env.adminEmail),
+    configured: emailIsConfigured(),
+    adminEmail: env.adminEmail || 'admin@gdgocgcee.in',
+    fromEmail: env.resend.fromEmail || '(not set)',
+  };
+}
+
 export async function sendContactEmail(opts: {
   fromName: string;
   fromEmail: string;
@@ -22,8 +33,14 @@ export async function sendContactEmail(opts: {
 }) {
   const resend = getResend();
   if (!resend || !env.resend.fromEmail) {
-    console.log('[email] Resend not configured — skipping contact email');
-    return;
+    const status = getEmailConfigStatus();
+    const missing = [
+      !status.hasApiKey ? 'RESEND_API_KEY' : null,
+      !status.hasFromEmail ? 'RESEND_FROM_EMAIL' : null,
+    ].filter(Boolean);
+    const detail = missing.length ? ` Missing: ${missing.join(', ')}` : '';
+    console.error(`[email] Resend not configured.${detail}`);
+    throw new Error(`Email service is not configured.${detail}`);
   }
 
   const adminEmail = env.adminEmail || 'admin@gdgocgcee.in';
