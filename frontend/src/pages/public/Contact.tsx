@@ -4,14 +4,14 @@ import { Mail, MapPin, Clock3, Send } from 'lucide-react';
 import { api, getErrorMessage } from '../../lib/api';
 
 export default function Contact() {
-  const [form, setForm] = useState({ name: '', email: '', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sending, setSending] = useState(false);
 
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.message) {
+    if (!form.name || !form.email || !form.subject || !form.message) {
       toast.error('Please fill in all fields.');
       return;
     }
@@ -19,7 +19,7 @@ export default function Contact() {
     try {
       const res = await api.post('/contact', form);
       toast.success(res.data.message);
-      setForm({ name: '', email: '', message: '' });
+      setForm({ name: '', email: '', subject: '', message: '' });
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -53,7 +53,7 @@ export default function Contact() {
         <div className="container-x grid gap-10 lg:grid-cols-5">
           <div className="space-y-5 lg:col-span-2">
             {[
-              { icon: Mail, title: 'Email', value: 'gdgoc@gcee.ac.in', hint: 'For general inquiries' },
+              { icon: Mail, title: 'Email', value: 'gdgocgcee@gmail.com', hint: 'For general inquiries' },
               { icon: MapPin, title: 'Location', value: 'Government College of Engineering, Erode', hint: 'Tamil Nadu, India' },
               { icon: Clock3, title: 'Community hours', value: 'Weekly meetups', hint: 'Check the events page for schedules' },
             ].map(({ icon: Icon, title, value, hint }) => (
@@ -87,6 +87,10 @@ export default function Contact() {
                   <label className="label" htmlFor="email">Email</label>
                   <input id="email" type="email" className="input" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="you@example.com" />
                 </div>
+              </div>
+              <div>
+                <label className="label" htmlFor="subject">Subject</label>
+                <input id="subject" className="input" value={form.subject} onChange={(e) => update('subject', e.target.value)} placeholder="What is this about?" />
               </div>
               <div>
                 <label className="label" htmlFor="message">Message</label>

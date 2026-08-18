@@ -79,7 +79,7 @@ export function Footer() {
             <Link to="/admin/login" className="transition hover:text-white/70">Admin</Link>
             <span className="text-white/20">|</span>
             <span className="flex items-center gap-1">
-              <Mail className="h-3.5 w-3.5" /> gdgoc@gcee.ac.in
+              <Mail className="h-3.5 w-3.5" /> gdgocgcee@gmail.com
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="h-3.5 w-3.5" /> Erode, Tamil Nadu

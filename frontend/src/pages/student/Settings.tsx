@@ -78,7 +78,7 @@ export default function Settings() {
         <h2 className="font-display text-lg font-bold text-navy-900">Account</h2>
         <p className="mt-2 text-sm text-ink-muted">
           Need help with your account or certificate queries? Reach the community team at{' '}
-          <a href="mailto:gdgoc@gcee.ac.in" className="font-medium text-g-blue hover:underline">gdgoc@gcee.ac.in</a>.
+          <a href="mailto:gdgocgcee@gmail.com" className="font-medium text-g-blue hover:underline">gdgocgcee@gmail.com</a>.
         </p>
       </div>
     </div>

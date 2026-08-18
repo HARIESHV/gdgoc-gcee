@@ -12,8 +12,6 @@ interface EventFormData {
   shortDescription: string;
   description: string;
   date: string;
-  startTime: string;
-  endTime: string;
   venue: string;
   speaker: string;
   speakerBio: string;
@@ -34,8 +32,6 @@ function toForm(event?: GEvent): EventFormData {
     shortDescription: event?.shortDescription || '',
     description: event?.description || '',
     date: event?.date || '',
-    startTime: event?.startTime || '',
-    endTime: event?.endTime || '',
     venue: event?.venue || '',
     speaker: event?.speaker || '',
     speakerBio: event?.speakerBio || '',
@@ -141,16 +137,6 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
             <label className="label" htmlFor="ev-date">Date (YYYY-MM-DD) <span className="text-g-red">*</span></label>
             <input id="ev-date" className="input font-mono" value={form.date} onChange={(e) => update('date', e.target.value)} placeholder="2026-09-20" />
             {form.date && <p className="mt-1 text-xs text-ink-faint">→ {formatHumanDate(form.date)}</p>}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label" htmlFor="ev-start">Start time</label>
-              <input id="ev-start" className="input font-mono" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} placeholder="14:00" />
-            </div>
-            <div>
-              <label className="label" htmlFor="ev-end">End time</label>
-              <input id="ev-end" className="input font-mono" value={form.endTime} onChange={(e) => update('endTime', e.target.value)} placeholder="17:00" />
-            </div>
           </div>
           <div>
             <label className="label" htmlFor="ev-venue">Venue</label>

@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { EventModel, Registration, Attendance, Certificate, Member, Student } from '../models';
+import { EventModel, Registration, Attendance, Certificate, Member, Student, ContactMessage } from '../models';
 import { todayIST } from '../utils/dates';
 import { env } from '../config/env';
 import { emailIsConfigured } from '../utils/email';
@@ -56,11 +56,13 @@ export async function publicStats(_: any, res: Response) {
 export async function contactForm(req: any, res: Response) {
   try {
     await connectDB();
-    const { name, email, message } = req.body;
+    const { name, email, subject, message } = req.body;
     if (!name || !email || !message) {
       res.status(400).json({ success: false, message: 'Name, email and message are required.' });
       return;
     }
+
+    await ContactMessage.create({ name, email, subject: subject || 'General Inquiry', message });
 
     if (emailIsConfigured()) {
       const { sendContactEmail } = await import('../utils/email');

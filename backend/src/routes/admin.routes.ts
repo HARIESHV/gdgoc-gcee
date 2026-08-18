@@ -56,6 +56,17 @@ import {
 } from '../controllers/resource.controller';
 import { adminDashboard } from '../controllers/dashboard.controller';
 import { exportEventRegistrations, exportStudents } from '../controllers/export.controller';
+import {
+  adminListContactMessages,
+  adminMarkMessageRead,
+  adminDeleteMessage,
+  adminListGoogleForms,
+  adminCreateGoogleForm,
+  adminUpdateGoogleForm,
+  adminDeleteGoogleForm,
+  adminListRegistrations,
+  adminListAttended,
+} from '../controllers/adminDashboard.controller';
 
 const router = Router();
 
@@ -116,6 +127,23 @@ router.get('/resources', adminListResources);
 router.post('/resources', createResource);
 router.put('/resources/:id', updateResource);
 router.delete('/resources/:id', deleteResource);
+
+// Contact messages
+router.get('/contact-messages', adminListContactMessages);
+router.patch('/contact-messages/:id/read', adminMarkMessageRead);
+router.delete('/contact-messages/:id', adminDeleteMessage);
+
+// Google Forms (admin only)
+router.get('/google-forms', adminListGoogleForms);
+router.post('/google-forms', adminCreateGoogleForm);
+router.put('/google-forms/:id', adminUpdateGoogleForm);
+router.delete('/google-forms/:id', adminDeleteGoogleForm);
+
+// Registrations list
+router.get('/registrations', adminListRegistrations);
+
+// Attended list
+router.get('/attended', adminListAttended);
 
 // Exports
 router.get('/events/:eventId/export', exportEventRegistrations);

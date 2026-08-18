@@ -42,6 +42,11 @@ import AdminGallery from './pages/admin/AdminGallery';
 import AdminResources from './pages/admin/AdminResources';
 import AdminSettings from './pages/admin/AdminSettings';
 
+import AdminGoogleForms from './pages/admin/AdminGoogleForms';
+import AdminContactMessages from './pages/admin/AdminContactMessages';
+import AdminEventRegistrations from './pages/admin/AdminEventRegistrations';
+import AdminEventAttended from './pages/admin/AdminEventAttended';
+
 function RequireStudent({ children }: { children: React.ReactNode }) {
   const { student, loading } = useAuth();
   if (loading) return <FullPageLoader />;
@@ -122,6 +127,10 @@ export default function App() {
         <Route path="events/create" element={<AdminEventCreate />} />
         <Route path="events/:eventId" element={<AdminEventDetail />} />
         <Route path="events/:eventId/attendance" element={<AdminAttendance />} />
+        <Route path="registrations" element={<AdminEventRegistrations />} />
+        <Route path="attended" element={<AdminEventAttended />} />
+        <Route path="google-forms" element={<AdminGoogleForms />} />
+        <Route path="contact-messages" element={<AdminContactMessages />} />
         <Route path="students" element={<AdminStudents />} />
         <Route path="members" element={<AdminMembers />} />
         <Route path="certificates" element={<AdminCertificates />} />
