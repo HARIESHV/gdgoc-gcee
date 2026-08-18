@@ -20,26 +20,26 @@ function drawCorner(doc: PDFKit.PDFDocument, cx: number, cy: number, dirX: numbe
   const goldW = 3;
   const navyW = 2;
 
-  const x1 = cx;
-  const y1 = cy;
   const x2 = cx + dirX * len;
-  const y2 = cy;
-  const x3 = cx;
   const y3 = cy + dirY * len;
 
   doc.save();
 
-  doc.lineWidth(goldW).moveTo(x1, y1).lineTo(x2, y1).stroke(GOLD);
-  doc.lineWidth(goldW).moveTo(x1, y1).lineTo(x1, y3).stroke(GOLD);
+  doc.lineWidth(goldW).moveTo(cx, cy).lineTo(x2, cy).stroke(GOLD);
+  doc.lineWidth(goldW).moveTo(cx, cy).lineTo(cx, y3).stroke(GOLD);
 
-  doc.lineWidth(navyW).moveTo(x1 + dirX * 6, y1 + dirY * 6).lineTo(x2 - dirX * 4, y1 + dirY * 6).stroke(NAVY);
-  doc.lineWidth(navyW).moveTo(x1 + dirX * 6, y1 + dirY * 6).lineTo(x1 + dirX * 6, y3 - dirY * 4).stroke(NAVY);
+  doc.lineWidth(navyW).moveTo(cx + dirX * 6, cy + dirY * 6).lineTo(x2 - dirX * 4, cy + dirY * 6).stroke(NAVY);
+  doc.lineWidth(navyW).moveTo(cx + dirX * 6, cy + dirY * 6).lineTo(cx + dirX * 6, y3 - dirY * 4).stroke(NAVY);
 
   doc.restore();
 }
 
 /**
  * Build a premium A4 landscape certificate PDF and resolve with a Buffer.
+ *
+ * Design: navy/gold color scheme, thin gold border, geometric corner decorations,
+ * GDGoC GCEE branding, CERTIFICATE OF PARTICIPATION heading, gold badge, QR code.
+ * No signatures, no website URL, no email, no social icons.
  */
 export async function generateCertificatePDF(data: CertificatePdfData): Promise<Buffer> {
   const doc = new PDFDocument({
@@ -59,6 +59,7 @@ export async function generateCertificatePDF(data: CertificatePdfData): Promise<
 
   const W = doc.page.width; // 841.89
   const H = doc.page.height; // 595.28
+  const center = W / 2;
 
   // White background
   doc.rect(0, 0, W, H).fill('#ffffff');
@@ -73,8 +74,6 @@ export async function generateCertificatePDF(data: CertificatePdfData): Promise<
   drawCorner(doc, W - 20, 20, -1, 1);
   drawCorner(doc, 20, H - 20, 1, -1);
   drawCorner(doc, W - 20, H - 20, -1, -1);
-
-  const center = W / 2;
 
   // GDGoC GCEE header
   doc
@@ -132,7 +131,7 @@ export async function generateCertificatePDF(data: CertificatePdfData): Promise<
     .fillColor(NAVY)
     .text(data.eventName, center, 282, { align: 'center', width: W - 240, ellipsis: true });
 
-  // Event date
+  // Single event date
   const formattedDate = formatFullDate(data.eventDate);
   doc
     .font('Helvetica-Bold')

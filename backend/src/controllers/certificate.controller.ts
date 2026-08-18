@@ -15,14 +15,9 @@ function publicView(cert: any) {
     studentName: cert.studentName,
     organization: cert.organization,
     institution: cert.institution,
-    firstEligibleEventDate: cert.firstEligibleEventDate,
-    lastEligibleEventDate: cert.lastEligibleEventDate,
     eventDate: cert.eventDate || '',
     eventName: cert.eventName || '',
     eventDateLabel: formatDotDate(cert.eventDate || ''),
-    eventsEligible: cert.eventsEligible,
-    eventsAttended: cert.eventsAttended,
-    attendancePercentage: cert.attendancePercentage,
     issueDate: cert.issueDate,
     issueDateLabel: formatDotDate(cert.issueDate),
     status: cert.status,
@@ -68,6 +63,15 @@ export async function downloadCertificate(req: any, res: Response) {
       return;
     }
 
+    // Serve the stored PDF buffer (generated once during certificate creation).
+    if (cert.pdfBuffer) {
+      res.setHeader('Content-Type', PDF_MIME);
+      res.setHeader('Content-Disposition', `attachment; filename="${cert.certificateId}.pdf"`);
+      res.send(Buffer.from(cert.pdfBuffer));
+      return;
+    }
+
+    // Fallback: regenerate if pdfBuffer is missing (backward compat with old certificates).
     const pdf = await generateCertificatePDF({
       certificateId: cert.certificateId,
       studentName: cert.studentName,
@@ -126,9 +130,9 @@ export async function adminListCertificates(req: any, res: Response) {
         studentEmail: c.studentEmail,
         campaignName: campMap.get(String(c.campaignId)) || '',
         campaignId: c.campaignId,
-        eventsAttended: c.eventsAttended,
-        eventsEligible: c.eventsEligible,
-        attendancePercentage: c.attendancePercentage,
+        eventName: c.eventName || '',
+        eventDate: c.eventDate || '',
+        eventDateLabel: formatDotDate(c.eventDate || ''),
         issueDate: c.issueDate,
         status: c.status,
         revokedAt: c.revokedAt,

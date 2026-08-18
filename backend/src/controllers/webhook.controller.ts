@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { GoogleFormRegistration, AdminNotification } from '../models';
+import { GoogleFormRegistration } from '../models';
 import { connectDB } from '../config/db';
 import { env } from '../config/env';
 import { sendRegistrationNotificationEmail } from '../utils/email';
@@ -107,26 +107,6 @@ export async function googleFormWebhook(req: Request, res: Response) {
 
     console.log(`[webhook] Registration saved: ${name} (${email}) — id=${registration._id}`);
 
-    // Create in-app notification (non-blocking — don't fail registration if this fails)
-    try {
-      await AdminNotification.create({
-        type: 'google_form_registration',
-        title: 'New Student Registration',
-        message: `${name || 'Student'} (${email || 'no email'}) submitted the GDGoC GCEE registration form.`,
-        meta: {
-          registrationId: String(registration._id),
-          name,
-          email,
-          department,
-          year,
-        },
-        isRead: false,
-      });
-      console.log(`[webhook] Admin notification created for registration ${registration._id}`);
-    } catch (notifErr: any) {
-      console.error('[webhook] Notification creation failed but registration saved:', notifErr.message);
-    }
-
     // Send admin email notification (non-blocking)
     try {
       const submittedAtIST = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
@@ -189,24 +169,10 @@ export async function googleFormTest(req: Request, res: Response) {
       submittedAt: now,
     });
 
-    await AdminNotification.create({
-      type: 'google_form_registration',
-      title: 'New Student Registration',
-      message: 'Test Student (test.student@gdggcee.example.com) submitted the GDGoC GCEE registration form.',
-      meta: {
-        registrationId: String(registration._id),
-        name: 'Test Student',
-        email: 'test.student@gdggcee.example.com',
-        department: 'Computer Science',
-        year: '3rd Year',
-      },
-      isRead: false,
-    });
-
     console.log(`[webhook] Test registration created: id=${registration._id}`);
     res.json({
       success: true,
-      message: 'Test registration created. Check the admin dashboard for the new registration and notification.',
+      message: 'Test registration created. Check the admin dashboard for the new registration.',
       id: String(registration._id),
       testPayload: formData,
     });

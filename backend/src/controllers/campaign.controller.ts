@@ -110,19 +110,16 @@ async function buildCertificateDoc(campaign: any, student: any, eligibility: Eli
   if (!attended || !attended.qualifies) return null;
 
   const certificateId = await nextCertificateId();
-  const verificationUrl = `${env.appUrl}/verify/${certificateId}`;
+  const verificationUrl = `${env.appUrl}/certificate/${certificateId}`;
   const qrCode = await generateQRCodeDataURL(verificationUrl);
 
-  const firstEligibleEventDate = eligibility.eligibleEvents[0]?.date || '';
-  const lastEligibleEventDate = eligibility.eligibleEvents[eligibility.eligibleEvents.length - 1]?.date || '';
-
-  const eventDate = firstEligibleEventDate;
+  const eventDate = eligibility.eligibleEvents[0]?.date || todayIST();
   const eventName = eligibility.eligibleEvents[0]?.title || 'GDGoC GCEE Community Participation';
 
   const issueDate = todayIST();
 
-  // Build the PDF buffer so generation errors surface here during generation.
-  await generateCertificatePDF({
+  // Generate and store the PDF buffer so the exact same PDF is served on download.
+  const pdfBuffer = await generateCertificatePDF({
     certificateId,
     studentName: student.name,
     eventName,
@@ -140,16 +137,12 @@ async function buildCertificateDoc(campaign: any, student: any, eligibility: Eli
     studentEmail: student.email,
     organization: 'GDGoC GCEE',
     institution: 'Government College of Engineering, Erode',
-    firstEligibleEventDate,
-    lastEligibleEventDate,
     eventDate,
     eventName,
-    eventsEligible: eligibility.eligibleEvents.length,
-    eventsAttended: attended.attended,
-    attendancePercentage: attended.attendancePercentage,
     issueDate,
     verificationUrl,
     qrCode,
+    pdfBuffer,
     status: 'VALID',
   });
 }
@@ -183,8 +176,7 @@ export async function getCampaign(req: any, res: Response) {
         studentName: c.studentName,
         studentEmail: c.studentEmail,
         status: c.status,
-        eventsAttended: c.eventsAttended,
-        attendancePercentage: c.attendancePercentage,
+        attendancePercentage: 0,
         issueDate: c.issueDate,
       })),
     });

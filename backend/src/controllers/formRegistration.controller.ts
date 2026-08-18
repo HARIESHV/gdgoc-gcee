@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { GoogleFormRegistration, AdminNotification } from '../models';
+import { GoogleFormRegistration } from '../models';
 import { connectDB } from '../config/db';
 
 // GET /api/admin/form-registrations
@@ -69,11 +69,6 @@ export async function adminMarkFormRegistrationRead(req: any, res: Response) {
       res.status(404).json({ success: false, message: 'Registration not found.' });
       return;
     }
-
-    await AdminNotification.updateMany(
-      { 'meta.registrationId': req.params.id, isRead: false },
-      { isRead: true }
-    );
 
     res.json({ success: true, registration: item });
   } catch (err: any) {

@@ -47,8 +47,7 @@ export default function MyCertificates() {
           {certs.map((cert) => {
             const revoked = cert.status === 'REVOKED';
             const eventName = cert.eventName || cert.campaignName || 'GDGoC GCEE';
-            const dateLabel = cert.eventDateLabel || cert.firstEligibleEventDateLabel || '';
-            const lastDateLabel = cert.lastEligibleEventDateLabel || '';
+            const dateLabel = cert.eventDateLabel || '';
             return (
               <div key={cert.certificateId} className={cn('card overflow-hidden', revoked && 'opacity-90')}>
                 <div className={cn('p-5 text-white', revoked ? 'bg-gradient-to-br from-g-red to-red-700' : 'bg-gradient-to-br from-navy-900 to-navy-700')}>
@@ -60,14 +59,8 @@ export default function MyCertificates() {
                     {revoked ? <ShieldX className="h-6 w-6 text-white/80" /> : <Award className="h-6 w-6 text-g-yellow" />}
                   </div>
                   {dateLabel && (
-                    <div className="mt-4 flex items-center justify-between font-mono text-[11px] text-white/70">
+                    <div className="mt-4 font-mono text-[11px] text-white/70">
                       <span>{dateLabel}</span>
-                      {lastDateLabel && (
-                        <>
-                          <span>—</span>
-                          <span>{lastDateLabel}</span>
-                        </>
-                      )}
                     </div>
                   )}
                 </div>
@@ -80,14 +73,6 @@ export default function MyCertificates() {
                         <dd className="font-semibold text-navy-900">{cert.eventName}</dd>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <dt className="text-ink-muted">Events attended</dt>
-                      <dd className="font-semibold text-navy-900">{cert.eventsAttended}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-ink-muted">Attendance</dt>
-                      <dd className="font-semibold text-navy-900">{cert.attendancePercentage}%</dd>
-                    </div>
                     <div className="flex justify-between">
                       <dt className="text-ink-muted">Certificate ID</dt>
                       <dd className="font-mono text-xs font-semibold text-navy-900">{cert.certificateId}</dd>
@@ -136,13 +121,9 @@ export default function MyCertificates() {
                   <p className="text-base font-bold tracking-widest" style={{ color: '#c5a53a' }}>CERTIFICATE OF PARTICIPATION</p>
                   <p className="mt-4 text-sm text-white/60">proudly presented to</p>
                   <p className="mt-1 font-display text-2xl font-bold">{preview.studentName}</p>
-                  {(preview.eventDateLabel || preview.firstEligibleEventDateLabel) && (
-                    <p className="mt-4 font-mono text-sm text-g-green">
-                      {preview.eventDateLabel || preview.firstEligibleEventDateLabel}
-                      {preview.lastEligibleEventDateLabel && ` — ${preview.lastEligibleEventDateLabel}`}
-                    </p>
+                  {preview.eventDateLabel && (
+                    <p className="mt-4 font-mono text-sm text-g-green">{preview.eventDateLabel}</p>
                   )}
-                  <p className="mt-2 text-xs text-white/70">Events Attended: {preview.eventsAttended} · Attendance: {preview.attendancePercentage}%</p>
                 </div>
               </div>
             </div>

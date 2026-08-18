@@ -12,20 +12,13 @@ const certificateSchema = new Schema(
     organization: { type: String, default: 'GDGoC GCEE' },
     institution: { type: String, default: 'Government College of Engineering, Erode' },
 
-    firstEligibleEventDate: { type: String, required: true },
-    lastEligibleEventDate: { type: String, required: true },
-
     eventDate: { type: String, default: '' },
     eventName: { type: String, default: '' },
-
-    eventsEligible: { type: Number, required: true },
-    eventsAttended: { type: Number, required: true },
-    attendancePercentage: { type: Number, required: true },
 
     issueDate: { type: String, default: '' },
     verificationUrl: { type: String, default: '' },
     qrCode: { type: String, default: '' },
-    pdfPath: { type: String, default: '' },
+    pdfBuffer: { type: Buffer, default: null },
 
     status: { type: String, enum: CERTIFICATE_STATUSES, default: 'VALID' },
     revokedAt: { type: Date, default: null },

@@ -15,9 +15,6 @@ interface Row {
   eventName?: string;
   eventDate?: string;
   eventDateLabel?: string;
-  eventsAttended: number;
-  eventsEligible: number;
-  attendancePercentage: number;
   issueDate: string;
   status: string;
 }
@@ -96,15 +93,13 @@ export default function AdminCertificates() {
         />
       ) : (
         <div className="card overflow-x-auto">
-          <table className="w-full min-w-[880px] text-left text-sm">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
               <tr className="border-b border-navy-100 text-xs uppercase tracking-wide text-ink-faint">
                 <th className="p-4 font-medium">Certificate</th>
                 <th className="p-4 font-medium">Student</th>
                 <th className="p-4 font-medium">Campaign</th>
                 <th className="p-4 font-medium">Event</th>
-                <th className="p-4 font-medium">Attended</th>
-                <th className="p-4 font-medium">Attendance</th>
                 <th className="p-4 font-medium">Issued</th>
                 <th className="p-4 font-medium">Status</th>
                 <th className="p-4 text-right font-medium">Actions</th>
@@ -129,8 +124,6 @@ export default function AdminCertificates() {
                       <span className="text-ink-muted">—</span>
                     )}
                   </td>
-                  <td className="p-4 text-ink-soft">{c.eventsAttended} / {c.eventsEligible}</td>
-                  <td className="p-4 text-ink-soft">{c.attendancePercentage}%</td>
                   <td className="p-4 text-ink-soft">{formatDotDate(c.issueDate)}</td>
                   <td className="p-4">
                     <span className={cn('chip', c.status === 'VALID' ? 'bg-g-green/10 text-green-700' : 'bg-g-red/10 text-g-red')}>
