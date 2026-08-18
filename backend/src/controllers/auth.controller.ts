@@ -5,6 +5,7 @@ import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import type { AuthRequest } from '../middleware/auth';
 import { connectDB } from '../config/db';
+import { sendStudentConfirmationEmail } from '../utils/email';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -81,6 +82,14 @@ export async function register(req: AuthRequest, res: Response) {
       college: 'Government College of Engineering, Erode',
       passwordHash,
     });
+
+    // Send confirmation email to student (non-blocking — don't fail registration if email fails)
+    const studentEmail = student.email;
+    if (studentEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
+      sendStudentConfirmationEmail({ to: studentEmail, studentName: student.name }).catch((err) => {
+        console.error('[auth] Confirmation email failed for', studentEmail, ':', err.message);
+      });
+    }
 
     const token = signToken({ id: String(student._id), role: 'student' });
     setAuthCookie(res, token);
