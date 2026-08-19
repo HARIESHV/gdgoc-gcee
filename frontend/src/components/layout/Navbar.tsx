@@ -1,6 +1,6 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, LayoutDashboard, ChevronLeft } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
@@ -22,30 +22,41 @@ export function Navbar() {
   const { student, logoutStudent } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const scrollPos = useRef(0);
 
   const close = useCallback(() => setOpen(false), []);
 
-  // Scroll lock
+  // Scroll lock — use overflow:hidden only, preserve scroll position
   useEffect(() => {
     if (open) {
+      scrollPos.current = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollPos.current}px`;
       document.body.style.width = '100%';
     } else {
       document.body.style.overflow = '';
       document.body.style.position = '';
+      document.body.style.top = '';
       document.body.style.width = '';
+      if (scrollPos.current > 0) {
+        window.scrollTo(0, scrollPos.current);
+      }
     }
     return () => {
       document.body.style.overflow = '';
       document.body.style.position = '';
+      document.body.style.top = '';
       document.body.style.width = '';
     };
   }, [open]);
 
   // Close on resize to desktop
   useEffect(() => {
-    const handleResize = () => { if (window.innerWidth >= 768) close(); };
+    const handleResize = () => {
+      if (window.innerWidth >= 768) close();
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [close]);
@@ -55,12 +66,17 @@ export function Navbar() {
     close();
   }, [location.pathname, close]);
 
-  // Back button closes mobile menu
+  // Back button closes mobile menu first
   useEffect(() => {
     if (!open) return;
-    const handlePopState = () => setOpen(false);
+    window.history.pushState({ menuOpen: true }, '');
+    const handlePopState = () => {
+      setOpen(false);
+    };
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, [open]);
 
   const handleLogout = async () => {
@@ -71,8 +87,11 @@ export function Navbar() {
 
   return (
     <>
-      {/* Header */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-black/5 bg-white/95 backdrop-blur-md">
+      {/* Header — z-40 so mobile menu (z-50) overlays it */}
+      <header
+        className="fixed inset-x-0 top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur-md"
+        style={{ WebkitTapHighlightColor: 'transparent' }}
+      >
         <div className="container-x flex h-14 items-center justify-between gap-4 md:h-16">
           <Logo />
 
@@ -117,98 +136,108 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile: hamburger only */}
+          {/* Mobile: hamburger button — real <button> with accessible label */}
           <button
-            className="flex h-10 w-10 items-center justify-center rounded border border-black/10 text-black transition hover:bg-black hover:text-white md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded border border-black/10 text-black transition-colors active:bg-black active:text-white md:hidden"
             onClick={() => setOpen((v) => !v)}
-            aria-label="Toggle navigation"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            aria-expanded={open}
+            type="button"
+            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </header>
 
-      {/* Mobile full-screen menu */}
+      {/* Mobile menu overlay — z-50, above header */}
       <div
+        ref={menuRef}
         className={cn(
-          'fixed inset-0 z-50 bg-white transition-all duration-300 md:hidden',
-          open ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
+          'fixed inset-0 z-50 flex flex-col bg-white transition-all duration-300 ease-in-out md:hidden',
+          open
+            ? 'opacity-100 translate-y-0 visible'
+            : 'opacity-0 -translate-y-2 invisible pointer-events-none'
         )}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
       >
         {/* Mobile menu header */}
-        <div className="flex h-14 items-center justify-between border-b border-black/5 px-4">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-black/5 px-4">
+          <span className="font-mono text-xs font-bold uppercase tracking-wider text-black/30">
+            Menu
+          </span>
           <button
             onClick={close}
-            className="flex items-center gap-1 font-mono text-xs font-semibold text-black/50 transition hover:text-black"
-          >
-            <ChevronLeft className="h-4 w-4" /> Back
-          </button>
-          <button
-            onClick={close}
-            className="flex h-10 w-10 items-center justify-center rounded border border-black/10 text-black transition hover:bg-black hover:text-white"
+            className="flex h-10 w-10 items-center justify-center rounded border border-black/10 text-black transition-colors active:bg-black active:text-white"
             aria-label="Close menu"
+            type="button"
+            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Nav items */}
-        <nav className="flex flex-col gap-1 p-4" aria-label="Mobile navigation">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={close}
-              className={({ isActive }) =>
-                cn(
-                  'rounded border border-transparent px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider transition-all',
-                  isActive
-                    ? 'border-black bg-black text-white'
-                    : 'text-black/50 hover:border-black/10 hover:text-black'
-                )
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+        {/* Scrollable nav content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          <nav className="flex flex-col gap-1 p-4" aria-label="Mobile navigation">
+            {NAV.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={close}
+                className={({ isActive }) =>
+                  cn(
+                    'rounded border border-transparent px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider transition-all',
+                    isActive
+                      ? 'border-black bg-black text-white'
+                      : 'text-black/50 hover:border-black/10 hover:text-black active:bg-black/5'
+                  )
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
 
-          <div className="my-4 h-px bg-black/10" />
+            <div className="my-4 h-px bg-black/10" />
 
-          {student ? (
-            <>
-              <Link
-                to="/dashboard"
-                onClick={close}
-                className="flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black"
-              >
-                <LayoutDashboard className="h-4 w-4" /> Dashboard
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="mt-2 flex w-full items-center justify-center gap-2 border border-black/10 px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-black/50 transition hover:border-black hover:text-black"
-              >
-                <LogOut className="h-4 w-4" /> Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                onClick={close}
-                className="flex w-full items-center justify-center gap-2 border border-black/10 px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-black/50 transition hover:border-black hover:text-black"
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                onClick={close}
-                className="mt-2 flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black"
-              >
-                Join Community
-              </Link>
-            </>
-          )}
-        </nav>
+            {student ? (
+              <>
+                <Link
+                  to="/dashboard"
+                  onClick={close}
+                  className="flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black active:bg-white active:text-black"
+                >
+                  <LayoutDashboard className="h-4 w-4" /> Dashboard
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="mt-2 flex w-full items-center justify-center gap-2 border border-black/10 px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-black/50 transition hover:border-black hover:text-black active:bg-black/5"
+                >
+                  <LogOut className="h-4 w-4" /> Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  onClick={close}
+                  className="flex w-full items-center justify-center gap-2 border border-black/10 px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-black/50 transition hover:border-black hover:text-black active:bg-black/5"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={close}
+                  className="mt-2 flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black active:bg-white active:text-black"
+                >
+                  Join GDGoC
+                </Link>
+              </>
+            )}
+          </nav>
+        </div>
       </div>
     </>
   );
