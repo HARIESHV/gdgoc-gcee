@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, UsersRound, Upload, Image as ImageIcon, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, UsersRound, Upload, Image as ImageIcon } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -29,6 +29,8 @@ export default function AdminMembers() {
       setMembers(res.data.members);
       if (res.data.membersImage) {
         setMembersImage(res.data.membersImage);
+      } else {
+        setMembersImage('');
       }
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -49,7 +51,7 @@ export default function AdminMembers() {
       setSavingImage(true);
       try {
         const res = await api.put('/admin/members-image', { membersImage: base64 });
-        setMembersImage(res.data.membersImage);
+        setMembersImage(res.data.membersImage || '');
         toast.success('Full members image updated successfully!');
       } catch (err) {
         toast.error(getErrorMessage(err));
@@ -58,6 +60,20 @@ export default function AdminMembers() {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleRemoveMainImage = async () => {
+    if (!window.confirm('Remove full members group image?')) return;
+    setSavingImage(true);
+    try {
+      await api.put('/admin/members-image', { membersImage: '' });
+      setMembersImage('');
+      toast.success('Full members group image removed.');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSavingImage(false);
+    }
   };
 
   const openCreate = () => {
@@ -145,7 +161,7 @@ export default function AdminMembers() {
         }
       />
 
-      {/* Main Full Members Image Management Section */}
+      {/* Main Full Members Image Management Section (Only visible when image exists or uploading) */}
       <div className="card overflow-hidden p-6 shadow-lift border border-navy-100">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
@@ -153,37 +169,42 @@ export default function AdminMembers() {
               <ImageIcon className="h-5 w-5 text-g-blue" /> Full Members Group Image
             </h2>
             <p className="text-xs text-ink-muted sm:text-sm">
-              Upload the full team/members image. This complete image is displayed prominently on the Home page and Team sections without cropping.
+              Upload an optional full team group photo. If uploaded, it will display on the Home page and Team sections.
             </p>
           </div>
-          <label className="btn-primary shrink-0 cursor-pointer text-xs sm:text-sm">
-            {savingImage ? <ButtonSpinner /> : <Upload className="h-4 w-4" />}
-            {savingImage ? 'Uploading…' : 'Update Full Image'}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={savingImage}
-              onChange={(e) => handleMainImageChange(e.target.files?.[0])}
-            />
-          </label>
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="btn-primary cursor-pointer text-xs sm:text-sm">
+              {savingImage ? <ButtonSpinner /> : <Upload className="h-4 w-4" />}
+              {savingImage ? 'Uploading…' : membersImage ? 'Change Image' : 'Upload Group Image'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={savingImage}
+                onChange={(e) => handleMainImageChange(e.target.files?.[0])}
+              />
+            </label>
+            {membersImage && (
+              <button
+                onClick={handleRemoveMainImage}
+                disabled={savingImage}
+                className="btn-outline text-g-red border-g-red/20 hover:bg-g-red/10 text-xs sm:text-sm"
+              >
+                <Trash2 className="h-4 w-4" /> Remove Image
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="relative flex min-h-[220px] max-h-[500px] w-full items-center justify-center rounded-2xl bg-navy-950 p-4 border border-navy-800 overflow-hidden">
-          {membersImage ? (
+        {membersImage && (
+          <div className="relative flex min-h-[180px] max-h-[450px] w-full items-center justify-center rounded-2xl bg-navy-950 p-4 border border-navy-800 overflow-hidden mt-2">
             <img
               src={membersImage}
               alt="Full Members Team"
-              className="max-h-[460px] w-auto max-w-full object-contain mx-auto rounded-xl shadow-md transition-all duration-300"
+              className="max-h-[420px] w-auto max-w-full object-contain mx-auto rounded-xl shadow-md"
             />
-          ) : (
-            <div className="flex flex-col items-center justify-center p-8 text-center text-white/50">
-              <ImageIcon className="mb-2 h-12 w-12 text-white/20" />
-              <p className="text-sm font-medium">No full members image set</p>
-              <p className="text-xs text-white/30">Click "Update Full Image" to upload one</p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {loading ? (
