@@ -48,7 +48,7 @@ import {
   deleteResource,
 } from '../controllers/resource.controller';
 import { adminDashboard } from '../controllers/dashboard.controller';
-import { exportEventRegistrations, exportStudents } from '../controllers/export.controller';
+import { exportStudents } from '../controllers/export.controller';
 import {
   adminListRegistrations,
   adminListAttended,
@@ -58,6 +58,13 @@ import {
   adminGetFormRegistration,
   adminMarkFormRegistrationRead,
 } from '../controllers/formRegistration.controller';
+import {
+  listEventsWithRegistrationCounts,
+  listEventRegistrations,
+  eventRegistrationCount,
+  exportEventRegistrationsAsCsv,
+  bulkAddRegistrations,
+} from '../controllers/registration.controller';
 
 const router = Router();
 
@@ -72,6 +79,13 @@ router.get('/events/:eventId', adminGetEvent);
 router.post('/events', adminCreateEvent);
 router.put('/events/:eventId', adminUpdateEvent);
 router.delete('/events/:eventId', adminDeleteEvent);
+
+// Event registrations (Google Form webhook submissions per event)
+router.get('/events-with-registrations', listEventsWithRegistrationCounts);
+router.get('/events/:eventId/registrations', listEventRegistrations);
+router.get('/events/:eventId/registration-count', eventRegistrationCount);
+router.get('/events/:eventId/registrations/export', exportEventRegistrationsAsCsv);
+router.post('/events/:eventId/registrations/bulk', bulkAddRegistrations);
 
 // Registrations & Attendance (per event)
 router.get('/registrations', adminListRegistrations);
@@ -116,10 +130,7 @@ router.post('/resources', createResource);
 router.put('/resources/:id', updateResource);
 router.delete('/resources/:id', deleteResource);
 
-// Exports
-router.get('/events/:eventId/export', exportEventRegistrations);
-
-// Form registrations (Google Form webhook submissions)
+// Form registrations (generic Google Form webhook submissions)
 router.get('/form-registrations', adminListFormRegistrations);
 router.get('/form-registrations/:id', adminGetFormRegistration);
 router.patch('/form-registrations/:id/read', adminMarkFormRegistrationRead);

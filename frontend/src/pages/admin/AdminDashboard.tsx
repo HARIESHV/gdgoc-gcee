@@ -9,12 +9,15 @@ import {
   ClipboardCheck,
   Award,
   BadgeCheck,
-  Clock4,
   UsersRound,
   TrendingUp,
   Plus,
   ArrowRight,
   ClipboardList,
+  RefreshCw,
+  ExternalLink,
+  Search,
+  Download,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -33,15 +36,32 @@ import {
 } from 'recharts';
 import { PageHeader, StatCard } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
+import { ButtonSpinner } from '../../components/ui/Spinner';
 import { api, getErrorMessage } from '../../lib/api';
-import { formatDotDate, formatHumanDateTime } from '../../lib/utils';
+import { formatDotDate, formatHumanDate, formatHumanDateTime, cn } from '../../lib/utils';
 import type { AdminStats } from '../../types';
 
 const COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#1b3a66', '#3b6fc4'];
 
+interface EventRegistration {
+  eventId: string;
+  title: string;
+  date: string;
+  category: string;
+  capacity: number;
+  registrationEnabled: boolean;
+  googleFormUrl: string;
+  responseSheetId: string;
+  lastSyncedAt: string | null;
+  registrationCount: number;
+  status: string;
+}
+
 export default function AdminDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<EventRegistration[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -50,10 +70,22 @@ export default function AdminDashboard() {
       .then((res) => mounted && setData(res.data))
       .catch((err) => toast.error(getErrorMessage(err)))
       .finally(() => mounted && setLoading(false));
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
+
+  const loadEvents = async () => {
+    setEventsLoading(true);
+    try {
+      const res = await api.get('/admin/events-with-registrations');
+      setEvents(res.data.events);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  useEffect(() => { loadEvents(); }, []);
 
   if (loading) return <PageLoader label="Loading dashboard…" />;
   if (!data) return <div className="text-ink-muted">Unable to load dashboard data.</div>;
@@ -65,6 +97,8 @@ export default function AdminDashboard() {
   const attendanceData = (charts.attendanceTrends || []).map((r: any) => ({ name: r._id, Attendance: r.count }));
   const categoryData = (charts.participationByCategory || []).map((r: any) => ({ name: r._id || 'Other', count: r.count }));
   const eventAttendance = (charts.attendanceByEvent || []).map((r: any) => ({ name: String(r._id || 'Other').slice(0, 22), Present: r.count }));
+
+  const totalWebhookRegistrations = events.reduce((sum, e) => sum + e.registrationCount, 0);
 
   return (
     <div className="space-y-8">
@@ -88,7 +122,79 @@ export default function AdminDashboard() {
         <StatCard label="Certificates Generated" value={s.certificates} icon={<Award className="h-5 w-5" />} color="bg-g-blue/10 text-g-blue" />
         <StatCard label="Certificates Valid" value={s.validCertificates} icon={<BadgeCheck className="h-5 w-5" />} color="bg-g-green/10 text-green-700" />
         <StatCard label="Community Members" value={s.members} icon={<UsersRound className="h-5 w-5" />} color="bg-g-yellow/15 text-yellow-700" />
-        <StatCard label="Form Registrations" value={s.totalFormRegistrations} icon={<ClipboardList className="h-5 w-5" />} color="bg-g-blue/10 text-g-blue" />
+        <StatCard label="Form Registrations" value={totalWebhookRegistrations} icon={<ClipboardList className="h-5 w-5" />} color="bg-g-blue/10 text-g-blue" />
+      </div>
+
+      {/* Event Registration Cards */}
+      <div className="card overflow-hidden">
+        <div className="border-b border-navy-50 p-5 flex items-center justify-between">
+          <h3 className="font-display text-base font-bold text-navy-900 flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-g-blue" /> Event Registrations
+          </h3>
+          <button onClick={loadEvents} disabled={eventsLoading} className="btn-outline !py-1.5 !px-3 text-xs">
+            {eventsLoading ? <ButtonSpinner /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {eventsLoading ? 'Loading…' : 'Refresh'}
+          </button>
+        </div>
+        {eventsLoading ? (
+          <PageLoader label="Loading events…" />
+        ) : events.length === 0 ? (
+          <p className="py-10 text-center text-sm text-ink-muted">No events found.</p>
+        ) : (
+          <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+            {events.map((ev) => {
+              const pct = ev.capacity > 0 ? Math.round((ev.registrationCount / ev.capacity) * 100) : 0;
+              return (
+                <div key={ev.eventId} className="rounded-xl border border-navy-100 bg-white p-4 transition hover:shadow-md">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-navy-900">{ev.title}</p>
+                      <p className="mt-0.5 text-xs text-ink-muted">{formatHumanDate(ev.date)} · {ev.category}</p>
+                    </div>
+                    <span className={cn('chip shrink-0 text-[10px]', ev.registrationEnabled ? 'bg-g-green/10 text-green-700' : 'bg-slate-100 text-slate-500')}>
+                      {ev.registrationEnabled ? 'Open' : 'Closed'}
+                    </span>
+                  </div>
+                  <div className="mt-3">
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span className="text-ink-muted">Registered</span>
+                      <span className="font-bold text-navy-900">{ev.registrationCount}{ev.capacity > 0 ? ` / ${ev.capacity}` : ''}</span>
+                    </div>
+                    {ev.capacity > 0 && (
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-navy-50">
+                        <div
+                          className={cn('h-full rounded-full transition-all', pct >= 90 ? 'bg-g-red' : pct >= 70 ? 'bg-g-yellow' : 'bg-g-green')}
+                          style={{ width: `${Math.min(pct, 100)}%` }}
+                        />
+                      </div>
+                    )}
+                    {ev.capacity > 0 && (
+                      <p className="mt-1 text-[10px] text-ink-faint">{pct}% filled</p>
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    <Link
+                      to={`/admin/form-registrations?eventId=${ev.eventId}`}
+                      className="flex items-center justify-center gap-1.5 rounded-lg border border-navy-100 bg-white px-3 py-1.5 text-xs font-medium text-navy-900 transition hover:bg-navy-50"
+                    >
+                      <Search className="h-3 w-3" /> View Registrations
+                    </Link>
+                    {ev.googleFormUrl && (
+                      <a
+                        href={ev.googleFormUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-g-blue transition hover:bg-g-blue/10"
+                      >
+                        <ExternalLink className="h-3 w-3" /> Google Form
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Charts row 1 */}

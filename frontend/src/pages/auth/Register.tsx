@@ -43,7 +43,7 @@ export default function Register() {
     setBusy(true);
     try {
       await registerStudent(form);
-      toast.success('Welcome to GDGoC GCEE!');
+      toast.success('Registration successful! A confirmation email has been sent to your registered Gmail address.');
       navigate('/dashboard');
     } catch (err) {
       toast.error(getErrorMessage(err));

@@ -408,12 +408,12 @@ export default function Home() {
                 </div>
                 <p className="mt-2 text-sm text-white/70">GDGoC GCEE · Government College of Engineering, Erode</p>
                 <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/80">
-                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Participation period</span><span className="font-mono">DD.MM.YYYY — DD.MM.YYYY</span></p>
-                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Events attended</span><span>4</span></p>
-                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Attendance</span><span>80%</span></p>
+                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Issued by</span><span>GDGoC GCEE</span></p>
+                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Verification</span><span className="text-g-green">QR-scannable & online</span></p>
+                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Download</span><span>Instant PDF download</span></p>
                 </div>
                 <div className="mt-4 flex items-center justify-between">
-                  <p className="font-mono text-[10px] text-white/60">GDG-GCEE-2026-000001</p>
+                  <p className="font-mono text-[10px] text-white/60">GDGCEE-YYYYMMDD-XXXX</p>
                   <div className="flex gap-1.5">
                     <span className="h-10 w-10 rounded border border-white/20 bg-white p-0.5" />
                   </div>
@@ -425,7 +425,7 @@ export default function Home() {
                   <Ticket className="h-4 w-4" />
                 </Link>
                 <Link to="/certificates" className="btn-outline flex-1">
-                  Learn about certificates
+                  Verify a certificate
                 </Link>
               </div>
             </div>
