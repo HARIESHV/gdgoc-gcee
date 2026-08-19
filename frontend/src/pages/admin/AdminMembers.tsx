@@ -110,7 +110,7 @@ export default function AdminMembers() {
   const grouped = TEAMS.map((t) => ({ team: t, members: members.filter((m) => m.team === t) })).filter((g) => g.members.length > 0);
 
   return (
-    <div className="space-y-8">
+    <div className="w-full space-y-8">
       <PageHeader
         title="Members"
         subtitle={`${members.length} team members`}
@@ -130,29 +130,61 @@ export default function AdminMembers() {
           action={<button onClick={openCreate} className="btn-primary"><Plus className="h-4 w-4" /> Add member</button>}
         />
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-10">
           {grouped.map((g) => (
             <div key={g.team}>
-              <h2 className="mb-3 font-display text-base font-bold text-navy-900">{g.team} <span className="text-sm font-normal text-ink-muted">({g.members.length})</span></h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <h2 className="mb-4 font-display text-base sm:text-lg font-bold text-navy-900">
+                {g.team} <span className="text-sm font-normal text-ink-muted">({g.members.length})</span>
+              </h2>
+
+              {/* Responsive Grid: 1 col on mobile, 2 on sm, 3 on md/lg, 4 on xl */}
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
                 {g.members.map((m) => (
-                  <div key={m._id} className="card group overflow-hidden">
-                    <div className="relative h-56 w-full overflow-hidden bg-gradient-to-br from-navy-800 to-navy-950 flex items-center justify-center p-2">
-                      {m.photo ? (
-                        <img src={m.photo} alt={m.name} className="h-full w-full object-contain transition duration-500 group-hover:scale-105" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green">
-                          <span className="font-display text-6xl font-bold text-white/20">{m.name.charAt(0)}</span>
-                        </div>
-                      )}
+                  <div
+                    key={m._id}
+                    className="card group flex flex-col justify-between overflow-hidden rounded-2xl border border-navy-100 bg-white shadow-sm transition-all duration-300 hover:shadow-lift"
+                  >
+                    <div>
+                      {/* Aspect-[4/5] Portrait Photo Area */}
+                      <div className="relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-br from-navy-900 to-navy-950 flex items-center justify-center border-b border-navy-50">
+                        {m.photo ? (
+                          <img
+                            src={m.photo}
+                            alt={m.name}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green">
+                            <span className="font-display text-5xl font-bold text-white/30">{m.name.charAt(0)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info Area */}
+                      <div className="p-4 space-y-0.5">
+                        <p className="truncate text-sm font-bold text-navy-900 sm:text-base">{m.name}</p>
+                        <p className="truncate text-xs font-medium text-g-blue">{m.role}</p>
+                        <p className="truncate text-[11px] text-ink-faint">
+                          {[m.department, m.year].filter(Boolean).join(' · ') || 'GCEE'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="p-4">
-                      <p className="truncate text-sm font-semibold text-navy-900">{m.name}</p>
-                      <p className="truncate text-xs text-ink-muted">{m.role}</p>
-                      <p className="truncate text-[11px] text-ink-faint">{m.department || '—'}</p>
-                      <div className="mt-2 flex gap-1 opacity-60 transition-opacity group-hover:opacity-100">
-                        <button onClick={() => openEdit(m)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-blue/10 hover:text-g-blue"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => remove(m._id, m.name)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-red/10 hover:text-g-red"><Trash2 className="h-3.5 w-3.5" /></button>
+
+                    {/* Action Buttons */}
+                    <div className="px-4 pb-4">
+                      <div className="flex items-center justify-end gap-1 border-t border-slate-100 pt-2.5">
+                        <button
+                          onClick={() => openEdit(m)}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:bg-g-blue/10 hover:text-g-blue transition"
+                        >
+                          <Pencil className="h-3.5 w-3.5" /> Edit
+                        </button>
+                        <button
+                          onClick={() => remove(m._id, m.name)}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:bg-g-red/10 hover:text-g-red transition"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </button>
                       </div>
                     </div>
                   </div>
