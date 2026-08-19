@@ -46,12 +46,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loginStudent(email: string, password: string) {
     const res = await api.post('/auth/login', { email, password });
+    if (res.data.token) {
+      localStorage.setItem('gdgoc_student_token', res.data.token);
+    }
     setStudent(res.data.student);
     return res.data.student as Student;
   }
 
   async function registerStudent(data: Record<string, string>) {
     const res = await api.post('/auth/register', data);
+    if (res.data.token) {
+      localStorage.setItem('gdgoc_student_token', res.data.token);
+    }
     setStudent(res.data.student);
     return {
       student: res.data.student as Student,
@@ -62,17 +68,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function logoutStudent() {
     await api.post('/auth/logout').catch(() => null);
+    localStorage.removeItem('gdgoc_student_token');
     setStudent(null);
   }
 
   async function loginAdmin(email: string, password: string) {
     const res = await api.post('/admin/auth/login', { email, password });
+    if (res.data.token) {
+      localStorage.setItem('gdgoc_admin_token', res.data.token);
+    }
     setAdmin(res.data.admin);
     return res.data.admin as Admin;
   }
 
   async function logoutAdmin() {
     await api.post('/admin/auth/logout').catch(() => null);
+    localStorage.removeItem('gdgoc_admin_token');
     setAdmin(null);
   }
 

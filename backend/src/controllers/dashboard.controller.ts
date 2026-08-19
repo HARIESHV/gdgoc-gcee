@@ -129,7 +129,7 @@ export async function adminDashboard(_: any, res: Response) {
       { $match: { status: 'REGISTERED' } },
       {
         $lookup: {
-          from: EventModel.collection.name,
+          from: 'events',
           localField: 'eventId',
           foreignField: '_id',
           as: 'event',
@@ -150,7 +150,7 @@ export async function adminDashboard(_: any, res: Response) {
       { $match: { status: 'PRESENT' } },
       {
         $lookup: {
-          from: EventModel.collection.name,
+          from: 'events',
           localField: 'eventId',
           foreignField: '_id',
           as: 'event',

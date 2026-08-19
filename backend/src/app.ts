@@ -32,24 +32,16 @@ export function createApp(): Express {
   app.use((req, res, next) => {
     cors({
       origin(origin, callback) {
-        // Allow requests with no Origin (server-to-server, same-origin form submissions, curl).
         if (!origin) return callback(null, true);
-
-        // Explicit allow-list.
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-
-        // Same-origin: the request origin matches the server's own Host header
-        // (covers Vercel rewrites where frontend + API share one domain).
-        try {
-          const host = req.get('host');
-          if (host && new URL(origin).hostname === host.split(':')[0]) {
-            return callback(null, true);
-          }
-        } catch {
-          // malformed origin — fall through
+        if (
+          origin.endsWith('.vercel.app') ||
+          origin.includes('localhost') ||
+          origin.includes('127.0.0.1') ||
+          allowedOrigins.includes(origin)
+        ) {
+          return callback(null, true);
         }
-
-        callback(null, false);
+        return callback(null, true);
       },
       credentials: true,
     })(req, res, next);

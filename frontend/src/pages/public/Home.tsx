@@ -401,24 +401,14 @@ export default function Home() {
 
           <Reveal delay={100}>
             <SectionHeading align="left" eyebrow="Certificates" title="Get recognized for participating" subtitle="Active members receive consolidated participation certificates for eligible events." />
-            <div className="card overflow-hidden">
-              <div className="bg-gradient-to-br from-navy-900 to-navy-700 p-6 text-white">
-                <div className="flex items-center gap-2">
-                  <Award className="h-6 w-6 text-g-yellow" />
-                  <p className="font-display text-lg font-bold">Certificate of Participation</p>
-                </div>
-                <p className="mt-2 text-sm text-white/70">GDGoC GCEE · Government College of Engineering, Erode</p>
-                <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/80">
-                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Issued by</span><span>GDGoC GCEE</span></p>
-                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Verification</span><span className="text-g-green">QR-scannable & online</span></p>
-                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Download</span><span>Instant PDF download</span></p>
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <p className="font-mono text-[10px] text-white/60">GDGCEE-YYYYMMDD-XXXX</p>
-                  <div className="flex gap-1.5">
-                    <span className="h-10 w-10 rounded border border-white/20 bg-white p-0.5" />
-                  </div>
-                </div>
+            <div className="card group overflow-hidden border border-navy-100 bg-white shadow-sm transition-all duration-300 hover:shadow-lift">
+              <div className="relative overflow-hidden bg-navy-950">
+                <img
+                  src="/certificate-sample.jpg"
+                  alt="GDGoC GCEE Certificate of Participation Preview"
+                  draggable={false}
+                  className="w-full object-cover transition-transform duration-500 group-hover:scale-102 pointer-events-none select-none"
+                />
               </div>
               <div className="flex flex-col gap-3 p-6 sm:flex-row">
                 <Link to="/register" className="btn-primary flex-1">
