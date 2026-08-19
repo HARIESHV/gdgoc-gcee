@@ -7,7 +7,7 @@ interface AuthContextValue {
   admin: Admin | null;
   loading: boolean;
   loginStudent: (email: string, password: string) => Promise<Student>;
-  registerStudent: (data: Record<string, string>) => Promise<Student>;
+  registerStudent: (data: Record<string, string>) => Promise<{ student: Student; emailSent: boolean; emailError?: string }>;
   logoutStudent: () => Promise<void>;
   loginAdmin: (email: string, password: string) => Promise<Admin>;
   logoutAdmin: () => Promise<void>;
@@ -53,7 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function registerStudent(data: Record<string, string>) {
     const res = await api.post('/auth/register', data);
     setStudent(res.data.student);
-    return res.data.student as Student;
+    return {
+      student: res.data.student as Student,
+      emailSent: res.data.emailSent as boolean,
+      emailError: res.data.emailError as string | undefined,
+    };
   }
 
   async function logoutStudent() {

@@ -136,24 +136,24 @@ export default function AdminMembers() {
               <h2 className="mb-3 font-display text-base font-bold text-navy-900">{g.team} <span className="text-sm font-normal text-ink-muted">({g.members.length})</span></h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {g.members.map((m) => (
-                  <div key={m._id} className="card group flex items-center gap-3 p-4">
-                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
+                  <div key={m._id} className="card group overflow-hidden">
+                    <div className="relative w-full aspect-[538/1150] max-w-[538px] mx-auto overflow-hidden bg-gradient-to-br from-navy-800 to-navy-950">
                       {m.photo ? (
-                        <img src={m.photo} alt={m.name} className="h-full w-full object-cover" />
+                        <img src={m.photo} alt={m.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green font-bold text-white">
-                          {m.name.charAt(0)}
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green">
+                          <span className="font-display text-6xl font-bold text-white/20">{m.name.charAt(0)}</span>
                         </div>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className="p-4">
                       <p className="truncate text-sm font-semibold text-navy-900">{m.name}</p>
                       <p className="truncate text-xs text-ink-muted">{m.role}</p>
                       <p className="truncate text-[11px] text-ink-faint">{m.department || '—'}</p>
-                    </div>
-                    <div className="flex shrink-0 flex-col gap-1 opacity-60 transition-opacity group-hover:opacity-100">
-                      <button onClick={() => openEdit(m)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-blue/10 hover:text-g-blue"><Pencil className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => remove(m._id, m.name)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-red/10 hover:text-g-red"><Trash2 className="h-3.5 w-3.5" /></button>
+                      <div className="mt-2 flex gap-1 opacity-60 transition-opacity group-hover:opacity-100">
+                        <button onClick={() => openEdit(m)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-blue/10 hover:text-g-blue"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => remove(m._id, m.name)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-red/10 hover:text-g-red"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -217,7 +217,7 @@ export default function AdminMembers() {
             <label className="label">Photo</label>
             <div className="flex items-center gap-3">
               <input type="file" accept="image/*" onChange={(e) => handleFile(e.target.files?.[0])} className="text-sm text-ink-muted" />
-              {form.photo && <img src={form.photo} alt="preview" className="h-12 w-12 rounded-lg object-cover" />}
+              {form.photo && <img src={form.photo} alt="preview" className="h-24 w-[calc(24px*538/1150)] rounded-lg object-cover" />}
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
