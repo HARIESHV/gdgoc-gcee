@@ -1,18 +1,9 @@
 import type { Request, Response } from 'express';
-import PDFDocument from 'pdfkit';
-import { EventModel, GoogleFormRegistration, Registration, SendingHistory, Student } from '../models';
+import { EventModel, GoogleFormRegistration, Registration, SendingHistory } from '../models';
 import { connectDB } from '../config/db';
-import { emailIsConfigured, getEmailConfigStatus } from '../utils/email';
+import { emailIsConfigured, getEmailConfigStatus, sendEventRegistrationPDFEmail } from '../utils/email';
+import { generateRegistrationListPDFBuffer, type StudentRegistrationPdfRow } from '../utils/pdf';
 import { env } from '../config/env';
-
-const NAVY = '#0b1b33';
-const GRAY = '#5f6b7a';
-
-function getFromAddress(): string {
-  const status = getEmailConfigStatus();
-  if (status.hasFromEmail) return `GDGoC GCEE <${status.fromEmail}>`;
-  return 'GDGoC GCEE <onboarding@resend.dev>';
-}
 
 function escapeHtml(str: string): string {
   return str
@@ -23,7 +14,62 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
-// GET /api/admin/events/:eventId/registration-list
+function getFromAddress(): string {
+  const status = getEmailConfigStatus();
+  if (status.hasFromEmail) return `GDGoC GCEE <${status.fromEmail}>`;
+  return 'GDGoC GCEE <onboarding@resend.dev>';
+}
+
+// Helper to fetch all registered students for an event
+export async function getEventStudentsList(eventId: any): Promise<StudentRegistrationPdfRow[]> {
+  const [formRegs, directRegs] = await Promise.all([
+    GoogleFormRegistration.find({ eventId }).sort({ submittedAt: -1 }).lean(),
+    Registration.find({ eventId, status: 'REGISTERED' }).populate('studentId').lean(),
+  ]);
+
+  const seenEmails = new Set<string>();
+  const students: StudentRegistrationPdfRow[] = [];
+
+  for (const r of formRegs) {
+    const email = (r.email || '').toLowerCase().trim();
+    if (email && seenEmails.has(email)) continue;
+    if (email) seenEmails.add(email);
+
+    students.push({
+      registrationId: r.responseId || `REG-${String(r._id).slice(-6).toUpperCase()}`,
+      name: r.name || 'Student',
+      email: r.email || '—',
+      phone: r.phone || '—',
+      department: r.department || '—',
+      year: r.year || '—',
+      college: r.college || 'Government College of Engineering, Erode',
+      registeredAt: r.submittedAt,
+    });
+  }
+
+  for (const r of directRegs) {
+    const s = r.studentId as any;
+    if (!s) continue;
+    const email = (s.email || '').toLowerCase().trim();
+    if (email && seenEmails.has(email)) continue;
+    if (email) seenEmails.add(email);
+
+    students.push({
+      registrationId: `REG-${String(r._id).slice(-6).toUpperCase()}`,
+      name: s.name || 'Student',
+      email: s.email || '—',
+      phone: s.phone || '—',
+      department: s.department || '—',
+      year: s.year || '—',
+      college: s.college || 'Government College of Engineering, Erode',
+      registeredAt: r.registeredAt,
+    });
+  }
+
+  return students;
+}
+
+// GET /api/admin/events/:eventId/registration-list  (Download PDF)
 export async function generateRegistrationListPDF(req: any, res: Response) {
   try {
     await connectDB();
@@ -34,152 +80,18 @@ export async function generateRegistrationListPDF(req: any, res: Response) {
       return;
     }
 
-    // Collect registrations from both Google Form webhook and direct registration
-    const [formRegs, directRegs] = await Promise.all([
-      GoogleFormRegistration.find({ eventId: event._id }).sort({ submittedAt: -1 }).lean(),
-      Registration.find({ eventId: event._id, status: 'REGISTERED' }).populate('studentId').lean(),
-    ]);
-
-    const students = [
-      ...formRegs.map((r) => ({
-        name: r.name || '—',
-        email: r.email || '—',
-        phone: r.phone || '—',
-        department: r.department || '—',
-        year: r.year || '—',
-        college: r.college || '—',
-        source: r.source || 'webhook',
-        registeredAt: r.submittedAt,
-      })),
-      ...directRegs
-        .filter((r) => r.studentId)
-        .map((r) => {
-          const s = r.studentId as any;
-          return {
-            name: s.name || '—',
-            email: s.email || '—',
-            phone: s.phone || '—',
-            department: s.department || '—',
-            year: s.year || '—',
-            college: s.college || '—',
-            source: 'app',
-            registeredAt: r.registeredAt,
-          };
-        }),
-    ];
+    const students = await getEventStudentsList(event._id);
 
     if (students.length === 0) {
       res.status(404).json({ success: false, message: 'No registrations found for this event.' });
       return;
     }
 
-    // Generate PDF
-    const doc = new PDFDocument({
-      size: 'A4',
-      layout: 'portrait',
-      margin: 40,
-      bufferPages: true,
-    });
-
-    const chunks: Buffer[] = [];
-    doc.on('data', (c: Buffer) => chunks.push(c));
-    const done = new Promise<Buffer>((resolve, reject) => {
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
-    });
-
-    const W = doc.page.width - 80;
-
-    // Header
-    doc.rect(0, 0, doc.page.width, 80).fill(NAVY);
-    doc.font('Helvetica-Bold').fontSize(18).fillColor('#ffffff').text('GDGoC GCEE', 40, 20, { width: W });
-    doc.font('Helvetica').fontSize(10).fillColor('#ffffff').text('Registration List', 40, 44, { width: W });
-    doc.font('Helvetica').fontSize(9).fillColor('#aaaaaa').text(`Generated: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 40, 58, { width: W });
-
-    // Event info
-    let y = 100;
-    doc.font('Helvetica-Bold').fontSize(14).fillColor(NAVY).text(event.title, 40, y, { width: W });
-    y += 22;
-    doc.font('Helvetica').fontSize(10).fillColor(GRAY);
-    doc.text(`Date: ${event.date}  |  Venue: ${event.venue || 'TBA'}  |  Total: ${students.length} registrations`, 40, y, { width: W });
-    y += 24;
-    doc.moveTo(40, y).lineTo(40 + W, y).lineWidth(1).stroke(NAVY);
-    y += 10;
-
-    // Table header
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(NAVY);
-    const cols = [
-      { label: '#', x: 40, w: 30 },
-      { label: 'Name', x: 70, w: 150 },
-      { label: 'Email', x: 220, w: 160 },
-      { label: 'Phone', x: 380, w: 90 },
-      { label: 'Dept', x: 470, w: 80 },
-    ];
-    doc.text(cols[0].label, cols[0].x, y, { width: cols[0].w });
-    doc.text(cols[1].label, cols[1].x, y, { width: cols[1].w });
-    doc.text(cols[2].label, cols[2].x, y, { width: cols[2].w });
-    doc.text(cols[3].label, cols[3].x, y, { width: cols[3].w });
-    doc.text(cols[4].label, cols[4].x, y, { width: cols[4].w });
-    y += 14;
-    doc.moveTo(40, y).lineTo(40 + W, y).lineWidth(0.5).stroke(GRAY);
-    y += 4;
-
-    // Table rows
-    doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
-    for (let i = 0; i < students.length; i++) {
-      if (y > 760) {
-        doc.addPage();
-        y = 40;
-        doc.font('Helvetica-Bold').fontSize(8).fillColor(NAVY);
-        doc.text(cols[0].label, cols[0].x, y, { width: cols[0].w });
-        doc.text(cols[1].label, cols[1].x, y, { width: cols[1].w });
-        doc.text(cols[2].label, cols[2].x, y, { width: cols[2].w });
-        doc.text(cols[3].label, cols[3].x, y, { width: cols[3].w });
-        doc.text(cols[4].label, cols[4].x, y, { width: cols[4].w });
-        y += 14;
-        doc.moveTo(40, y).lineTo(40 + W, y).lineWidth(0.5).stroke(GRAY);
-        y += 4;
-        doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
-      }
-
-      const row = students[i];
-      doc.text(String(i + 1), cols[0].x, y, { width: cols[0].w });
-      doc.text(row.name.substring(0, 30), cols[1].x, y, { width: cols[1].w, ellipsis: true });
-      doc.text(row.email.substring(0, 30), cols[2].x, y, { width: cols[2].w, ellipsis: true });
-      doc.text(row.phone.substring(0, 15), cols[3].x, y, { width: cols[3].w, ellipsis: true });
-      doc.text(row.department.substring(0, 15), cols[4].x, y, { width: cols[4].w, ellipsis: true });
-      y += 16;
-
-      if (i % 2 === 0) {
-        doc.rect(40, y - 16, W, 16).fill('#f8f9fa');
-        doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
-      }
-    }
-
-    // Footer
-    y += 10;
-    if (y > 750) {
-      doc.addPage();
-      y = 40;
-    }
-    doc.moveTo(40, y).lineTo(40 + W, y).lineWidth(1).stroke(NAVY);
-    y += 8;
-    doc.font('Helvetica').fontSize(8).fillColor(GRAY);
-    doc.text(`Total registrations: ${students.length}`, 40, y);
-    doc.text('GDGoC GCEE — Government College of Engineering, Erode', 40, y + 14);
-
-    doc.end();
-    const pdfBuffer = await done;
-
-    // Log to sending history
-    await SendingHistory.create({
-      eventId: event._id,
-      eventType: 'registration-list-pdf',
-      recipientEmail: 'admin',
-      recipientName: 'Admin',
-      subject: `Registration List — ${event.title}`,
-      status: 'sent',
-      sentAt: new Date(),
+    const pdfBuffer = await generateRegistrationListPDFBuffer({
+      eventName: event.title,
+      eventDate: event.date,
+      venue: event.venue,
+      students,
     });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -187,6 +99,99 @@ export async function generateRegistrationListPDF(req: any, res: Response) {
     res.send(pdfBuffer);
   } catch (err: any) {
     console.error('[eventDistribution] generateRegistrationListPDF error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// POST /api/admin/events/:eventId/send-pdf  (Send PDF to ALL registered students)
+export async function sendEventRegistrationPDFToAll(req: any, res: Response) {
+  try {
+    await connectDB();
+
+    if (!emailIsConfigured()) {
+      res.status(400).json({ success: false, message: 'Email service is not configured. Please configure RESEND_API_KEY.' });
+      return;
+    }
+
+    const { eventId } = req.params;
+    const event = await EventModel.findOne({ eventId }).lean();
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    const students = await getEventStudentsList(event._id);
+    const studentsWithEmail = students.filter((s) => s.email && s.email.includes('@'));
+
+    if (studentsWithEmail.length === 0) {
+      res.status(404).json({ success: false, message: 'No registered students with valid emails found for this event.' });
+      return;
+    }
+
+    // Generate fresh PDF buffer
+    const pdfBuffer = await generateRegistrationListPDFBuffer({
+      eventName: event.title,
+      eventDate: event.date,
+      venue: event.venue,
+      students,
+    });
+
+    const filename = `${event.eventId}-registrations.pdf`;
+    let sent = 0;
+    let failed = 0;
+    const failedEmails: string[] = [];
+
+    // Send individual emails to each student (never to admin, never using CC/BCC)
+    for (const student of studentsWithEmail) {
+      const result = await sendEventRegistrationPDFEmail({
+        to: student.email,
+        studentName: student.name,
+        eventName: event.title,
+        eventDate: event.date,
+        venue: event.venue,
+        pdfBuffer,
+        filename,
+      });
+
+      if (result.error) {
+        failed++;
+        failedEmails.push(`${student.email}: ${result.error}`);
+        await SendingHistory.create({
+          eventId: event._id,
+          eventType: 'registration-list-pdf',
+          recipientEmail: student.email,
+          recipientName: student.name,
+          subject: `${event.title} – Student Registration List / Event Document`,
+          status: 'failed',
+          errorMessage: result.error,
+          sentAt: new Date(),
+        });
+      } else {
+        sent++;
+        await SendingHistory.create({
+          eventId: event._id,
+          eventType: 'registration-list-pdf',
+          recipientEmail: student.email,
+          recipientName: student.name,
+          subject: `${event.title} – Student Registration List / Event Document`,
+          status: 'sent',
+          resendId: result.id || '',
+          sentAt: new Date(),
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `PDF sent to ${sent} student(s) successfully (${failed} failed).`,
+      sent,
+      failed,
+      total: studentsWithEmail.length,
+      failedEmails: failedEmails.slice(0, 10),
+      sentAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.error('[eventDistribution] sendEventRegistrationPDFToAll error:', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 }
@@ -214,23 +219,10 @@ export async function sendEventEmails(req: any, res: Response) {
       return;
     }
 
-    // Collect all registered student emails
-    const [formRegs, directRegs] = await Promise.all([
-      GoogleFormRegistration.find({ eventId: event._id, email: { $ne: '' } }).lean(),
-      Registration.find({ eventId: event._id, status: 'REGISTERED' }).populate('studentId').lean(),
-    ]);
+    const students = await getEventStudentsList(event._id);
+    const studentsWithEmail = students.filter((s) => s.email && s.email.includes('@'));
 
-    const emailMap = new Map<string, { name: string; email: string }>();
-
-    for (const r of formRegs) {
-      if (r.email) emailMap.set(r.email.toLowerCase(), { name: r.name || 'Student', email: r.email });
-    }
-    for (const r of directRegs) {
-      const s = r.studentId as any;
-      if (s?.email) emailMap.set(s.email.toLowerCase(), { name: s.name || 'Student', email: s.email });
-    }
-
-    if (emailMap.size === 0) {
+    if (studentsWithEmail.length === 0) {
       res.status(404).json({ success: false, message: 'No registered students with emails found for this event.' });
       return;
     }
@@ -244,7 +236,7 @@ export async function sendEventEmails(req: any, res: Response) {
     let failed = 0;
     const errors: string[] = [];
 
-    for (const [, student] of emailMap) {
+    for (const student of studentsWithEmail) {
       const safeName = escapeHtml(student.name);
       const safeSubject = escapeHtml(subject);
       const safeMessage = escapeHtml(message).replace(/\n/g, '<br/>');
@@ -315,10 +307,10 @@ export async function sendEventEmails(req: any, res: Response) {
 
     res.json({
       success: true,
-      message: `Emails sent: ${sent} successful, ${failed} failed out of ${emailMap.size} total.`,
+      message: `Emails sent: ${sent} successful, ${failed} failed out of ${studentsWithEmail.length} total.`,
       sent,
       failed,
-      total: emailMap.size,
+      total: studentsWithEmail.length,
       errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
     });
   } catch (err: any) {
@@ -378,3 +370,4 @@ export async function getEventSendingHistory(req: any, res: Response) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
+

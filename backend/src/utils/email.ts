@@ -149,61 +149,241 @@ export async function sendCertificateEmail(opts: {
   console.log('[email] Certificate email sent to', opts.to, 'Resend ID:', data?.id);
 }
 
-export async function sendRegistrationNotificationEmail(opts: {
+export async function sendEventRegistrationConfirmationEmail(opts: {
+  to: string;
   studentName: string;
-  studentEmail: string;
-  department?: string;
-  year?: string;
-  college?: string;
-  submittedAt: string;
+  eventName: string;
+  eventDate: string;
+  eventTime?: string;
+  venue?: string;
+  registrationId: string;
+  instructions?: string;
 }): Promise<void> {
   const resend = getResend();
   if (!resend) {
-    console.log('[email] Resend not configured — skipping registration notification email');
+    console.log('[email] Resend not configured — skipping event confirmation email for', opts.to);
     return;
   }
 
   const safeName = escapeHtml(opts.studentName);
-  const safeEmail = escapeHtml(opts.studentEmail);
-  const safeDept = escapeHtml(opts.department || '—');
-  const safeYear = escapeHtml(opts.year || '—');
-  const safeCollege = escapeHtml(opts.college || '—');
+  const safeEvent = escapeHtml(opts.eventName);
+  const safeDate = escapeHtml(opts.eventDate);
+  const safeTime = escapeHtml(opts.eventTime || 'TBA');
+  const safeVenue = escapeHtml(opts.venue || 'TBA');
+  const safeRegId = escapeHtml(opts.registrationId);
+  const safeInstructions = opts.instructions ? escapeHtml(opts.instructions) : '';
 
   const html = `
-  <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-    <div style="background:#0b1b33; padding: 18px 24px; color:#fff;">
-      <h2 style="margin:0; font-size:18px;">New Student Registration</h2>
-    </div>
-    <div style="padding: 24px;">
-      <p style="margin-top:0; color:#374151;">A new student has submitted the GDGoC GCEE registration form.</p>
-      <p style="color:#374151;"><strong>Student Name:</strong> ${safeName}</p>
-      <p style="color:#374151;"><strong>Email:</strong> <a href="mailto:${safeEmail}">${safeEmail}</a></p>
-      <p style="color:#374151;"><strong>Department:</strong> ${safeDept}</p>
-      <p style="color:#374151;"><strong>Year:</strong> ${safeYear}</p>
-      <p style="color:#374151;"><strong>College:</strong> ${safeCollege}</p>
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />
-      <p style="color:#9aa5b1;font-size:12px;">Submitted at ${opts.submittedAt} IST</p>
-      <p style="color:#9aa5b1;font-size:12px;">View all registrations in the Admin Dashboard.</p>
-    </div>
-  </div>
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <title>Registration Confirmed – ${safeEvent}</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding: 24px 0;">
+      <tr>
+        <td align="center">
+          <table width="100%" style="max-width: 580px; background-color:#ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);" cellpadding="0" cellspacing="0">
+            <!-- Header -->
+            <tr>
+              <td style="background-color:#0b1b33; padding: 28px 32px; text-align: left;">
+                <h1 style="margin:0; color:#ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">GDGoC GCEE</h1>
+                <p style="margin: 4px 0 0 0; color:#94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Google Developer Groups on Campus</p>
+              </td>
+            </tr>
+
+            <!-- Status Banner -->
+            <tr>
+              <td style="background-color:#f0fdf4; border-bottom: 1px solid #bbf7d0; padding: 14px 32px;">
+                <p style="margin:0; color:#166534; font-size: 14px; font-weight: 600;">
+                  &#10003; Registration Confirmed
+                </p>
+              </td>
+            </tr>
+
+            <!-- Body -->
+            <tr>
+              <td style="padding: 32px;">
+                <p style="margin-top:0; color:#1e293b; font-size: 15px; line-height: 1.5;">
+                  Dear <strong>${safeName}</strong>,
+                </p>
+                <p style="color:#475569; font-size: 14px; line-height: 1.6;">
+                  You have successfully registered for <strong>${safeEvent}</strong>. Please find your registration details below:
+                </p>
+
+                <!-- Details Card -->
+                <table width="100%" style="background-color:#f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin: 20px 0;" cellpadding="12" cellspacing="0">
+                  <tr>
+                    <td style="color:#64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; width: 35%; border-bottom: 1px solid #e2e8f0;">Registration ID</td>
+                    <td style="color:#0b1b33; font-size: 13px; font-weight: 700; font-family: monospace; border-bottom: 1px solid #e2e8f0;">${safeRegId}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Event</td>
+                    <td style="color:#0b1b33; font-size: 13px; font-weight: 600; border-bottom: 1px solid #e2e8f0;">${safeEvent}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Date</td>
+                    <td style="color:#0b1b33; font-size: 13px; border-bottom: 1px solid #e2e8f0;">${safeDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Time</td>
+                    <td style="color:#0b1b33; font-size: 13px; border-bottom: 1px solid #e2e8f0;">${safeTime}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Venue</td>
+                    <td style="color:#0b1b33; font-size: 13px;">${safeVenue}</td>
+                  </tr>
+                </table>
+
+                ${safeInstructions ? `
+                <div style="background-color:#fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 14px 16px; margin: 20px 0;">
+                  <p style="margin:0 0 6px 0; color:#92400e; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Important Instructions</p>
+                  <p style="margin:0; color:#78350f; font-size: 13px; line-height: 1.5; white-space: pre-wrap;">${safeInstructions}</p>
+                </div>
+                ` : ''}
+
+                <p style="color:#475569; font-size: 13px; line-height: 1.6; margin-bottom: 24px;">
+                  Please keep this email and your <strong>Registration ID (${safeRegId})</strong> handy for check-in at the venue.
+                </p>
+
+                <hr style="border:none; border-top:1px solid #e2e8f0; margin: 24px 0;" />
+
+                <p style="margin:0; color:#64748b; font-size: 12px; line-height: 1.5;">
+                  Best regards,<br/>
+                  <strong>GDGoC GCEE Team</strong><br/>
+                  Government College of Engineering, Erode
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="background-color:#f8fafc; padding: 16px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
+                <p style="margin:0; color:#94a3b8; font-size: 11px;">
+                  This is an automated confirmation sent to ${escapeHtml(opts.to)}.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
   `;
 
   const fromAddress = getFromAddress();
-  const adminEmail = env.adminEmail || 'gdgocgcee@gmail.com';
 
   const { data, error } = await resend.emails.send({
     from: fromAddress,
-    to: adminEmail,
-    subject: `New GDGoC GCEE Registration: ${opts.studentName}`,
+    to: opts.to,
+    subject: `Registration Confirmed – ${opts.eventName}`,
     html,
   });
 
   if (error) {
-    console.error('[email] Registration notification email error:', JSON.stringify(error));
+    console.error('[email] Student registration confirmation error:', JSON.stringify(error));
     return;
   }
 
-  console.log('[email] Registration notification email sent to', adminEmail, 'Resend ID:', data?.id);
+  console.log('[email] Student registration confirmation sent to', opts.to, 'Resend ID:', data?.id);
+}
+
+export async function sendEventRegistrationPDFEmail(opts: {
+  to: string;
+  studentName: string;
+  eventName: string;
+  eventDate: string;
+  venue?: string;
+  pdfBuffer: Buffer;
+  filename: string;
+}): Promise<{ id?: string; error?: string }> {
+  const resend = getResend();
+  if (!resend) {
+    return { error: 'Email service not configured.' };
+  }
+
+  const safeName = escapeHtml(opts.studentName);
+  const safeEvent = escapeHtml(opts.eventName);
+  const safeDate = escapeHtml(opts.eventDate);
+  const safeVenue = escapeHtml(opts.venue || 'TBA');
+
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <title>${safeEvent} – Student Registration List</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding: 24px 0;">
+      <tr>
+        <td align="center">
+          <table width="100%" style="max-width: 580px; background-color:#ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="background-color:#0b1b33; padding: 28px 32px; text-align: left;">
+                <h1 style="margin:0; color:#ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">GDGoC GCEE</h1>
+                <p style="margin: 4px 0 0 0; color:#94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Google Developer Groups on Campus</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 32px;">
+                <p style="margin-top:0; color:#1e293b; font-size: 15px; line-height: 1.5;">
+                  Dear <strong>${safeName}</strong>,
+                </p>
+                <p style="color:#475569; font-size: 14px; line-height: 1.6;">
+                  Please find attached the official registration list / event document for <strong>${safeEvent}</strong>.
+                </p>
+                <div style="background-color:#f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                  <p style="margin:0 0 4px 0; color:#0b1b33; font-size: 14px; font-weight: 600;">${safeEvent}</p>
+                  <p style="margin:0; color:#64748b; font-size: 12px;">Date: ${safeDate} &bull; Venue: ${safeVenue}</p>
+                </div>
+                <p style="color:#475569; font-size: 13px; line-height: 1.6;">
+                  The complete PDF document containing the participant list is attached with this email for your reference.
+                </p>
+                <hr style="border:none; border-top:1px solid #e2e8f0; margin: 24px 0;" />
+                <p style="margin:0; color:#64748b; font-size: 12px; line-height: 1.5;">
+                  Best regards,<br/>
+                  <strong>GDGoC GCEE Team</strong><br/>
+                  Government College of Engineering, Erode
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+
+  const fromAddress = getFromAddress();
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: opts.to,
+      subject: `${opts.eventName} – Student Registration List / Event Document`,
+      html,
+      attachments: [
+        {
+          filename: opts.filename,
+          content: opts.pdfBuffer,
+        },
+      ],
+    });
+
+    if (error) {
+      console.error('[email] PDF email sending error:', error);
+      return { error: error.message };
+    }
+
+    return { id: data?.id };
+  } catch (err: any) {
+    console.error('[email] PDF email exception:', err.message);
+    return { error: err.message };
+  }
 }
 
 export async function sendStudentConfirmationEmail(opts: {
@@ -226,13 +406,13 @@ export async function sendStudentConfirmationEmail(opts: {
     <div style="padding: 24px;">
       <p style="margin-top:0; color:#374151;">Dear <strong>${safeName}</strong>,</p>
       <p style="color:#374151;">Thank you for registering with us!</p>
-      <p style="color:#374151;">We have successfully received your registration details. Our admin team will review your submission and contact you if any further information is required.</p>
+      <p style="color:#374151;">We have successfully received your registration details. Our team will review your submission and contact you if any further information is required.</p>
       <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 16px; margin:16px 0;">
         <p style="margin:0; color:#166534; font-weight:bold;">Your registration has been successfully submitted.</p>
       </div>
       <p style="color:#374151;">We appreciate your interest and look forward to having you with us.</p>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
-      <p style="color:#374151;">Best regards,<br/><strong>Admin Team</strong><br/>GDGoC GCEE</p>
+      <p style="color:#374151;">Best regards,<br/><strong>GDGoC GCEE Team</strong></p>
       <p style="color:#9aa5b1;font-size:12px; margin-top:16px;">Google Developer Groups on Campus — Government College of Engineering, Erode</p>
     </div>
   </div>
@@ -243,19 +423,15 @@ export async function sendStudentConfirmationEmail(opts: {
   const { data, error } = await resend.emails.send({
     from: fromAddress,
     to: opts.to,
-    subject: 'Thank You for Registering!',
+    subject: 'Thank You for Registering – GDGoC GCEE',
     html,
   });
 
   if (error) {
     console.error('[email] Student confirmation email error:', JSON.stringify(error));
-    throw new Error(error.message || 'Failed to send confirmation email.');
-  }
-
-  if (!data || !data.id) {
-    console.error('[email] Student confirmation email: no error but no ID returned.');
-    throw new Error('Confirmation email was not accepted by the mail service.');
+    return;
   }
 
   console.log('[email] Student confirmation email sent to', opts.to, 'Resend ID:', data?.id);
 }
+

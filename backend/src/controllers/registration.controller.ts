@@ -291,3 +291,32 @@ export async function listEventsWithRegistrationCounts(req: any, res: Response) 
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
+// DELETE /api/admin/events/:eventId/registrations/:registrationId
+export async function deleteEventRegistration(req: any, res: Response) {
+  try {
+    await connectDB();
+    const { eventId, registrationId } = req.params;
+
+    const event = await EventModel.findOne({ eventId }).lean();
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    const deleted = await GoogleFormRegistration.findOneAndDelete({
+      _id: registrationId,
+      eventId: event._id,
+    });
+
+    if (!deleted) {
+      res.status(404).json({ success: false, message: 'Registration not found.' });
+      return;
+    }
+
+    const newCount = await GoogleFormRegistration.countDocuments({ eventId: event._id });
+    res.json({ success: true, message: 'Registration deleted successfully.', remainingCount: newCount });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}

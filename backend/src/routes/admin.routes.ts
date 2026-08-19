@@ -67,9 +67,13 @@ import {
 } from '../controllers/registration.controller';
 import {
   generateRegistrationListPDF,
+  sendEventRegistrationPDFToAll,
   sendEventEmails,
   getEventSendingHistory,
 } from '../controllers/eventDistribution.controller';
+import {
+  deleteEventRegistration,
+} from '../controllers/registration.controller';
 
 const router = Router();
 
@@ -94,8 +98,12 @@ router.post('/events/:eventId/registrations/bulk', bulkAddRegistrations);
 
 // Event distribution — PDF generation + email sending + history
 router.get('/events/:eventId/registration-list', generateRegistrationListPDF);
+router.post('/events/:eventId/send-pdf', sendEventRegistrationPDFToAll);
 router.post('/events/:eventId/send-emails', sendEventEmails);
 router.get('/events/:eventId/sending-history', getEventSendingHistory);
+
+// Delete a single event registration
+router.delete('/events/:eventId/registrations/:registrationId', deleteEventRegistration);
 
 // Registrations & Attendance (per event)
 router.get('/registrations', adminListRegistrations);

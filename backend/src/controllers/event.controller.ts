@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import mongoose from 'mongoose';
-import { EventModel, Registration } from '../models';
+import { EventModel, Registration, GoogleFormRegistration } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { nextEventId } from '../utils/ids';
 import { todayIST, isDateBefore } from '../utils/dates';
@@ -128,7 +128,136 @@ export async function getEvent(req: AuthRequest, res: Response) {
   }
 }
 
-// POST /api/events/:eventId/register  (student)
+// POST /api/events/:eventId/register-public  (student registration form)
+export async function registerPublicEvent(req: any, res: Response) {
+  try {
+    await connectDB();
+
+    const event = await EventModel.findOne(eventQuery(req.params.eventId));
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    if (!event.registrationEnabled) {
+      res.status(400).json({ success: false, message: 'Registration for this event is currently closed.' });
+      return;
+    }
+
+    const { name, email, phone, college, department, year, rollNumber } = req.body;
+
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      res.status(400).json({ success: false, message: 'Full name is required.' });
+      return;
+    }
+
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      res.status(400).json({ success: false, message: 'A valid student email address is required.' });
+      return;
+    }
+
+    if (!phone || typeof phone !== 'string' || phone.trim().length < 7) {
+      res.status(400).json({ success: false, message: 'A valid contact phone number is required.' });
+      return;
+    }
+
+    if (!department || typeof department !== 'string' || !department.trim()) {
+      res.status(400).json({ success: false, message: 'Department is required.' });
+      return;
+    }
+
+    if (!year || typeof year !== 'string' || !year.trim()) {
+      res.status(400).json({ success: false, message: 'Year of study is required.' });
+      return;
+    }
+
+    // Duplicate check
+    const existing = await GoogleFormRegistration.findOne({
+      eventId: event._id,
+      email: cleanEmail,
+    }).lean();
+
+    if (existing) {
+      res.status(400).json({
+        success: false,
+        message: 'This email is already registered for this event.',
+        registrationId: existing.responseId,
+      });
+      return;
+    }
+
+    if (event.capacity > 0) {
+      const currentCount = await GoogleFormRegistration.countDocuments({ eventId: event._id });
+      if (currentCount >= event.capacity) {
+        res.status(400).json({ success: false, message: 'This event has reached maximum capacity.' });
+        return;
+      }
+    }
+
+    const registrationId = `REG-${event.eventId.toUpperCase()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+    const reg = await GoogleFormRegistration.create({
+      responseId: registrationId,
+      eventId: event._id,
+      formData: {
+        'Full Name': name.trim(),
+        'Email Address': cleanEmail,
+        'Phone Number': phone.trim(),
+        'College / Institution': (college || 'Government College of Engineering, Erode').trim(),
+        'Department': department.trim(),
+        'Year of Study': year.trim(),
+        'Roll Number / Student ID': (rollNumber || '').trim(),
+        'Event ID': event.eventId,
+        'Event Name': event.title,
+      },
+      name: name.trim(),
+      email: cleanEmail,
+      phone: phone.trim(),
+      rollNumber: (rollNumber || '').trim(),
+      department: department.trim(),
+      year: year.trim(),
+      college: (college || 'Government College of Engineering, Erode').trim(),
+      source: 'manual',
+      submittedAt: new Date(),
+    });
+
+    // Send confirmation email ONLY to the student's email address (never to admin)
+    try {
+      const { sendEventRegistrationConfirmationEmail } = await import('../utils/email');
+      await sendEventRegistrationConfirmationEmail({
+        to: cleanEmail,
+        studentName: name.trim(),
+        eventName: event.title,
+        eventDate: event.date,
+        eventTime: event.startTime ? `${event.startTime} - ${event.endTime || 'TBA'}` : undefined,
+        venue: event.venue,
+        registrationId,
+        instructions: event.description ? event.description.slice(0, 300) : undefined,
+      });
+    } catch (emailErr) {
+      console.error('[registerPublicEvent] Confirmation email delivery failed:', emailErr);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful! Confirmation email sent to your email address.',
+      registrationId,
+      event: {
+        eventId: event.eventId,
+        title: event.title,
+        date: event.date,
+        venue: event.venue,
+      },
+    });
+  } catch (err: any) {
+    console.error('[registerPublicEvent] Error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// POST /api/events/:eventId/register  (logged-in student)
 export async function registerForEvent(req: AuthRequest, res: Response) {
   try {
     await connectDB();
@@ -171,8 +300,35 @@ export async function registerForEvent(req: AuthRequest, res: Response) {
       return;
     }
 
-    await Registration.create({ studentId: req.studentId, eventId: event._id, status: 'REGISTERED' });
-    res.status(201).json({ success: true, message: 'You are registered for this event. See you there!' });
+    const reg = await Registration.create({ studentId: req.studentId, eventId: event._id, status: 'REGISTERED' });
+    const regId = `REG-${event.eventId.toUpperCase()}-${String(reg._id).slice(-6).toUpperCase()}`;
+
+    // Get student info to send confirmation email to student ONLY
+    const { Student } = await import('../models');
+    const student = await Student.findById(req.studentId).lean();
+    if (student && student.email) {
+      try {
+        const { sendEventRegistrationConfirmationEmail } = await import('../utils/email');
+        await sendEventRegistrationConfirmationEmail({
+          to: student.email,
+          studentName: student.name,
+          eventName: event.title,
+          eventDate: event.date,
+          eventTime: event.startTime ? `${event.startTime} - ${event.endTime || 'TBA'}` : undefined,
+          venue: event.venue,
+          registrationId: regId,
+          instructions: event.description ? event.description.slice(0, 300) : undefined,
+        });
+      } catch (e) {
+        console.error('[registerForEvent] Email confirmation error:', e);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'You are registered for this event. Confirmation email has been sent!',
+      registrationId: regId,
+    });
   } catch (err: any) {
     if (err.code === 11000) {
       res.status(400).json({ success: false, message: 'You are already registered for this event.' });
@@ -181,6 +337,7 @@ export async function registerForEvent(req: AuthRequest, res: Response) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
 
 // DELETE /api/events/:eventId/register  (student)
 export async function unregisterFromEvent(req: AuthRequest, res: Response) {

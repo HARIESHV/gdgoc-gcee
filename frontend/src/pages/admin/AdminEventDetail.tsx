@@ -115,6 +115,9 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [sendingPdf, setSendingPdf] = useState(false);
+  const [pdfResult, setPdfResult] = useState<{ sent: number; failed: number; total: number; failedEmails?: string[] } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null); // registrationId
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -156,6 +159,31 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
     }
   };
 
+  const handleSendPdf = async () => {
+    setSendingPdf(true);
+    setPdfResult(null);
+    try {
+      const res = await api.post(`/admin/events/${eventId}/send-pdf`);
+      setPdfResult(res.data);
+      toast.success(`PDF sent to ${res.data.sent} student(s)!`);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSendingPdf(false);
+    }
+  };
+
+  const handleDeleteRegistration = async (registrationId: string) => {
+    try {
+      await api.delete(`/admin/events/${eventId}/registrations/${registrationId}`);
+      toast.success('Registration deleted.');
+      setDeleteConfirm(null);
+      load();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Stats bar */}
@@ -176,7 +204,15 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
             </div>
           </div>
         )}
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
+          <button
+            onClick={handleSendPdf}
+            disabled={sendingPdf || count === 0}
+            className="flex items-center gap-1.5 border border-black bg-black px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-40"
+          >
+            <Send className="h-3.5 w-3.5" />
+            {sendingPdf ? 'Sending...' : 'Send PDF to All'}
+          </button>
           <button
             onClick={handleGeneratePdf}
             disabled={generating || count === 0}
@@ -214,6 +250,21 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
         </div>
       ) : (
         <div className="overflow-x-auto rounded border border-black/10 bg-white">
+          {/* Send PDF result */}
+          {pdfResult && (
+            <div className="border-b border-black/5 bg-gray-50 px-4 py-3">
+              <p className="font-mono text-xs">
+                <span className="font-bold text-green-700">{pdfResult.sent} sent</span>
+                {' · '}
+                <span className="font-bold text-red-600">{pdfResult.failed} failed</span>
+                {' · '}
+                <span className="text-black/40">{pdfResult.total} total</span>
+              </p>
+              {pdfResult.failedEmails && pdfResult.failedEmails.length > 0 && (
+                <p className="mt-1 text-[10px] text-red-500">{pdfResult.failedEmails.slice(0, 3).join(', ')}</p>
+              )}
+            </div>
+          )}
           <table className="w-full min-w-[700px] text-left text-sm">
             <thead>
               <tr className="border-b border-black/5 bg-gray-50">
@@ -223,6 +274,7 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
                 <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Phone</th>
                 <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Dept</th>
                 <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Source</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5">
@@ -237,6 +289,25 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
                     <span className="rounded bg-black/5 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-black/40">
                       {r.source}
                     </span>
+                  </td>
+                  <td className="p-3">
+                    {deleteConfirm === r._id ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleDeleteRegistration(r._id)}
+                          className="rounded bg-red-600 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-white transition hover:bg-red-700"
+                        >Confirm</button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="font-mono text-[10px] text-black/40 hover:text-black"
+                        >Cancel</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirm(r._id)}
+                        className="rounded border border-red-200 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-red-500 transition hover:bg-red-50"
+                      >Delete</button>
+                    )}
                   </td>
                 </tr>
               ))}
