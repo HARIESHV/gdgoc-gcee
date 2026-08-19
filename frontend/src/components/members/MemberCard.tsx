@@ -26,7 +26,8 @@ export function MemberCard({
             <img
               src={member.photo}
               alt={member.name}
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              draggable={false}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105 pointer-events-none select-none"
             />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-400">

@@ -204,7 +204,7 @@ export default function Home() {
                 <div className="grid lg:grid-cols-5">
                   <div className="relative min-h-[260px] lg:col-span-2">
                     {featured.banner ? (
-                      <img src={featured.banner} alt={featured.title} className="absolute inset-0 h-full w-full object-cover" />
+                      <img src={featured.banner} alt={featured.title} draggable={false} className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none" />
                     ) : (
                       <div className="absolute inset-0 bg-gradient-to-br from-g-blue to-navy-900" />
                     )}
@@ -341,7 +341,7 @@ export default function Home() {
                 <div className="card group flex items-center gap-4 p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lift">
                   <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-navy-950 flex items-center justify-center">
                     {member.photo ? (
-                      <img src={member.photo} alt={member.name} className="h-full w-full object-contain p-0.5" />
+                      <img src={member.photo} alt={member.name} draggable={false} className="h-full w-full object-contain p-0.5 pointer-events-none select-none" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green text-xl font-bold text-white">
                         {member.name.charAt(0)}
@@ -449,7 +449,7 @@ export default function Home() {
               {gallery.map((item, i) => (
                 <Reveal key={item.id} delay={i * 60} className={cn(i === 0 && 'md:row-span-2')}>
                   <Link to="/gallery" className="group relative block h-44 overflow-hidden rounded-2xl md:h-56">
-                    <img src={item.image} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                    <img src={item.image} alt={item.title} draggable={false} className="h-full w-full object-cover transition duration-500 group-hover:scale-105 pointer-events-none select-none" />
                     <div className="absolute inset-0 bg-gradient-to-t from-navy-950/70 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
                     <span className="absolute bottom-3 left-3 text-sm font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
                       {item.title || item.category}

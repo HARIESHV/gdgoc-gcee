@@ -151,7 +151,8 @@ export default function AdminMembers() {
                           <img
                             src={m.photo}
                             alt={m.name}
-                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                            draggable={false}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105 pointer-events-none select-none"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green">
