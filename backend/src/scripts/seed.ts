@@ -15,6 +15,7 @@ import {
   Member,
   GalleryItem,
   Resource,
+  SiteSettings,
 } from '../models';
 
 function shiftDate(base: string, days: number): string {
@@ -282,6 +283,19 @@ async function seed() {
     );
   }
   console.log('[seed] members seeded');
+
+  // ---- Site Settings / Members Image ----
+  const existingSettings = await SiteSettings.findOne({ key: 'main' });
+  if (!existingSettings || !existingSettings.membersImage) {
+    const defaultSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0f172a"/><stop offset="50%" stop-color="#1e293b"/><stop offset="100%" stop-color="#090d16"/></linearGradient><linearGradient id="g-blue" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#4285F4"/><stop offset="100%" stop-color="#34A853"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#bg)"/><circle cx="200" cy="150" r="180" fill="#4285F4" opacity="0.15"/><circle cx="1000" cy="450" r="220" fill="#34A853" opacity="0.15"/><rect x="40" y="40" width="1120" height="550" rx="24" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/><g transform="translate(600, 260)" text-anchor="middle"><text font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="52" fill="#ffffff" letter-spacing="-0.02em">GDGoC GCEE Core &amp; Community Team</text><text y="50" font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="24" fill="#94a3b8">Government College of Engineering, Erode</text></g><g transform="translate(600, 420)" text-anchor="middle"><rect x="-180" y="-30" width="360" height="60" rx="30" fill="url(#g-blue)"/><text y="8" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="20" fill="#ffffff">Google Developer Groups on Campus</text></g></svg>`;
+    const imgData = `data:image/svg+xml;base64,${Buffer.from(defaultSvg).toString('base64')}`;
+    await SiteSettings.findOneAndUpdate(
+      { key: 'main' },
+      { $set: { membersImage: imgData } },
+      { upsert: true }
+    );
+    console.log('[seed] site settings membersImage initialized');
+  }
 
   // ---- Gallery ----
   const gallerySpec: Array<[string, string, string]> = [

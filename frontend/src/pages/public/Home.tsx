@@ -59,6 +59,7 @@ export default function Home() {
   const [upcoming, setUpcoming] = useState<GEvent[]>([]);
   const [featured, setFeatured] = useState<GEvent | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [membersImage, setMembersImage] = useState<string>('');
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +82,9 @@ export default function Home() {
         setUpcoming(events.filter((e) => e.effectiveStatus !== 'COMPLETED' && e.effectiveStatus !== 'CANCELLED').slice(0, 3));
         setFeatured(events.find((e) => e.isInauguration) || events[0] || null);
         setMembers(membersRes.data.members.slice(0, 6));
+        if (membersRes.data.membersImage) {
+          setMembersImage(membersRes.data.membersImage);
+        }
         setGallery(galleryRes.data.items.slice(0, 6));
         setLeaders(boardRes.data.leaderboard.slice(0, 5));
       } catch (err) {
@@ -324,23 +328,39 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Community members */}
+      {/* Dedicated Members / Our Team section */}
       <section className="bg-white py-20">
         <div className="container-x">
           <Reveal>
             <SectionHeading
               eyebrow="Meet the community"
-              title="Community members"
-              subtitle="A few of the passionate developers behind GDGoC GCEE."
+              title="Our Team & Community Members"
+              subtitle="The passionate developers, coordinators and leaders behind GDGoC GCEE."
             />
           </Reveal>
+
+          {/* Full Members Group Image */}
+          {membersImage && (
+            <Reveal delay={60}>
+              <div className="mb-12 overflow-hidden rounded-3xl border border-navy-100 bg-navy-950 p-4 sm:p-6 shadow-lift text-center">
+                <div className="relative w-full max-w-5xl mx-auto flex items-center justify-center min-h-[220px] max-h-[550px] overflow-hidden rounded-2xl">
+                  <img
+                    src={membersImage}
+                    alt="GDGoC GCEE Members and Team"
+                    className="w-auto h-auto max-h-[500px] max-w-full object-contain mx-auto rounded-xl transition duration-500 hover:scale-[1.01]"
+                  />
+                </div>
+              </div>
+            </Reveal>
+          )}
+
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {members.map((member, i) => (
               <Reveal key={member._id} delay={i * 80}>
                 <div className="card group flex items-center gap-4 p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lift">
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-navy-950 flex items-center justify-center">
                     {member.photo ? (
-                      <img src={member.photo} alt={member.name} className="h-full w-full object-cover" />
+                      <img src={member.photo} alt={member.name} className="h-full w-full object-contain p-0.5" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green text-xl font-bold text-white">
                         {member.name.charAt(0)}

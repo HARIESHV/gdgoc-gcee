@@ -12,6 +12,7 @@ import type { Member } from '../../types';
 
 export default function Members() {
   const [grouped, setGrouped] = useState<Record<string, Member[]>>({});
+  const [membersImage, setMembersImage] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,7 +20,10 @@ export default function Members() {
     api
       .get('/members')
       .then((res) => {
-        if (mounted) setGrouped(res.data.grouped || {});
+        if (mounted) {
+          setGrouped(res.data.grouped || {});
+          if (res.data.membersImage) setMembersImage(res.data.membersImage);
+        }
       })
       .catch((err) => toast.error(getErrorMessage(err)))
       .finally(() => mounted && setLoading(false));
@@ -54,29 +58,47 @@ export default function Members() {
         <div className="container-x space-y-14">
           {loading ? (
             <PageLoader label="Loading members…" />
-          ) : TEAMS.some((t) => (grouped[t] || []).length > 0) ? (
-            TEAMS.filter((team) => (grouped[team] || []).length > 0).map((team, ti) => (
-              <div key={team}>
-                <Reveal>
-                  <h2 className="mb-6 flex items-center gap-3 font-display text-2xl font-bold text-navy-900">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-navy-900 text-white">
-                      <Users className="h-4 w-4" />
-                    </span>
-                    {team}
-                    <span className="text-sm font-normal text-ink-muted">({grouped[team].length})</span>
-                  </h2>
-                </Reveal>
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {grouped[team].map((member, i) => (
-                    <Reveal key={member._id} delay={i * 60}>
-                      <MemberCard member={member} />
-                    </Reveal>
-                  ))}
-                </div>
-              </div>
-            ))
           ) : (
-            <EmptyState title="No members yet" description="The team directory is being built. Check back soon." />
+            <>
+              {membersImage && (
+                <Reveal>
+                  <div className="overflow-hidden rounded-3xl border border-navy-100 bg-navy-950 p-4 sm:p-6 shadow-lift text-center">
+                    <div className="relative w-full max-w-5xl mx-auto flex items-center justify-center min-h-[200px] max-h-[500px] overflow-hidden rounded-2xl">
+                      <img
+                        src={membersImage}
+                        alt="GDGoC GCEE Full Team"
+                        className="w-auto h-auto max-h-[460px] max-w-full object-contain mx-auto rounded-xl"
+                      />
+                    </div>
+                  </div>
+                </Reveal>
+              )}
+
+              {TEAMS.some((t) => (grouped[t] || []).length > 0) ? (
+                TEAMS.filter((team) => (grouped[team] || []).length > 0).map((team) => (
+                  <div key={team}>
+                    <Reveal>
+                      <h2 className="mb-6 flex items-center gap-3 font-display text-2xl font-bold text-navy-900">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-navy-900 text-white">
+                          <Users className="h-4 w-4" />
+                        </span>
+                        {team}
+                        <span className="text-sm font-normal text-ink-muted">({grouped[team].length})</span>
+                      </h2>
+                    </Reveal>
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {grouped[team].map((member, i) => (
+                        <Reveal key={member._id} delay={i * 60}>
+                          <MemberCard member={member} />
+                        </Reveal>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState title="No members yet" description="The team directory is being built. Check back soon." />
+              )}
+            </>
           )}
 
           <Reveal>

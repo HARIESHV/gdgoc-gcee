@@ -36,6 +36,8 @@ import {
   createMember,
   updateMember,
   deleteMember,
+  getMembersImage,
+  updateMembersImage,
 } from '../controllers/member.controller';
 import {
   createGalleryItem,
@@ -123,6 +125,8 @@ router.delete('/students/:id', adminDeleteStudent);
 
 // Members
 router.get('/members', adminListMembers);
+router.get('/members-image', getMembersImage);
+router.put('/members-image', uploadMemory.single('image'), updateMembersImage);
 router.post('/members', createMember);
 router.put('/members/:id', updateMember);
 router.delete('/members/:id', deleteMember);

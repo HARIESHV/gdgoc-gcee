@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, UsersRound } from 'lucide-react';
+import { Plus, Pencil, Trash2, UsersRound, Upload, Image as ImageIcon, Check } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -14,6 +14,8 @@ const emptyForm = { name: '', team: 'Community Members', role: 'Member', departm
 
 export default function AdminMembers() {
   const [members, setMembers] = useState<Member[]>([]);
+  const [membersImage, setMembersImage] = useState<string>('');
+  const [savingImage, setSavingImage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
@@ -25,6 +27,9 @@ export default function AdminMembers() {
     try {
       const res = await api.get('/admin/members');
       setMembers(res.data.members);
+      if (res.data.membersImage) {
+        setMembersImage(res.data.membersImage);
+      }
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -35,6 +40,25 @@ export default function AdminMembers() {
   useEffect(() => {
     load();
   }, []);
+
+  const handleMainImageChange = (file?: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = String(reader.result);
+      setSavingImage(true);
+      try {
+        const res = await api.put('/admin/members-image', { membersImage: base64 });
+        setMembersImage(res.data.membersImage);
+        toast.success('Full members image updated successfully!');
+      } catch (err) {
+        toast.error(getErrorMessage(err));
+      } finally {
+        setSavingImage(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -110,7 +134,7 @@ export default function AdminMembers() {
   const grouped = TEAMS.map((t) => ({ team: t, members: members.filter((m) => m.team === t) })).filter((g) => g.members.length > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Members"
         subtitle={`${members.length} team members`}
@@ -120,6 +144,47 @@ export default function AdminMembers() {
           </button>
         }
       />
+
+      {/* Main Full Members Image Management Section */}
+      <div className="card overflow-hidden p-6 shadow-lift border border-navy-100">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <div>
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy-900">
+              <ImageIcon className="h-5 w-5 text-g-blue" /> Full Members Group Image
+            </h2>
+            <p className="text-xs text-ink-muted sm:text-sm">
+              Upload the full team/members image. This complete image is displayed prominently on the Home page and Team sections without cropping.
+            </p>
+          </div>
+          <label className="btn-primary shrink-0 cursor-pointer text-xs sm:text-sm">
+            {savingImage ? <ButtonSpinner /> : <Upload className="h-4 w-4" />}
+            {savingImage ? 'Uploading…' : 'Update Full Image'}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={savingImage}
+              onChange={(e) => handleMainImageChange(e.target.files?.[0])}
+            />
+          </label>
+        </div>
+
+        <div className="relative flex min-h-[220px] max-h-[500px] w-full items-center justify-center rounded-2xl bg-navy-950 p-4 border border-navy-800 overflow-hidden">
+          {membersImage ? (
+            <img
+              src={membersImage}
+              alt="Full Members Team"
+              className="max-h-[460px] w-auto max-w-full object-contain mx-auto rounded-xl shadow-md transition-all duration-300"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 text-center text-white/50">
+              <ImageIcon className="mb-2 h-12 w-12 text-white/20" />
+              <p className="text-sm font-medium">No full members image set</p>
+              <p className="text-xs text-white/30">Click "Update Full Image" to upload one</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {loading ? (
         <PageLoader label="Loading members…" />
@@ -137,9 +202,9 @@ export default function AdminMembers() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {g.members.map((m) => (
                   <div key={m._id} className="card group overflow-hidden">
-                    <div className="relative w-full aspect-[538/1150] max-w-[538px] mx-auto overflow-hidden bg-gradient-to-br from-navy-800 to-navy-950">
+                    <div className="relative h-56 w-full overflow-hidden bg-gradient-to-br from-navy-800 to-navy-950 flex items-center justify-center p-2">
                       {m.photo ? (
-                        <img src={m.photo} alt={m.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                        <img src={m.photo} alt={m.name} className="h-full w-full object-contain transition duration-500 group-hover:scale-105" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green">
                           <span className="font-display text-6xl font-bold text-white/20">{m.name.charAt(0)}</span>
@@ -217,7 +282,7 @@ export default function AdminMembers() {
             <label className="label">Photo</label>
             <div className="flex items-center gap-3">
               <input type="file" accept="image/*" onChange={(e) => handleFile(e.target.files?.[0])} className="text-sm text-ink-muted" />
-              {form.photo && <img src={form.photo} alt="preview" className="h-24 w-[calc(24px*538/1150)] rounded-lg object-cover" />}
+              {form.photo && <img src={form.photo} alt="preview" className="h-24 w-24 rounded-lg object-contain bg-navy-950/50 border border-navy-100 p-1" />}
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
