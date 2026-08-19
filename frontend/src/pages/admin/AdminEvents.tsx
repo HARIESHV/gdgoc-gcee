@@ -29,10 +29,10 @@ export default function AdminEvents() {
 
   useEffect(() => { load(); }, []);
 
-  const remove = async (id: string, title: string) => {
+  const remove = async (eventId: string, title: string) => {
     if (!window.confirm(`Delete "${title}"? This will also remove its registrations.`)) return;
     try {
-      const res = await api.delete(`/admin/events/${id}`);
+      const res = await api.delete(`/admin/events/${eventId}`);
       toast.success(res.data.message);
       load();
     } catch (err) {
@@ -136,7 +136,7 @@ export default function AdminEvents() {
                       <Link to={`/admin/events/${ev.eventId}`} className="rounded p-2 text-black/30 transition hover:bg-black/5 hover:text-black" title="Manage">
                         <Pencil className="h-4 w-4" />
                       </Link>
-                      <button onClick={() => remove(ev._id, ev.title)} className="rounded p-2 text-black/30 transition hover:bg-red-50 hover:text-red-600" title="Delete">
+                      <button onClick={() => remove(ev.eventId, ev.title)} className="rounded p-2 text-black/30 transition hover:bg-red-50 hover:text-red-600" title="Delete">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>

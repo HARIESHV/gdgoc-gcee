@@ -12,6 +12,8 @@ interface EventFormData {
   shortDescription: string;
   description: string;
   date: string;
+  startTime: string;
+  endTime: string;
   venue: string;
   speaker: string;
   speakerBio: string;
@@ -34,6 +36,8 @@ function toForm(event?: GEvent): EventFormData {
     shortDescription: event?.shortDescription || '',
     description: event?.description || '',
     date: event?.date || '',
+    startTime: event?.startTime || '',
+    endTime: event?.endTime || '',
     venue: event?.venue || '',
     speaker: event?.speaker || '',
     speakerBio: event?.speakerBio || '',
@@ -146,6 +150,14 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
           <div>
             <label className="label" htmlFor="ev-venue">Venue</label>
             <input id="ev-venue" className="input" value={form.venue} onChange={(e) => update('venue', e.target.value)} placeholder="CS Seminar Hall" />
+          </div>
+          <div>
+            <label className="label" htmlFor="ev-start-time">Start Time</label>
+            <input id="ev-start-time" className="input font-mono" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} placeholder="09:00" />
+          </div>
+          <div>
+            <label className="label" htmlFor="ev-end-time">End Time</label>
+            <input id="ev-end-time" className="input font-mono" value={form.endTime} onChange={(e) => update('endTime', e.target.value)} placeholder="17:00" />
           </div>
           <div>
             <label className="label" htmlFor="ev-cat">Category</label>
