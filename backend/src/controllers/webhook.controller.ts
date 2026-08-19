@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { GoogleFormRegistration } from '../models';
 import { connectDB } from '../config/db';
 import { env } from '../config/env';
-import { sendRegistrationNotificationEmail } from '../utils/email';
+import { sendStudentConfirmationEmail } from '../utils/email';
 
 function extractField(data: Record<string, any>, keys: string[]): string {
   for (const search of keys) {
@@ -96,14 +96,9 @@ export async function googleFormWebhook(req: Request, res: Response) {
     console.log(`[webhook] Registration saved: ${name} (${email}) — id=${registration._id}`);
 
     try {
-      const submittedAtIST = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
-      await sendRegistrationNotificationEmail({
+      await sendStudentConfirmationEmail({
+        to: email || '',
         studentName: name || 'Student',
-        studentEmail: email || '',
-        department,
-        year,
-        college,
-        submittedAt: submittedAtIST,
       });
     } catch (emailErr: any) {
       console.error('[webhook] Email notification failed but registration saved:', emailErr.message);
