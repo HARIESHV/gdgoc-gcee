@@ -1,15 +1,27 @@
 import { Linkedin, User } from 'lucide-react';
+import { cn } from '../../lib/utils';
 import type { Member } from '../../types';
 
-export function MemberCard({ member }: { member: Member }) {
+export function MemberCard({
+  member,
+  hideImageOnMobile = false,
+}: {
+  member: Member;
+  hideImageOnMobile?: boolean;
+}) {
   const socials = member.socialLinks || {};
   const linkedinUrl = socials.linkedin || (socials.github || '#');
 
   return (
     <div className="card group flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-center shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift">
       <div>
-        {/* Large portrait image area */}
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-100">
+        {/* Large portrait image area (hidden on mobile if hideImageOnMobile is true) */}
+        <div
+          className={cn(
+            'relative aspect-[4/5] w-full overflow-hidden bg-slate-100',
+            hideImageOnMobile && 'hidden sm:block'
+          )}
+        >
           {member.photo ? (
             <img
               src={member.photo}
