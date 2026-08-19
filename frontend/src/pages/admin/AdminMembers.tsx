@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, UsersRound, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, UsersRound } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -14,8 +14,6 @@ const emptyForm = { name: '', team: 'Community Members', role: 'Member', departm
 
 export default function AdminMembers() {
   const [members, setMembers] = useState<Member[]>([]);
-  const [membersImage, setMembersImage] = useState<string>('');
-  const [savingImage, setSavingImage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
@@ -27,11 +25,6 @@ export default function AdminMembers() {
     try {
       const res = await api.get('/admin/members');
       setMembers(res.data.members);
-      if (res.data.membersImage) {
-        setMembersImage(res.data.membersImage);
-      } else {
-        setMembersImage('');
-      }
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -42,39 +35,6 @@ export default function AdminMembers() {
   useEffect(() => {
     load();
   }, []);
-
-  const handleMainImageChange = (file?: File) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = String(reader.result);
-      setSavingImage(true);
-      try {
-        const res = await api.put('/admin/members-image', { membersImage: base64 });
-        setMembersImage(res.data.membersImage || '');
-        toast.success('Full members image updated successfully!');
-      } catch (err) {
-        toast.error(getErrorMessage(err));
-      } finally {
-        setSavingImage(false);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveMainImage = async () => {
-    if (!window.confirm('Remove full members group image?')) return;
-    setSavingImage(true);
-    try {
-      await api.put('/admin/members-image', { membersImage: '' });
-      setMembersImage('');
-      toast.success('Full members group image removed.');
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setSavingImage(false);
-    }
-  };
 
   const openCreate = () => {
     setEditing(null);
@@ -160,52 +120,6 @@ export default function AdminMembers() {
           </button>
         }
       />
-
-      {/* Main Full Members Image Management Section (Only visible when image exists or uploading) */}
-      <div className="card overflow-hidden p-6 shadow-lift border border-navy-100">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <div>
-            <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy-900">
-              <ImageIcon className="h-5 w-5 text-g-blue" /> Full Members Group Image
-            </h2>
-            <p className="text-xs text-ink-muted sm:text-sm">
-              Upload an optional full team group photo. If uploaded, it will display on the Home page and Team sections.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <label className="btn-primary cursor-pointer text-xs sm:text-sm">
-              {savingImage ? <ButtonSpinner /> : <Upload className="h-4 w-4" />}
-              {savingImage ? 'Uploading…' : membersImage ? 'Change Image' : 'Upload Group Image'}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={savingImage}
-                onChange={(e) => handleMainImageChange(e.target.files?.[0])}
-              />
-            </label>
-            {membersImage && (
-              <button
-                onClick={handleRemoveMainImage}
-                disabled={savingImage}
-                className="btn-outline text-g-red border-g-red/20 hover:bg-g-red/10 text-xs sm:text-sm"
-              >
-                <Trash2 className="h-4 w-4" /> Remove Image
-              </button>
-            )}
-          </div>
-        </div>
-
-        {membersImage && (
-          <div className="relative flex min-h-[180px] max-h-[450px] w-full items-center justify-center rounded-2xl bg-navy-950 p-4 border border-navy-800 overflow-hidden mt-2">
-            <img
-              src={membersImage}
-              alt="Full Members Team"
-              className="max-h-[420px] w-auto max-w-full object-contain mx-auto rounded-xl shadow-md"
-            />
-          </div>
-        )}
-      </div>
 
       {loading ? (
         <PageLoader label="Loading members…" />

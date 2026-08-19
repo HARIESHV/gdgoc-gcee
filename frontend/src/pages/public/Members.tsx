@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Users } from 'lucide-react';
+import { Menu, X, Sun, Users } from 'lucide-react';
 import { MemberCard } from '../../components/members/MemberCard';
 import { PageLoader } from '../../components/ui/Spinner';
-import { EmptyState } from '../../components/ui/EmptyState';
 import { Reveal } from '../../components/ui/Reveal';
 import { api, getErrorMessage } from '../../lib/api';
 import { TEAMS } from '../../lib/utils';
@@ -12,8 +11,10 @@ import type { Member } from '../../types';
 
 export default function Members() {
   const [grouped, setGrouped] = useState<Record<string, Member[]>>({});
-  const [membersImage, setMembersImage] = useState<string>('');
+  const [membersList, setMembersList] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -21,8 +22,10 @@ export default function Members() {
       .get('/members')
       .then((res) => {
         if (mounted) {
-          setGrouped(res.data.grouped || {});
-          if (res.data.membersImage) setMembersImage(res.data.membersImage);
+          const grp = res.data.grouped || {};
+          setGrouped(grp);
+          const all = res.data.members || [];
+          setMembersList(all);
         }
       })
       .catch((err) => toast.error(getErrorMessage(err)))
@@ -33,87 +36,119 @@ export default function Members() {
   }, []);
 
   return (
-    <>
-      <section className="relative overflow-hidden bg-navy-950 pt-32 pb-16 text-center">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-16 left-1/4 h-64 w-64 rounded-full bg-g-green/20 blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-g-red/15 blur-3xl" />
-        </div>
-        <div className="container-x relative z-10">
-          <span className="chip border border-white/15 bg-white/5 text-white/80">Our People</span>
-          <h1 className="mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">Our Members</h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm text-white/70 sm:text-base">
-            The students who run and power the GDGoC GCEE community.
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
+      {/* Mobile Sticky Header */}
+      <div className="sticky top-3 z-40 px-3 sm:px-6">
+        <header className="mx-auto flex max-w-lg items-center justify-between rounded-full border border-slate-300 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur-md transition-all">
+          {/* Logo & Brand */}
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 font-bold text-xs">
+              <span className="text-g-blue">G</span>
+              <span className="text-g-red">D</span>
+              <span className="text-g-yellow">G</span>
+            </div>
+            <span className="font-display text-sm font-bold tracking-tight text-slate-900 sm:text-base">
+              GDGOC GCEE
+            </span>
+          </Link>
+
+          {/* Hamburger Menu */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="rounded-full p-1.5 text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Toggle navigation menu"
+          >
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </header>
+
+        {/* Mobile Navigation Dropdown */}
+        {menuOpen && (
+          <div className="mx-auto mt-2 max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-lg animate-in fade-in slide-in-from-top-2">
+            <nav className="flex flex-col gap-2 font-medium text-sm text-slate-700">
+              <Link to="/" onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 hover:bg-slate-100">Home</Link>
+              <Link to="/events" onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 hover:bg-slate-100">Events</Link>
+              <Link to="/members" onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 bg-slate-100 font-bold text-navy-900">Members</Link>
+              <Link to="/about" onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 hover:bg-slate-100">About</Link>
+              <Link to="/contact" onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 hover:bg-slate-100">Contact</Link>
+            </nav>
+          </div>
+        )}
+      </div>
+
+      {/* Main Members Section */}
+      <main className="container-x mx-auto max-w-5xl px-3 pt-6 sm:px-6">
+        <div className="mb-6 text-center">
+          <span className="chip border border-slate-200 bg-white text-slate-600 shadow-xs">
+            GDGOC GCEE Team
+          </span>
+          <h1 className="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            Members Directory
+          </h1>
+          <p className="mx-auto mt-2 max-w-md text-xs text-slate-500 sm:text-sm">
+            Meet the active student developers and coordinators behind GDGOC GCEE.
           </p>
         </div>
-        <div className="relative z-10 mt-10 flex h-1.5">
-          <div className="flex-1 bg-g-blue" />
-          <div className="flex-1 bg-g-green" />
-          <div className="flex-1 bg-g-yellow" />
-          <div className="flex-1 bg-g-red" />
-        </div>
-      </section>
 
-      <section className="bg-slate-50 py-14">
-        <div className="container-x space-y-14">
-          {loading ? (
-            <PageLoader label="Loading members…" />
-          ) : (
-            <>
-              {membersImage && (
+        {loading ? (
+          <PageLoader label="Loading members…" />
+        ) : membersList.length > 0 ? (
+          <div className="space-y-10">
+            {TEAMS.filter((team) => (grouped[team] || []).length > 0).map((team) => (
+              <div key={team}>
                 <Reveal>
-                  <div className="overflow-hidden rounded-3xl border border-navy-100 bg-navy-950 p-4 sm:p-6 shadow-lift text-center">
-                    <div className="relative w-full max-w-5xl mx-auto flex items-center justify-center min-h-[200px] max-h-[500px] overflow-hidden rounded-2xl">
-                      <img
-                        src={membersImage}
-                        alt="GDGoC GCEE Full Team"
-                        className="w-auto h-auto max-h-[460px] max-w-full object-contain mx-auto rounded-xl"
-                      />
-                    </div>
-                  </div>
+                  <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-bold text-slate-900 sm:text-xl">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-navy-900 text-white">
+                      <Users className="h-3.5 w-3.5" />
+                    </span>
+                    {team}
+                    <span className="text-xs font-normal text-slate-400">({grouped[team].length})</span>
+                  </h2>
                 </Reveal>
-              )}
-
-              {TEAMS.some((t) => (grouped[t] || []).length > 0) ? (
-                TEAMS.filter((team) => (grouped[team] || []).length > 0).map((team) => (
-                  <div key={team}>
-                    <Reveal>
-                      <h2 className="mb-6 flex items-center gap-3 font-display text-2xl font-bold text-navy-900">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-navy-900 text-white">
-                          <Users className="h-4 w-4" />
-                        </span>
-                        {team}
-                        <span className="text-sm font-normal text-ink-muted">({grouped[team].length})</span>
-                      </h2>
+                {/* 2-Column Responsive Grid on Mobile */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+                  {grouped[team].map((member, i) => (
+                    <Reveal key={member._id} delay={i * 50}>
+                      <MemberCard member={member} />
                     </Reveal>
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {grouped[team].map((member, i) => (
-                        <Reveal key={member._id} delay={i * 60}>
-                          <MemberCard member={member} />
-                        </Reveal>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <EmptyState title="No members yet" description="The team directory is being built. Check back soon." />
-              )}
-            </>
-          )}
-
-          <Reveal>
-            <div className="rounded-3xl bg-navy-950 p-10 text-center">
-              <h3 className="font-display text-2xl font-bold text-white">Want to be part of this team?</h3>
-              <p className="mx-auto mt-3 max-w-md text-sm text-white/70">
-                Join the community and contribute to events, projects and the club's growth.
-              </p>
-              <Link to="/register" className="btn-primary mt-6">
-                Join Community
-              </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Fallback empty view with sample grid */
+          <div className="space-y-6">
+            <h2 className="font-display text-lg font-bold text-slate-900 text-center">Core Team</h2>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <MemberCard
+                  key={num}
+                  member={{
+                    _id: `sample-${num}`,
+                    name: `MEMBER NAME ${num}`,
+                    team: 'Core Team',
+                    role: 'Board Member',
+                    department: 'GDGOC GCEE',
+                    year: '2026',
+                    photo: '',
+                    socialLinks: { linkedin: 'https://linkedin.com' },
+                  }}
+                />
+              ))}
             </div>
-          </Reveal>
-        </div>
-      </section>
-    </>
+          </div>
+        )}
+      </main>
+
+      {/* Floating Theme Button */}
+      <button
+        onClick={() => setIsDark(!isDark)}
+        className="fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg border border-slate-200 transition-transform hover:scale-105 active:scale-95"
+        aria-label="Toggle theme"
+      >
+        <Sun className="h-5 w-5 text-amber-500" />
+      </button>
+    </div>
   );
 }
