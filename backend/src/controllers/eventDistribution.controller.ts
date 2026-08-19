@@ -213,17 +213,32 @@ export async function sendEventEmails(req: any, res: Response) {
       return;
     }
 
-    const { subject, message, type } = req.body;
+    const { subject, message, type, customEmails } = req.body;
     if (!subject || !message) {
       res.status(400).json({ success: false, message: 'Subject and message are required.' });
       return;
     }
 
-    const students = await getEventStudentsList(event._id);
-    const studentsWithEmail = students.filter((s) => s.email && s.email.includes('@'));
+    // Build recipient list: use customEmails if provided, otherwise fetch from DB
+    let studentsWithEmail: Array<{ email: string; name: string }> = [];
+
+    if (Array.isArray(customEmails) && customEmails.length > 0) {
+      // Custom email list mode — admin pasted/typed emails manually
+      studentsWithEmail = customEmails
+        .map((e: string) => e.trim().toLowerCase())
+        .filter((e: string) => e.includes('@'))
+        .map((email: string) => ({ email, name: email.split('@')[0] }));
+    } else {
+      // DB-driven mode — look up actual registrations
+      const students = await getEventStudentsList(event._id);
+      studentsWithEmail = students.filter((s) => s.email && s.email.includes('@'));
+    }
 
     if (studentsWithEmail.length === 0) {
-      res.status(404).json({ success: false, message: 'No registered students with emails found for this event.' });
+      res.status(404).json({
+        success: false,
+        message: 'No recipients found. Either add student registrations via Form Registrations, or paste email addresses in the Custom Email List box.',
+      });
       return;
     }
 
@@ -318,6 +333,7 @@ export async function sendEventEmails(req: any, res: Response) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
 
 // GET /api/admin/events/:eventId/sending-history
 export async function getEventSendingHistory(req: any, res: Response) {

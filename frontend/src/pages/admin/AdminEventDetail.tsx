@@ -343,24 +343,41 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
 /* ─── Send Emails Tab ─────────────────────────────────────────────── */
 
 function EventEmailSender({ eventId, event }: { eventId: string; event: GEvent }) {
+  const [mode, setMode] = useState<'registered' | 'custom'>('registered');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [customEmailsRaw, setCustomEmailsRaw] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+
+  // Parse and deduplicate emails from textarea
+  const parsedEmails = customEmailsRaw
+    .split(/[\n,;]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e.includes('@') && e.includes('.'));
+  const uniqueEmails = [...new Set(parsedEmails)];
 
   const handleSend = async () => {
     if (!subject.trim() || !message.trim()) {
       toast.error('Subject and message are required.');
       return;
     }
+    if (mode === 'custom' && uniqueEmails.length === 0) {
+      toast.error('Please enter at least one valid email address.');
+      return;
+    }
     setSending(true);
     setResult(null);
     try {
-      const res = await api.post(`/admin/events/${eventId}/send-emails`, {
+      const payload: Record<string, any> = {
         subject: subject.trim(),
         message: message.trim(),
         type: 'event-email',
-      });
+      };
+      if (mode === 'custom') {
+        payload.customEmails = uniqueEmails;
+      }
+      const res = await api.post(`/admin/events/${eventId}/send-emails`, payload);
       setResult(res.data);
       toast.success(`Emails sent: ${res.data.sent} successful, ${res.data.failed} failed`);
     } catch (err) {
@@ -372,14 +389,64 @@ function EventEmailSender({ eventId, event }: { eventId: string; event: GEvent }
 
   return (
     <div className="max-w-2xl space-y-4">
+      {/* Mode selector */}
+      <div className="flex overflow-hidden rounded border border-black/10">
+        <button
+          onClick={() => setMode('registered')}
+          className={cn(
+            'flex-1 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider transition',
+            mode === 'registered' ? 'bg-black text-white' : 'bg-white text-black/40 hover:text-black'
+          )}
+        >
+          Registered Students
+        </button>
+        <button
+          onClick={() => setMode('custom')}
+          className={cn(
+            'flex-1 border-l border-black/10 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider transition',
+            mode === 'custom' ? 'bg-black text-white' : 'bg-white text-black/40 hover:text-black'
+          )}
+        >
+          Custom Email List
+        </button>
+      </div>
+
       <div className="rounded border border-black/10 bg-white p-6">
-        <h3 className="mb-4 flex items-center gap-2 font-mono text-sm font-bold uppercase tracking-wider text-black">
-          <Send className="h-4 w-4" /> Send Email to All Registered Students
+        <h3 className="mb-2 flex items-center gap-2 font-mono text-sm font-bold uppercase tracking-wider text-black">
+          <Send className="h-4 w-4" />
+          {mode === 'registered' ? 'Send to Registered Students' : 'Send to Custom Email List'}
         </h3>
-        <p className="mb-4 text-xs text-black/40">
-          This will send an individual email to every registered student for <strong>{event.title}</strong>.
-          Emails are sent directly to students — never to the admin email.
-        </p>
+
+        {mode === 'registered' ? (
+          <div className="mb-4 rounded border border-black/5 bg-gray-50 px-4 py-3 text-xs text-black/50">
+            This sends to all students stored in <strong>Form Registrations</strong> for this event.
+            If registrations were collected via Google Form externally (not through this system),
+            use <button onClick={() => setMode('custom')} className="font-bold text-black underline">Custom Email List</button> instead.
+          </div>
+        ) : (
+          <div className="mb-4 space-y-3">
+            <div className="rounded border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800">
+              Paste student email addresses below — one per line, or separated by commas. Duplicates are automatically removed.
+            </div>
+            <div>
+              <label className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-widest text-black/40">
+                Email Addresses
+              </label>
+              <textarea
+                rows={6}
+                value={customEmailsRaw}
+                onChange={(e) => setCustomEmailsRaw(e.target.value)}
+                placeholder={`student1@gmail.com\nstudent2@gmail.com\nstudent3@example.com`}
+                className="w-full resize-y border border-black/10 bg-white px-4 py-2.5 font-mono text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
+              />
+              {uniqueEmails.length > 0 && (
+                <p className="mt-1 font-mono text-xs text-black/40">
+                  {uniqueEmails.length} valid email{uniqueEmails.length !== 1 ? 's' : ''} detected
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           <div>
@@ -399,17 +466,17 @@ function EventEmailSender({ eventId, event }: { eventId: string; event: GEvent }
               Email Message
             </label>
             <textarea
-              rows={8}
+              rows={7}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Write your message here. It will be sent as an HTML email to all registered students."
+              placeholder="Write your message here. It will be sent as an HTML email."
               className="w-full resize-y border border-black/10 bg-white px-4 py-2.5 font-mono text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
             />
           </div>
 
           <button
             onClick={handleSend}
-            disabled={sending || !subject.trim() || !message.trim()}
+            disabled={sending || !subject.trim() || !message.trim() || (mode === 'custom' && uniqueEmails.length === 0)}
             className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-40"
           >
             {sending ? (
@@ -419,7 +486,10 @@ function EventEmailSender({ eventId, event }: { eventId: string; event: GEvent }
               </>
             ) : (
               <>
-                <Mail className="h-4 w-4" /> Send to All Registered Students
+                <Mail className="h-4 w-4" />
+                {mode === 'custom'
+                  ? `Send to ${uniqueEmails.length || '—'} Email${uniqueEmails.length !== 1 ? 's' : ''}`
+                  : 'Send to All Registered Students'}
               </>
             )}
           </button>
@@ -440,6 +510,7 @@ function EventEmailSender({ eventId, event }: { eventId: string; event: GEvent }
     </div>
   );
 }
+
 
 /* ─── Sending History Tab ─────────────────────────────────────────── */
 
