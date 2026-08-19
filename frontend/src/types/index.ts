@@ -47,6 +47,9 @@ export interface GEvent {
   registrationDeadline: string;
   capacity: number;
   googleFormUrl: string;
+  responseSheetId?: string;
+  responseSheetName?: string;
+  lastSyncedAt?: string;
   manualRegistrationCount: number;
   isCertificateEligible: boolean;
   isInauguration: boolean;
@@ -54,6 +57,23 @@ export interface GEvent {
   effectiveStatus: EventStatus;
   registeredCount: number;
   createdAt?: string;
+}
+
+export interface SendingHistoryEntry {
+  _id: string;
+  eventType: string;
+  recipientEmail: string;
+  recipientName: string;
+  subject: string;
+  status: 'sent' | 'failed' | 'pending';
+  errorMessage?: string;
+  sentAt?: string;
+}
+
+export interface SendingHistoryStats {
+  sent: number;
+  failed: number;
+  pending: number;
 }
 
 export interface AttendanceRecord {

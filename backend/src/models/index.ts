@@ -9,3 +9,4 @@ export { Member, TEAMS, DEPARTMENTS } from './Member';
 export { GalleryItem, GALLERY_CATEGORIES } from './GalleryItem';
 export { Resource, RESOURCE_CATEGORIES } from './Resource';
 export { GoogleFormRegistration } from './GoogleFormRegistration';
+export { SendingHistory } from './SendingHistory';

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, CalendarX2, ExternalLink } from 'lucide-react';
+import { Plus, Pencil, Trash2, CalendarX2, ExternalLink, Users } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -27,9 +27,7 @@ export default function AdminEvents() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const remove = async (id: string, title: string) => {
     if (!window.confirm(`Delete "${title}"? This will also remove its registrations.`)) return;
@@ -50,20 +48,23 @@ export default function AdminEvents() {
         title="Events"
         subtitle={`${events.length} total events`}
         actions={
-          <Link to="/admin/events/create" className="btn-primary">
-            <Plus className="h-4 w-4" /> Create event
+          <Link to="/admin/events/create" className="border border-black bg-black px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black">
+            <Plus className="mr-1 inline h-4 w-4" /> Create event
           </Link>
         }
       />
 
+      {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
         {['ALL', 'UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             className={cn(
-              'rounded-full px-4 py-2 text-sm font-medium transition-all',
-              filter === f ? 'bg-navy-900 text-white' : 'border border-navy-100 bg-white text-ink-soft hover:text-navy-900'
+              'rounded-md px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wider transition-all',
+              filter === f
+                ? 'bg-black text-white'
+                : 'border border-black/10 bg-white text-black/50 hover:border-black/30 hover:text-black'
             )}
           >
             {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
@@ -72,57 +73,70 @@ export default function AdminEvents() {
       </div>
 
       {loading ? (
-        <PageLoader label="Loading events…" />
+        <PageLoader label="Loading events..." />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<CalendarX2 className="h-7 w-7" />}
           title="No events found"
           description="Create your first event to get started."
-          action={<Link to="/admin/events/create" className="btn-primary"><Plus className="h-4 w-4" /> Create event</Link>}
+          action={
+            <Link to="/admin/events/create" className="border border-black bg-black px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black">
+              <Plus className="mr-1 inline h-4 w-4" /> Create event
+            </Link>
+          }
         />
       ) : (
-        <div className="card overflow-x-auto">
+        <div className="overflow-x-auto rounded border border-black/10 bg-white">
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead>
-              <tr className="border-b border-navy-100 text-xs uppercase tracking-wide text-ink-faint">
-                <th className="p-4 font-medium">Event</th>
-                <th className="p-4 font-medium">Date</th>
-                <th className="p-4 font-medium">Category</th>
-                <th className="p-4 font-medium">Registrations</th>
-                <th className="p-4 font-medium">Google Form</th>
-                <th className="p-4 font-medium">Status</th>
-                <th className="p-4 font-medium">Actions</th>
+              <tr className="border-b border-black/5 bg-gray-50">
+                <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Event</th>
+                <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Date</th>
+                <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Category</th>
+                <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Registrations</th>
+                <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Google Form</th>
+                <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Status</th>
+                <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-navy-50">
+            <tbody className="divide-y divide-black/5">
               {filtered.map((ev) => (
-                <tr key={ev._id} className="transition hover:bg-navy-50/50">
+                <tr key={ev._id} className="transition hover:bg-gray-50">
                   <td className="max-w-[240px] p-4">
-                    <p className="truncate font-semibold text-navy-900">{ev.title}</p>
-                    <p className="font-mono text-[11px] text-ink-faint">{ev.eventId}</p>
+                    <p className="truncate font-semibold text-black">{ev.title}</p>
+                    <p className="font-mono text-[11px] text-black/30">{ev.eventId}</p>
                   </td>
-                  <td className="p-4 text-ink-soft">{formatHumanDate(ev.date)}</td>
-                  <td className="p-4 text-ink-soft">{ev.category}</td>
-                  <td className="p-4 text-ink-soft">
-                    {ev.registeredCount}
-                    {ev.capacity > 0 ? ` / ${ev.capacity}` : ''}
+                  <td className="p-4 font-mono text-xs text-black/50">{formatHumanDate(ev.date)}</td>
+                  <td className="p-4">
+                    <span className="rounded bg-black/5 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-black/40">
+                      {ev.category}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-black/30" />
+                      <span className="font-mono text-sm font-bold">{ev.registeredCount}</span>
+                      {ev.capacity > 0 && (
+                        <span className="font-mono text-xs text-black/30">/ {ev.capacity}</span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-4">
                     {ev.googleFormUrl ? (
-                      <a href={ev.googleFormUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-g-blue hover:underline">
+                      <a href={ev.googleFormUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-mono text-xs text-black/50 hover:text-black">
                         <ExternalLink className="h-3 w-3" /> View form
                       </a>
                     ) : (
-                      <span className="text-xs text-ink-faint">—</span>
+                      <span className="font-mono text-xs text-black/20">—</span>
                     )}
                   </td>
                   <td className="p-4"><StatusBadge status={ev.status} /></td>
                   <td className="p-4">
                     <div className="flex items-center gap-1.5">
-                      <Link to={`/admin/events/${ev.eventId}`} className="rounded-lg p-2 text-ink-soft transition hover:bg-g-blue/10 hover:text-g-blue" title="Edit">
+                      <Link to={`/admin/events/${ev.eventId}`} className="rounded p-2 text-black/30 transition hover:bg-black/5 hover:text-black" title="Manage">
                         <Pencil className="h-4 w-4" />
                       </Link>
-                      <button onClick={() => remove(ev._id, ev.title)} className="rounded-lg p-2 text-ink-soft transition hover:bg-g-red/10 hover:text-g-red" title="Delete">
+                      <button onClick={() => remove(ev._id, ev.title)} className="rounded p-2 text-black/30 transition hover:bg-red-50 hover:text-red-600" title="Delete">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>

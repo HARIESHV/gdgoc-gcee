@@ -65,6 +65,11 @@ import {
   exportEventRegistrationsAsCsv,
   bulkAddRegistrations,
 } from '../controllers/registration.controller';
+import {
+  generateRegistrationListPDF,
+  sendEventEmails,
+  getEventSendingHistory,
+} from '../controllers/eventDistribution.controller';
 
 const router = Router();
 
@@ -86,6 +91,11 @@ router.get('/events/:eventId/registrations', listEventRegistrations);
 router.get('/events/:eventId/registration-count', eventRegistrationCount);
 router.get('/events/:eventId/registrations/export', exportEventRegistrationsAsCsv);
 router.post('/events/:eventId/registrations/bulk', bulkAddRegistrations);
+
+// Event distribution — PDF generation + email sending + history
+router.get('/events/:eventId/registration-list', generateRegistrationListPDF);
+router.post('/events/:eventId/send-emails', sendEventEmails);
+router.get('/events/:eventId/sending-history', getEventSendingHistory);
 
 // Registrations & Attendance (per event)
 router.get('/registrations', adminListRegistrations);

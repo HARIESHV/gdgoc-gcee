@@ -174,7 +174,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="mt-3 flex flex-col gap-1.5">
                     <Link
-                      to={`/admin/form-registrations?eventId=${ev.eventId}`}
+                      to={`/admin/events/${ev.eventId}`}
                       className="flex items-center justify-center gap-1.5 rounded-lg border border-navy-100 bg-white px-3 py-1.5 text-xs font-medium text-navy-900 transition hover:bg-navy-50"
                     >
                       <Search className="h-3 w-3" /> View Registrations

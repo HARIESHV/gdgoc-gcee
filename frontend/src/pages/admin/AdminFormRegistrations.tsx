@@ -77,7 +77,7 @@ export default function AdminFormRegistrations() {
       {loading ? (
         <PageLoader label="Loading registrations…" />
       ) : registrations.length === 0 ? (
-        <EmptyState label="No Google Form registrations yet." />
+        <EmptyState title="No Google Form registrations yet." />
       ) : (
         <>
           <div className="card overflow-x-auto">
