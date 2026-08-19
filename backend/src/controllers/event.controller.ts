@@ -225,7 +225,7 @@ export async function registerPublicEvent(req: any, res: Response) {
 
     // Send confirmation email ONLY to the student's email address (never to admin)
     try {
-      const { sendEventRegistrationConfirmationEmail } = await import('../utils/email');
+      const { sendEventRegistrationConfirmationEmail } = await import('../utils/email.js');
       await sendEventRegistrationConfirmationEmail({
         to: cleanEmail,
         studentName: name.trim(),
@@ -304,11 +304,11 @@ export async function registerForEvent(req: AuthRequest, res: Response) {
     const regId = `REG-${event.eventId.toUpperCase()}-${String(reg._id).slice(-6).toUpperCase()}`;
 
     // Get student info to send confirmation email to student ONLY
-    const { Student } = await import('../models');
+    const { Student } = await import('../models/index.js');
     const student = await Student.findById(req.studentId).lean();
     if (student && student.email) {
       try {
-        const { sendEventRegistrationConfirmationEmail } = await import('../utils/email');
+        const { sendEventRegistrationConfirmationEmail } = await import('../utils/email.js');
         await sendEventRegistrationConfirmationEmail({
           to: student.email,
           studentName: student.name,

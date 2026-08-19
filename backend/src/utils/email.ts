@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { env } from '../config/env';
+import { env, CLUB } from '../config/env';
 
 let resendClient: Resend | null = null;
 
@@ -397,6 +397,7 @@ export async function sendStudentConfirmationEmail(opts: {
   }
 
   const safeName = escapeHtml(opts.studentName);
+  const orgName = CLUB.fullName || 'GDGoC GCEE';
 
   const html = `
   <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
@@ -406,25 +407,27 @@ export async function sendStudentConfirmationEmail(opts: {
     <div style="padding: 24px;">
       <p style="margin-top:0; color:#374151;">Dear <strong>${safeName}</strong>,</p>
       <p style="color:#374151;">Thank you for registering with us!</p>
-      <p style="color:#374151;">We have successfully received your registration details. Our team will review your submission and contact you if any further information is required.</p>
+      <p style="color:#374151;">We have successfully received your registration details. Our admin team will review your submission and contact you if any further information is required.</p>
       <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 16px; margin:16px 0;">
         <p style="margin:0; color:#166534; font-weight:bold;">Your registration has been successfully submitted.</p>
       </div>
       <p style="color:#374151;">We appreciate your interest and look forward to having you with us.</p>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
-      <p style="color:#374151;">Best regards,<br/><strong>GDGoC GCEE Team</strong></p>
-      <p style="color:#9aa5b1;font-size:12px; margin-top:16px;">Google Developer Groups on Campus — Government College of Engineering, Erode</p>
+      <p style="color:#374151;">Best regards,<br/><strong>Admin Team</strong><br/>${escapeHtml(orgName)}</p>
     </div>
   </div>
   `;
+
+  const text = `Dear ${opts.studentName},\n\nThank you for registering with us!\n\nWe have successfully received your registration details. Our admin team will review your submission and contact you if any further information is required.\n\nYour registration has been successfully submitted.\n\nWe appreciate your interest and look forward to having you with us.\n\nBest regards,\nAdmin Team\n${orgName}`;
 
   const fromAddress = getFromAddress();
 
   const { data, error } = await resend.emails.send({
     from: fromAddress,
     to: opts.to,
-    subject: 'Thank You for Registering – GDGoC GCEE',
+    subject: 'Thank You for Registering!',
     html,
+    text,
   });
 
   if (error) {
@@ -433,5 +436,54 @@ export async function sendStudentConfirmationEmail(opts: {
   }
 
   console.log('[email] Student confirmation email sent to', opts.to, 'Resend ID:', data?.id);
+}
+
+export async function sendBulkEmail(opts: {
+  to: string;
+  studentName: string;
+  subject: string;
+  message: string;
+  htmlContent?: string;
+}): Promise<{ id?: string; error?: string }> {
+  const resend = getResend();
+  if (!resend) {
+    return { error: 'Email service not configured.' };
+  }
+
+  const safeName = escapeHtml(opts.studentName);
+  const safeSubject = escapeHtml(opts.subject);
+
+  const html = opts.htmlContent || `
+  <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+    <div style="background:#0b1b33; padding: 18px 24px; color:#fff;">
+      <h2 style="margin:0; font-size:18px;">GDGoC GCEE</h2>
+      <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px;">Google Developer Groups on Campus</p>
+    </div>
+    <div style="padding: 24px;">
+      <p style="margin-top:0; color:#374151;">Dear <strong>${safeName}</strong>,</p>
+      <p style="color:#374151;">${escapeHtml(opts.message).replace(/\n/g, '<br/>')}</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />
+      <p style="color:#9aa5b1;font-size:12px;">GDGoC GCEE · Government College of Engineering, Erode</p>
+    </div>
+  </div>`;
+
+  const fromAddress = getFromAddress();
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: opts.to,
+      subject: `[GDGoC GCEE] ${opts.subject}`,
+      html,
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return { id: data?.id };
+  } catch (err: any) {
+    return { error: err.message };
+  }
 }
 
