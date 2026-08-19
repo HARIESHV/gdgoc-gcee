@@ -53,22 +53,27 @@ export async function eventWebhook(req: Request, res: Response) {
       return;
     }
 
-    if (responseId) {
-      const existing = await GoogleFormRegistration.findOne({ responseId }).lean();
-      if (existing) {
-        res.json({ success: true, message: 'Already recorded.', duplicate: true });
-        return;
-      }
-    }
-
+    // Prevent duplicate registrations using eventId + email
     if (email) {
-      const recentDupe = await GoogleFormRegistration.findOne({
+      const normalizedEmail = email.toLowerCase().trim();
+      const existing = await GoogleFormRegistration.findOne({
         eventId: event._id,
-        email: email.toLowerCase(),
-        submittedAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) },
-      }).lean();
-      if (recentDupe) {
-        res.json({ success: true, message: 'Already recorded.', duplicate: true });
+        email: normalizedEmail,
+      });
+
+      if (existing) {
+        existing.name = name || existing.name;
+        existing.phone = phone || existing.phone;
+        existing.rollNumber = rollNumber || existing.rollNumber;
+        existing.department = department || existing.department;
+        existing.year = year || existing.year;
+        existing.college = college || existing.college;
+        existing.formData = formData;
+        existing.submittedAt = new Date();
+        await existing.save();
+
+        console.log(`[webhook] Registration updated for ${normalizedEmail} on event ${eventId}`);
+        res.json({ success: true, message: 'Registration updated.', updated: true, id: String(existing._id) });
         return;
       }
     }
@@ -78,12 +83,12 @@ export async function eventWebhook(req: Request, res: Response) {
       eventId: event._id,
       formData,
       name,
-      email: email ? email.toLowerCase() : '',
+      email: email ? email.toLowerCase().trim() : '',
       phone,
       rollNumber,
       department,
       year,
-      college,
+      college: college || 'Government College of Engineering, Erode',
       source: 'webhook',
       submittedAt: new Date(),
     });
@@ -138,7 +143,7 @@ export async function listEventRegistrations(req: any, res: Response) {
         rollNumber: r.rollNumber,
         department: r.department,
         year: r.year,
-        college: r.college,
+        college: r.college || 'GCEE',
         source: r.source,
         submittedAt: r.submittedAt,
       })),
@@ -147,6 +152,59 @@ export async function listEventRegistrations(req: any, res: Response) {
       totalPages: Math.ceil(total / limit),
       eventTitle: event.title,
       eventDate: event.date,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// GET /api/admin/events/:eventId/stats
+export async function eventRegistrationStats(req: any, res: Response) {
+  try {
+    await connectDB();
+    const { eventId } = req.params;
+    const event = await EventModel.findOne({ eventId }).lean();
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    const [total, recent, byDepartment, byYear, byCollege] = await Promise.all([
+      GoogleFormRegistration.countDocuments({ eventId: event._id }),
+      GoogleFormRegistration.find({ eventId: event._id }).sort({ submittedAt: -1 }).limit(5).lean(),
+      GoogleFormRegistration.aggregate([
+        { $match: { eventId: event._id } },
+        { $group: { _id: { $ifNull: ['$department', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+      GoogleFormRegistration.aggregate([
+        { $match: { eventId: event._id } },
+        { $group: { _id: { $ifNull: ['$year', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+      GoogleFormRegistration.aggregate([
+        { $match: { eventId: event._id } },
+        { $group: { _id: { $ifNull: ['$college', 'Government College of Engineering, Erode'] }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+    ]);
+
+    res.json({
+      success: true,
+      stats: {
+        total,
+        recent: recent.map((r) => ({
+          _id: r._id,
+          name: r.name,
+          email: r.email,
+          department: r.department,
+          year: r.year,
+          submittedAt: r.submittedAt,
+        })),
+        byDepartment,
+        byYear,
+        byCollege,
+      },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -168,7 +226,6 @@ export async function eventRegistrationCount(req: any, res: Response) {
     res.json({
       success: true,
       count,
-      capacity: event.capacity || 0,
       registrationEnabled: event.registrationEnabled,
       lastSyncedAt: event.lastSyncedAt,
     });
@@ -193,7 +250,7 @@ export async function exportEventRegistrationsAsCsv(req: any, res: Response) {
     const header = '#,Name,Email,Phone,College,Department,Year,Event,Source,Registered At\n';
     const rows = items.map((r, i) => {
       const d = r.submittedAt ? new Date(r.submittedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
-      return `${i + 1},"${(r.name || '').replace(/"/g, '""')}","${r.email || ''}","${r.phone || ''}","${(r.college || '').replace(/"/g, '""')}","${r.department || ''}","${r.year || ''}","${event.title}","${r.source || 'webhook'}","${d}"`;
+      return `${i + 1},"${(r.name || '').replace(/"/g, '""')}","${r.email || ''}","${r.phone || ''}","${(r.college || 'GCEE').replace(/"/g, '""')}","${r.department || ''}","${r.year || ''}","${event.title}","${r.source || 'webhook'}","${d}"`;
     }).join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
@@ -222,16 +279,28 @@ export async function bulkAddRegistrations(req: any, res: Response) {
     }
 
     let added = 0;
+    let updated = 0;
     let skipped = 0;
 
     for (const r of registrations) {
       const email = (r.email || '').toLowerCase().trim();
       if (!email && !r.name) { skipped++; continue; }
 
-      const responseId = r.responseId || `bulk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const existing = await GoogleFormRegistration.findOne({ responseId }).lean();
-      if (existing) { skipped++; continue; }
+      if (email) {
+        const existing = await GoogleFormRegistration.findOne({ eventId: event._id, email });
+        if (existing) {
+          existing.name = r.name || existing.name;
+          existing.phone = r.phone || existing.phone;
+          existing.department = r.department || existing.department;
+          existing.year = r.year || existing.year;
+          existing.college = r.college || existing.college;
+          await existing.save();
+          updated++;
+          continue;
+        }
+      }
 
+      const responseId = r.responseId || `bulk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       await GoogleFormRegistration.create({
         responseId,
         eventId: event._id,
@@ -242,7 +311,7 @@ export async function bulkAddRegistrations(req: any, res: Response) {
         rollNumber: r.rollNumber || '',
         department: r.department || '',
         year: r.year || '',
-        college: r.college || '',
+        college: r.college || 'Government College of Engineering, Erode',
         source: 'sheets-sync',
         submittedAt: r.submittedAt ? new Date(r.submittedAt) : new Date(),
       });
@@ -251,7 +320,7 @@ export async function bulkAddRegistrations(req: any, res: Response) {
 
     await EventModel.findOneAndUpdate({ eventId }, { lastSyncedAt: new Date() });
 
-    res.json({ success: true, message: `Synced ${added} registration(s). ${skipped} duplicate(s) skipped.`, added, skipped });
+    res.json({ success: true, message: `Synced ${added} new, updated ${updated} registration(s).`, added, updated, skipped });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -278,7 +347,7 @@ export async function listEventsWithRegistrationCounts(req: any, res: Response) 
         title: e.title,
         date: e.date,
         category: e.category,
-        capacity: e.capacity || 0,
+        handledBy: (e as any).handledBy || 'GDGoC GCEE Team',
         registrationEnabled: e.registrationEnabled,
         googleFormUrl: e.googleFormUrl || '',
         responseSheetId: e.responseSheetId || '',

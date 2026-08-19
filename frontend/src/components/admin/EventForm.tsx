@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { UploadCloud, AlertTriangle, X, Link2 } from 'lucide-react';
+import { UploadCloud, AlertTriangle, X, Link2, UserCheck } from 'lucide-react';
 import { ButtonSpinner } from '../ui/Spinner';
 import { api, getErrorMessage } from '../../lib/api';
 import { EVENT_CATEGORIES, formatHumanDate } from '../../lib/utils';
@@ -21,9 +21,8 @@ interface EventFormData {
   technologies: string;
   registrationEnabled: boolean;
   registrationDeadline: string;
-  capacity: string;
   googleFormUrl: string;
-  manualRegistrationCount: string;
+  handledBy: string;
   isCertificateEligible: boolean;
   isInauguration: boolean;
   status: string;
@@ -45,9 +44,8 @@ function toForm(event?: GEvent): EventFormData {
     technologies: (event?.technologies || []).join(', '),
     registrationEnabled: event?.registrationEnabled ?? true,
     registrationDeadline: event?.registrationDeadline || '',
-    capacity: event?.capacity ? String(event.capacity) : '',
     googleFormUrl: event?.googleFormUrl || '',
-    manualRegistrationCount: event?.manualRegistrationCount ? String(event.manualRegistrationCount) : '0',
+    handledBy: (event as any)?.handledBy || 'GDGoC GCEE Team',
     isCertificateEligible: event?.isCertificateEligible ?? false,
     isInauguration: event?.isInauguration ?? false,
     status: event?.status || 'UPCOMING',
@@ -86,8 +84,6 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
     setBusy(true);
     const payload = {
       ...form,
-      capacity: form.capacity ? Number(form.capacity) : 0,
-      manualRegistrationCount: form.manualRegistrationCount ? Number(form.manualRegistrationCount) : 0,
       technologies: form.technologies
         .split(',')
         .map((t) => t.trim())
@@ -148,24 +144,30 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
             {form.date && <p className="mt-1 text-xs text-ink-faint">→ {formatHumanDate(form.date)}</p>}
           </div>
           <div>
-            <label className="label" htmlFor="ev-venue">Venue</label>
+            <label className="label" htmlFor="ev-venue">Venue / Location</label>
             <input id="ev-venue" className="input" value={form.venue} onChange={(e) => update('venue', e.target.value)} placeholder="CS Seminar Hall" />
           </div>
           <div>
             <label className="label" htmlFor="ev-start-time">Start Time</label>
-            <input id="ev-start-time" className="input font-mono" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} placeholder="09:00" />
+            <input id="ev-start-time" className="input font-mono" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} placeholder="09:00 AM" />
           </div>
           <div>
             <label className="label" htmlFor="ev-end-time">End Time</label>
-            <input id="ev-end-time" className="input font-mono" value={form.endTime} onChange={(e) => update('endTime', e.target.value)} placeholder="17:00" />
+            <input id="ev-end-time" className="input font-mono" value={form.endTime} onChange={(e) => update('endTime', e.target.value)} placeholder="05:00 PM" />
           </div>
           <div>
-            <label className="label" htmlFor="ev-cat">Category</label>
+            <label className="label" htmlFor="ev-cat">Category / Event Type</label>
             <select id="ev-cat" className="input" value={form.category} onChange={(e) => update('category', e.target.value)}>
               {EVENT_CATEGORIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="ev-handled">
+              <span className="flex items-center gap-1.5"><UserCheck className="h-3.5 w-3.5" /> Handled By / Conducted By</span>
+            </label>
+            <input id="ev-handled" className="input" value={form.handledBy} onChange={(e) => update('handledBy', e.target.value)} placeholder="GDGoC GCEE Team" />
           </div>
         </div>
       </div>
@@ -192,10 +194,6 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
         <h3 className="mb-5 font-display text-base font-bold text-navy-900">Registration & flags</h3>
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <label className="label" htmlFor="ev-capacity">Registration limit (0 = unlimited)</label>
-            <input id="ev-capacity" type="number" min={0} className="input" value={form.capacity} onChange={(e) => update('capacity', e.target.value)} placeholder="120" />
-          </div>
-          <div>
             <label className="label" htmlFor="ev-deadline">Registration deadline (YYYY-MM-DD)</label>
             <input id="ev-deadline" className="input font-mono" value={form.registrationDeadline} onChange={(e) => update('registrationDeadline', e.target.value)} placeholder="2026-09-18" />
           </div>
@@ -204,12 +202,7 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
               <span className="flex items-center gap-1.5"><Link2 className="h-3.5 w-3.5" /> Google Form URL</span>
             </label>
             <input id="ev-google-form" className="input font-mono text-sm" value={form.googleFormUrl} onChange={(e) => update('googleFormUrl', e.target.value)} placeholder="https://docs.google.com/forms/d/..." />
-            <p className="mt-1 text-xs text-ink-faint">Students will see a "Register Now" button that opens this form.</p>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="label" htmlFor="ev-manual-reg-count">Manual registration count</label>
-            <input id="ev-manual-reg-count" type="number" min={0} className="input" value={form.manualRegistrationCount} onChange={(e) => update('manualRegistrationCount', e.target.value)} placeholder="0" />
-            <p className="mt-1 text-xs text-ink-faint">Update this count manually from Google Form responses. This is added to in-app registrations.</p>
+            <p className="mt-1 text-xs text-ink-faint">Students will use this Google Form URL to register for the event.</p>
           </div>
         </div>
 

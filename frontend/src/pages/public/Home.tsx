@@ -20,9 +20,11 @@ import {
   Globe,
   Terminal,
   CalendarDays,
+  Clock,
   ChevronRight,
   Mail,
   MapPin,
+  UserCheck,
 } from 'lucide-react';
 import { Hero } from '../../components/home/Hero';
 import { EventCard } from '../../components/events/EventCard';
@@ -57,6 +59,7 @@ const technologies = [
 export default function Home() {
   const [stats, setStats] = useState<any>(null);
   const [upcoming, setUpcoming] = useState<GEvent[]>([]);
+  const [past, setPast] = useState<GEvent[]>([]);
   const [featured, setFeatured] = useState<GEvent | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
@@ -69,7 +72,7 @@ export default function Home() {
       try {
         const [statsRes, eventsRes, membersRes, galleryRes, boardRes] = await Promise.all([
           api.get('/stats'),
-          api.get('/events?limit=9'),
+          api.get('/events?limit=20'),
           api.get('/members'),
           api.get('/gallery?limit=8'),
           api.get('/leaderboard?limit=5'),
@@ -79,6 +82,7 @@ export default function Home() {
         setStats(statsRes.data.stats);
         const events = eventsRes.data.events as GEvent[];
         setUpcoming(events.filter((e) => e.effectiveStatus !== 'COMPLETED' && e.effectiveStatus !== 'CANCELLED').slice(0, 3));
+        setPast(events.filter((e) => e.effectiveStatus === 'COMPLETED').slice(0, 3));
         setFeatured(events.find((e) => e.isInauguration) || events[0] || null);
         setMembers(membersRes.data.members.slice(0, 6));
         setGallery(galleryRes.data.items.slice(0, 6));
@@ -194,6 +198,101 @@ export default function Home() {
           </Reveal>
         </div>
       </section>
+
+      {/* Past events */}
+      {past.length > 0 && (
+        <section className="bg-white py-20 border-t border-slate-100">
+          <div className="container-x">
+            <Reveal>
+              <SectionHeading
+                eyebrow="Community Highlights"
+                title="Past Events"
+                subtitle="Explore our completed workshops, hackathons, and developer sessions."
+              />
+            </Reveal>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {past.map((event, i) => (
+                <Reveal key={event._id} delay={i * 90}>
+                  <div className="card group overflow-hidden border border-slate-200 bg-white shadow-xs transition-all duration-300 hover:shadow-lift">
+                    {/* Event Banner */}
+                    <div className="relative h-48 w-full overflow-hidden bg-navy-950">
+                      {event.banner ? (
+                        <img
+                          src={event.banner}
+                          alt={event.title}
+                          draggable={false}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 pointer-events-none select-none"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-navy-900 to-navy-800 text-white/30">
+                          <CalendarDays className="h-12 w-12" />
+                        </div>
+                      )}
+                      <span className="absolute left-3 top-3 rounded-full bg-slate-900/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase text-white backdrop-blur-xs">
+                        Past Event
+                      </span>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="p-5 space-y-3">
+                      <div>
+                        <span className="text-xs font-semibold text-g-blue">{event.category}</span>
+                        <h3 className="mt-1 font-display text-base font-bold text-navy-900 truncate">
+                          {event.title}
+                        </h3>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-slate-600 font-medium">
+                        <div className="flex items-center gap-2">
+                          <CalendarDays className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span>Date: {formatHumanDate(event.date)}</span>
+                        </div>
+                        {event.startTime && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span>Time: {event.startTime}{event.endTime ? ` – ${event.endTime}` : ''}</span>
+                          </div>
+                        )}
+                        {event.venue && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">Venue: {event.venue}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {(event.shortDescription || event.description) && (
+                        <p className="line-clamp-2 text-xs text-slate-500">
+                          {event.shortDescription || event.description}
+                        </p>
+                      )}
+
+                      <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
+                        <div className="flex items-center justify-between text-slate-600">
+                          <span className="text-slate-400 font-medium">Handled By:</span>
+                          <span className="font-semibold text-navy-900">{(event as any).handledBy || 'GDGoC GCEE Team'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-slate-600">
+                          <span className="text-slate-400 font-medium">Students Registered:</span>
+                          <span className="font-bold text-g-blue">{event.registeredCount || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+            <Reveal>
+              <div className="mt-10 text-center">
+                <Link to="/events" className="btn-outline">
+                  Browse all past events
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+      )}
 
       {/* Featured event */}
       {featured && (

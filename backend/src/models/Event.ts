@@ -36,7 +36,7 @@ const eventSchema = new Schema(
     responseSheetId: { type: String, default: '' },
     responseSheetName: { type: String, default: '' },
     lastSyncedAt: { type: Date, default: null },
-    manualRegistrationCount: { type: Number, default: 0 },
+    handledBy: { type: String, default: 'GDGoC GCEE Team' },
     isCertificateEligible: { type: Boolean, default: false },
     isInauguration: { type: Boolean, default: false },
     status: { type: String, enum: EVENT_STATUSES, default: 'UPCOMING' },

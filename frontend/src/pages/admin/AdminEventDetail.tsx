@@ -175,20 +175,9 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
       <div className="flex flex-wrap items-center gap-4 rounded border border-black/10 bg-white p-4">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-black/40" />
-          <span className="font-mono text-sm font-bold">{count}</span>
-          <span className="font-mono text-xs text-black/40">registered</span>
+          <span className="font-mono text-base font-bold text-black">{count}</span>
+          <span className="font-mono text-xs text-black/50">Total Registrations</span>
         </div>
-        {event.capacity > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-black/40">Capacity: {event.capacity}</span>
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-black/5">
-              <div
-                className="h-full bg-black transition-all"
-                style={{ width: `${Math.min((count / event.capacity) * 100, 100)}%` }}
-              />
-            </div>
-          </div>
-        )}
         <div className="ml-auto flex flex-wrap gap-2">
           <button
             onClick={handleSendPdf}

@@ -175,21 +175,7 @@ export default function EventDetail() {
                 </div>
               )}
 
-              {/* Embedded Google Form section if student is logged in */}
-              {student && hasGoogleForm && isUpcoming && (
-                <div className="mt-10">
-                  <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-black/40">
-                    Registration Form
-                  </h2>
-                  <div className="mt-3 overflow-hidden rounded-xl border border-black/10 bg-white shadow-xs">
-                    <iframe
-                      src={event.googleFormUrl}
-                      className="h-[640px] w-full border-0"
-                      title={`${event.title} Registration Form`}
-                    />
-                  </div>
-                </div>
-              )}
+
 
               {/* Divider */}
               <div className="my-8 h-px bg-black/10" />

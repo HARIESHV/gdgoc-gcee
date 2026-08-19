@@ -47,10 +47,10 @@ export interface GEvent {
   registrationDeadline: string;
   capacity: number;
   googleFormUrl: string;
+  handledBy?: string;
   responseSheetId?: string;
   responseSheetName?: string;
   lastSyncedAt?: string;
-  manualRegistrationCount: number;
   isCertificateEligible: boolean;
   isInauguration: boolean;
   status: EventStatus;
