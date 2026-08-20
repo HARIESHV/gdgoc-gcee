@@ -206,8 +206,6 @@ export async function verifyGmailConnection(): Promise<{ ok: boolean; error?: st
   }
 }
 
-/* ─── Templates ────────────────────────────────────────────────────── */
-
 export async function sendOtpEmail(opts: {
   to: string;
   studentName: string;
@@ -216,36 +214,83 @@ export async function sendOtpEmail(opts: {
   const name = escapeHtml(opts.studentName || 'Student');
   const otp = escapeHtml(opts.otp);
 
-  const html = baseHtml(`
-    <tr><td style="padding:32px 32px 12px 32px;">
-      <p style="margin:0; color:#1e293b; font-size:16px; line-height:1.5;">Hello <strong>${name}</strong>,</p>
-      <p style="margin:16px 0 0 0; color:#475569; font-size:14px; line-height:1.6;">
-        Thank you for joining <strong>GDGoC GCEE</strong>.
-      </p>
-      <p style="margin:16px 0 0 0; color:#475569; font-size:14px; line-height:1.6;">
-        Your email verification OTP is:
-      </p>
-    </td></tr>
-    <tr><td style="padding:12px 32px;">
-      <div style="background-color:#f8fafc; border:2px dashed #4285F4; border-radius:12px; padding:24px; text-align:center;">
-        <p style="margin:0 0 8px 0; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:1.5px;">Your One-Time Password</p>
-        <p style="margin:0; color:#0b1b33; font-size:36px; font-weight:900; letter-spacing:12px; font-family:Consolas, Menlo, monospace;">${otp}</p>
-      </div>
-    </td></tr>
-    <tr><td style="padding:16px 32px 32px 32px;">
-      <p style="margin:0; color:#64748b; font-size:13px; line-height:1.6;">This OTP expires in <strong>10 minutes</strong>.</p>
-      <p style="margin:10px 0 0 0; color:#64748b; font-size:13px; line-height:1.6;">If you did not request this OTP, please ignore this email.</p>
-      <p style="margin:20px 0 0 0; color:#0b1b33; font-size:13px; font-weight:700;">Regards,<br/>GDGoC GCEE</p>
-    </td></tr>
-  `);
+  console.log(`[mailer] Generating OTP email for ${opts.to} (OTP length: ${opts.otp.length})`);
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GDGoC GCEE - Email Verification OTP</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#1e293b;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e2e8f0;">
+          <tr>
+            <td style="background-color:#0b1b33; padding:24px 28px; text-align:left;">
+              <h1 style="margin:0; color:#ffffff; font-size:20px; font-weight:800; letter-spacing:-0.5px;">GDGoC GCEE</h1>
+              <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px;">Google Developer Groups on Campus · ${CLUB.institution}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 28px 12px 28px;">
+              <p style="margin:0 0 16px 0; color:#0f172a; font-size:16px; line-height:1.5;">Hello <strong>${name}</strong>,</p>
+              <p style="margin:0 0 16px 0; color:#334155; font-size:14px; line-height:1.6;">
+                Thank you for joining <strong>GDGoC GCEE</strong>.
+              </p>
+              <p style="margin:0 0 16px 0; color:#334155; font-size:14px; line-height:1.6;">
+                Your email verification OTP is:
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:8px 28px 20px 28px;">
+              <table border="0" cellpadding="0" cellspacing="0" style="margin:0 auto; background-color:#1a73e8; border-radius:10px;">
+                <tr>
+                  <td align="center" style="padding:16px 36px;">
+                    <div style="color:#ffffff !important; font-size:36px; font-weight:bold; font-family:'Courier New', Consolas, Menlo, monospace; letter-spacing:8px; line-height:1;">
+                      ${otp}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 28px 28px 28px;">
+              <p style="margin:0 0 10px 0; color:#64748b; font-size:13px; line-height:1.6;">
+                This OTP will expire in <strong>10 minutes</strong>.
+              </p>
+              <p style="margin:0 0 20px 0; color:#64748b; font-size:13px; line-height:1.6;">
+                If you did not request this OTP, please ignore this email.
+              </p>
+              <p style="margin:0; color:#0f172a; font-size:13px; font-weight:700; line-height:1.5;">
+                Regards,<br/>
+                GDGoC GCEE
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#f8fafc; padding:16px 28px; border-top:1px solid #e2e8f0; text-align:center;">
+              <p style="margin:0; color:#94a3b8; font-size:11px; line-height:1.6;">
+                ${FROM_NAME} · ${CLUB.institution}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
   const plainText = `Hello ${opts.studentName || 'Student'},
 
 Thank you for joining GDGoC GCEE.
 
-Your email verification OTP is:
-
-${opts.otp}
+Your email verification OTP is: ${opts.otp}
 
 This OTP expires in 10 minutes.
 
