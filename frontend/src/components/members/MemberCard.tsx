@@ -4,14 +4,18 @@ import type { Member } from '../../types';
 export function MemberCard({ member }: { member: Member }) {
   const socials = member.socialLinks || {};
   return (
-    <div className="overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_2px_6px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.05)]">
+    <div className="member-card overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_2px_6px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.05)]">
       {/* Member image */}
-      <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
+      <div
+        className="relative aspect-[4/5] overflow-hidden bg-gray-100 select-none"
+        onContextMenu={(e) => e.preventDefault()}
+      >
         {member.photo ? (
           <img
             src={member.photo}
             alt={member.name}
-            className="h-full w-full object-cover"
+            draggable="false"
+            className="pointer-events-none h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gray-100">

@@ -81,6 +81,13 @@
   background: #94a3b8;
 }
 
+/* Suppress browser image overlays (Google Lens, etc.) on member cards */
+.member-card img {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html {
