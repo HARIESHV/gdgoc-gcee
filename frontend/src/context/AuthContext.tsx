@@ -12,6 +12,8 @@ interface AuthContextValue {
   loginAdmin: (email: string, password: string) => Promise<Admin>;
   logoutAdmin: () => Promise<void>;
   setStudent: (s: Student | null) => void;
+  sendOtp: (email: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -72,6 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAdmin(null);
   }
 
+  async function sendOtp(email: string) {
+    await api.post('/auth/send-otp', { email });
+  }
+
+  async function verifyOtp(email: string, otp: string) {
+    await api.post('/auth/verify-otp', { email, otp });
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -84,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginAdmin,
         logoutAdmin,
         setStudent,
+        sendOtp,
+        verifyOtp,
       }}
     >
       {children}

@@ -435,6 +435,94 @@ export async function sendStudentConfirmationEmail(opts: {
   console.log('[email] Student confirmation email sent to', opts.to, 'Resend ID:', data?.id);
 }
 
+export async function sendOtpEmail(opts: {
+  to: string;
+  studentName: string;
+  otp: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const resend = getResend();
+  if (!resend) {
+    console.log('[email] Resend not configured — skipping OTP email for', opts.to);
+    return { success: false, error: 'Email service is not configured.' };
+  }
+
+  const safeName = escapeHtml(opts.studentName);
+  const safeOtp = escapeHtml(opts.otp);
+
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <title>Verify Your Email – GDGoC GCEE</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding: 24px 0;">
+      <tr>
+        <td align="center">
+          <table width="100%" style="max-width: 580px; background-color:#ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="background-color:#0b1b33; padding: 28px 32px; text-align: left;">
+                <h1 style="margin:0; color:#ffffff; font-size: 20px; font-weight: 700;">GDGoC GCEE</h1>
+                <p style="margin: 4px 0 0 0; color:#94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Google Developer Groups on Campus</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 32px;">
+                <p style="margin-top:0; color:#1e293b; font-size: 15px; line-height: 1.5;">Hi <strong>${safeName}</strong>,</p>
+                <p style="color:#475569; font-size: 14px; line-height: 1.6;">Please use the following OTP to verify your email address and complete your registration:</p>
+                
+                <div style="background-color:#f8fafc; border: 2px dashed #4285F4; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+                  <p style="margin:0; color:#64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Your One-Time Password</p>
+                  <p style="margin:0; color:#0b1b33; font-size: 32px; font-weight: 900; letter-spacing: 8px; font-family: monospace;">${safeOtp}</p>
+                </div>
+
+                <p style="color:#475569; font-size: 13px; line-height: 1.6;">This OTP will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+
+                <hr style="border:none; border-top:1px solid #e2e8f0; margin: 24px 0;" />
+                <p style="margin:0; color:#64748b; font-size: 12px; line-height: 1.5;">
+                  Regards,<br/>
+                  <strong>GDGoC GCEE Team</strong><br/>
+                  Government College of Engineering, Erode
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="background-color:#f8fafc; padding: 16px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
+                <p style="margin:0; color:#94a3b8; font-size: 11px;">
+                  This OTP was sent to ${escapeHtml(opts.to)}.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: getFromAddress(),
+      to: opts.to,
+      subject: 'Verify Your Email – GDGoC GCEE',
+      html,
+    });
+
+    if (error) {
+      console.error('[email] OTP email error:', JSON.stringify(error));
+      return { success: false, error: error.message };
+    }
+
+    console.log('[email] OTP email sent to', opts.to, 'Resend ID:', data?.id);
+    return { success: true };
+  } catch (err: any) {
+    console.error('[email] OTP email exception:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function sendBulkEmail(opts: {
   to: string;
   studentName: string;

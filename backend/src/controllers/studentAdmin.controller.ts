@@ -39,6 +39,7 @@ export async function adminListStudents(req: any, res: Response) {
       success: true,
       students: students.map((s) => ({
         ...publicStudent(s),
+        isVerified: s.isVerified || false,
         eventsAttended: attMap.get(String(s._id)) || 0,
         eventsRegistered: regMap.get(String(s._id)) || 0,
       })),

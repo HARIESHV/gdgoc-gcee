@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, CalendarX2, ExternalLink, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, CalendarX2, ExternalLink, Users, MailCheck, MailX } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -95,6 +95,7 @@ export default function AdminEvents() {
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Category</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Registrations</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Google Form</th>
+                <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Email</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Status</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Actions</th>
               </tr>
@@ -128,6 +129,19 @@ export default function AdminEvents() {
                       </a>
                     ) : (
                       <span className="font-mono text-xs text-black/20">—</span>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    {ev.emailSent ? (
+                      <div className="flex items-center gap-1.5 text-green-700">
+                        <MailCheck className="h-3.5 w-3.5" />
+                        <span className="font-mono text-xs">Sent to {ev.emailSentCount || 0}</span>
+                      </div>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-black/20">
+                        <MailX className="h-3.5 w-3.5" />
+                        <span className="font-mono text-xs">Not sent</span>
+                      </span>
                     )}
                   </td>
                   <td className="p-4"><StatusBadge status={ev.status} /></td>

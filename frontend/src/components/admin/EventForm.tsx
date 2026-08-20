@@ -23,6 +23,7 @@ interface EventFormData {
   registrationDeadline: string;
   capacity: string;
   googleFormUrl: string;
+  registrationLink: string;
   isCertificateEligible: boolean;
   isInauguration: boolean;
   status: string;
@@ -46,6 +47,7 @@ function toForm(event?: GEvent): EventFormData {
     registrationDeadline: event?.registrationDeadline || '',
     capacity: event?.capacity ? String(event.capacity) : '',
     googleFormUrl: event?.googleFormUrl || '',
+    registrationLink: event?.registrationLink || '',
     isCertificateEligible: event?.isCertificateEligible ?? false,
     isInauguration: event?.isInauguration ?? false,
     status: event?.status || 'UPCOMING',
@@ -202,6 +204,13 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
             </label>
             <input id="ev-google-form" className="input font-mono text-sm" value={form.googleFormUrl} onChange={(e) => update('googleFormUrl', e.target.value)} placeholder="https://docs.google.com/forms/d/..." />
             <p className="mt-1 text-xs text-ink-faint">Students will see a "Register Now" button that opens this form.</p>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label" htmlFor="ev-reg-link">
+              <span className="flex items-center gap-1.5"><Link2 className="h-3.5 w-3.5" /> Registration Link (for event emails)</span>
+            </label>
+            <input id="ev-reg-link" className="input font-mono text-sm" value={form.registrationLink} onChange={(e) => update('registrationLink', e.target.value)} placeholder="https://forms.google.com/... or any registration URL" />
+            <p className="mt-1 text-xs text-ink-faint">Used in the "Register Now" button when sending event announcement emails to students.</p>
           </div>
         </div>
 

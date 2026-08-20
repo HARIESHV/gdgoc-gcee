@@ -13,6 +13,9 @@ const studentSchema = new Schema(
     passwordHash: { type: String, required: true },
     joinedAt: { type: Date, default: () => new Date() },
     isActive: { type: Boolean, default: true },
+    isVerified: { type: Boolean, default: false },
+    otp: { type: String, default: null },
+    otpExpiresAt: { type: Date, default: null },
     points: { type: Number, default: 0 },
     bio: { type: String, default: '' },
     socialLinks: {

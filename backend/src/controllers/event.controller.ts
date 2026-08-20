@@ -1,10 +1,11 @@
 import type { Response } from 'express';
 import mongoose from 'mongoose';
-import { EventModel, Registration, GoogleFormRegistration } from '../models';
+import { EventModel, Registration, GoogleFormRegistration, Student } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { nextEventId } from '../utils/ids';
 import { todayIST, isDateBefore } from '../utils/dates';
 import { connectDB } from '../config/db';
+import { sendBulkEventAnnouncement } from '../services/email.service';
 
 export function eventQuery(identifier: string) {
   if (mongoose.Types.ObjectId.isValid(identifier)) {
@@ -53,9 +54,14 @@ export function serializeEvent(event: any) {
     registrationDeadline: event.registrationDeadline,
     capacity: event.capacity,
     googleFormUrl: event.googleFormUrl || '',
+    registrationLink: event.registrationLink || '',
     manualRegistrationCount: event.manualRegistrationCount || 0,
     isCertificateEligible: event.isCertificateEligible,
     isInauguration: event.isInauguration,
+    emailSent: event.emailSent || false,
+    emailSentAt: event.emailSentAt || null,
+    emailSentCount: event.emailSentCount || 0,
+    emailFailedCount: event.emailFailedCount || 0,
     status: event.status,
     effectiveStatus,
     registeredCount: event.registeredCount ?? 0,
@@ -478,6 +484,7 @@ export async function adminCreateEvent(req: any, res: Response) {
       registrationDeadline: req.body.registrationDeadline || '',
       capacity: Number(req.body.capacity) || 0,
       googleFormUrl: req.body.googleFormUrl || '',
+      registrationLink: req.body.registrationLink || '',
       manualRegistrationCount: Number(req.body.manualRegistrationCount) || 0,
       isCertificateEligible: Boolean(req.body.isCertificateEligible),
       isInauguration: Boolean(req.body.isInauguration),
@@ -509,7 +516,7 @@ export async function adminUpdateEvent(req: any, res: Response) {
     const allowed = [
       'title', 'description', 'shortDescription', 'banner', 'date', 'startTime', 'endTime', 'venue',
       'speaker', 'speakerBio', 'category', 'technologies', 'registrationEnabled', 'registrationDeadline',
-      'capacity', 'googleFormUrl', 'manualRegistrationCount', 'isCertificateEligible', 'isInauguration', 'status',
+      'capacity', 'googleFormUrl', 'registrationLink', 'manualRegistrationCount', 'isCertificateEligible', 'isInauguration', 'status',
     ];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
@@ -538,6 +545,75 @@ export async function adminDeleteEvent(req: any, res: Response) {
     await Registration.deleteMany({ eventId: event._id });
     await EventModel.deleteOne({ _id: event._id });
     res.json({ success: true, message: 'Event deleted.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// POST /api/admin/events/:eventId/send-to-all
+export async function sendEventToAllStudents(req: any, res: Response) {
+  try {
+    await connectDB();
+    const { eventId } = req.params;
+
+    const event = await EventModel.findOne({ eventId });
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    if (event.emailSent && !req.body.force) {
+      res.json({
+        success: true,
+        alreadySent: true,
+        message: `This event email was already sent to ${event.emailSentCount} student(s) on ${event.emailSentAt ? new Date(event.emailSentAt).toLocaleDateString('en-IN') : 'unknown date'}. Pass {"force": true} to resend.`,
+        emailSentAt: event.emailSentAt,
+        emailSentCount: event.emailSentCount,
+      });
+      return;
+    }
+
+    const allStudents = await Student.find({ isActive: true, isVerified: true }).lean();
+    const recipients = allStudents
+      .filter((s) => s.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email))
+      .map((s) => ({ email: s.email, name: s.name }));
+
+    if (recipients.length === 0) {
+      res.status(400).json({ success: false, message: 'No verified students found to send emails to.' });
+      return;
+    }
+
+    const regUrl = event.registrationLink || event.googleFormUrl || `https://gdgoc-gcee.vercel.app/events/${event.eventId}`;
+
+    const result = await sendBulkEventAnnouncement({
+      eventId: String(event._id),
+      eventTitle: event.title,
+      recipients,
+      subject: `You're Invited! – ${event.title}`,
+      message: event.description ? event.description.slice(0, 500) : '',
+      eventDate: event.date,
+      eventTime: event.startTime ? `${event.startTime} - ${event.endTime || ''}` : 'TBA',
+      eventLocation: event.venue || 'Government College of Engineering, Erode',
+      eventType: event.category || 'Workshop',
+      registrationDeadline: event.registrationDeadline || 'Until Event Date',
+      eventRegistrationLink: regUrl,
+    });
+
+    event.emailSent = true;
+    event.emailSentAt = new Date();
+    event.emailSentCount = result.sentCount;
+    event.emailFailedCount = result.failedCount;
+    await event.save();
+
+    res.json({
+      success: true,
+      message: `Event email sent. Successfully sent: ${result.sentCount}, Failed: ${result.failedCount}.`,
+      sentCount: result.sentCount,
+      failedCount: result.failedCount,
+      totalRecipients: recipients.length,
+      status: result.status,
+      failedEmails: result.failedEmails,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

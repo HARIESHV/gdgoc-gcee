@@ -6,6 +6,7 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
+  ArrowLeft,
   Code2,
   Cpu,
   Cloud,
@@ -15,6 +16,8 @@ import {
   Globe,
   Terminal,
   CheckCircle2,
+  Mail,
+  KeyRound,
 } from 'lucide-react';
 import { Logo } from '../../components/ui/Logo';
 import { ButtonSpinner } from '../../components/ui/Spinner';
@@ -32,8 +35,10 @@ const SKILLS = [
   { icon: Globe, label: 'Open Source', color: 'text-g-yellow border-g-yellow/30 bg-g-yellow/5' },
 ];
 
+type Step = 1 | 2 | 3;
+
 export default function Register() {
-  const { registerStudent } = useAuth();
+  const { registerStudent, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -50,7 +55,12 @@ export default function Register() {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<Step>(1);
+  const [otp, setOtp] = useState('');
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -77,7 +87,7 @@ export default function Register() {
     setStep(2);
   };
 
-  const submit = async (e: React.FormEvent) => {
+  const submitRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
@@ -85,12 +95,59 @@ export default function Register() {
         ...form,
         skills: selectedSkills.join(', '),
       });
-      toast.success('Welcome to GDGoC GCEE! A confirmation email has been sent.');
-      navigate('/dashboard');
+      setOtpSent(true);
+      toast.success('Account created! Please check your email for the OTP.');
+      setStep(3);
+      startResendCooldown();
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    setOtpSending(true);
+    try {
+      await sendOtp(form.email);
+      toast.success('OTP resent to your email.');
+      startResendCooldown();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const startResendCooldown = () => {
+    setResendCooldown(60);
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp || otp.length !== 6) {
+      toast.error('Please enter the 6-digit OTP.');
+      return;
+    }
+    setOtpVerifying(true);
+    try {
+      await verifyOtp(form.email, otp);
+      toast.success('Email verified! Welcome to GDGoC GCEE! A thank you email has been sent.');
+      navigate('/dashboard');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setOtpVerifying(false);
     }
   };
 
@@ -131,8 +188,9 @@ export default function Register() {
       {/* Step indicators */}
       <div className="container-x -mt-6 flex max-w-xl justify-center gap-3">
         {[
-          { num: 1, label: 'Your info' },
-          { num: 2, label: 'Interests' },
+          { num: 1 as Step, label: 'Your info' },
+          { num: 2 as Step, label: 'Interests' },
+          { num: 3 as Step, label: 'Verify email' },
         ].map(({ num, label }) => (
           <div
             key={num}
@@ -155,7 +213,7 @@ export default function Register() {
       {/* Form card */}
       <div className="container-x mx-auto mb-20 mt-6 max-w-xl">
         <div className="card p-7 sm:p-9">
-          {step === 1 ? (
+          {step === 1 && (
             <form onSubmit={goToStep2} className="space-y-5">
               <div>
                 <h2 className="font-display text-xl font-bold text-navy-900">Basic information</h2>
@@ -307,8 +365,10 @@ export default function Register() {
                 <ArrowRight className="h-4 w-4" />
               </button>
             </form>
-          ) : (
-            <form onSubmit={submit} className="space-y-6">
+          )}
+
+          {step === 2 && (
+            <form onSubmit={submitRegistration} className="space-y-6">
               <div>
                 <h2 className="font-display text-xl font-bold text-navy-900">Your interests</h2>
                 <p className="mt-1 text-sm text-ink-muted">
@@ -352,7 +412,7 @@ export default function Register() {
                   onClick={() => setStep(1)}
                   className="btn-outline flex-1"
                 >
-                  Back
+                  <ArrowLeft className="h-4 w-4" /> Back
                 </button>
                 <button
                   type="submit"
@@ -366,27 +426,95 @@ export default function Register() {
             </form>
           )}
 
-          <p className="mt-6 text-center text-sm text-ink-soft">
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-g-blue hover:underline">
-              Sign in
-            </Link>
-          </p>
+          {step === 3 && (
+            <form onSubmit={handleVerifyOtp} className="space-y-6">
+              <div className="text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-g-blue/10">
+                  <Mail className="h-8 w-8 text-g-blue" />
+                </div>
+                <h2 className="font-display text-xl font-bold text-navy-900">Verify your email</h2>
+                <p className="mt-2 text-sm text-ink-muted">
+                  We've sent a 6-digit OTP to <strong>{form.email}</strong>. Enter it below to complete your registration.
+                </p>
+              </div>
+
+              <div>
+                <label className="label" htmlFor="otp">
+                  <span className="flex items-center gap-1.5"><KeyRound className="h-3.5 w-3.5" /> Enter OTP</span>
+                </label>
+                <input
+                  id="otp"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className="input text-center font-mono text-2xl tracking-[0.5em]"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="btn-outline flex-1"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={otpVerifying || otp.length !== 6}
+                  className="btn-primary flex-1 !py-3"
+                >
+                  {otpVerifying ? <ButtonSpinner /> : <CheckCircle2 className="h-4 w-4" />}
+                  {otpVerifying ? 'Verifying…' : 'Verify & Complete'}
+                </button>
+              </div>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={otpSending || resendCooldown > 0}
+                  className="text-sm font-semibold text-g-blue hover:underline disabled:text-ink-muted disabled:no-underline"
+                >
+                  {otpSending
+                    ? 'Sending…'
+                    : resendCooldown > 0
+                      ? `Resend OTP in ${resendCooldown}s`
+                      : 'Resend OTP'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {step < 3 && (
+            <p className="mt-6 text-center text-sm text-ink-soft">
+              Already have an account?{' '}
+              <Link to="/login" className="font-semibold text-g-blue hover:underline">
+                Sign in
+              </Link>
+            </p>
+          )}
         </div>
 
         {/* Benefits strip */}
-        <div className="mt-6 grid grid-cols-3 gap-3 text-center text-xs">
-          {[
-            { emoji: '🎓', label: 'Free workshops & events' },
-            { emoji: '🏆', label: 'Hackathons & certificates' },
-            { emoji: '🤝', label: 'Developer community' },
-          ].map(({ emoji, label }) => (
-            <div key={label} className="rounded-xl border border-navy-100 bg-white p-3 text-ink-muted shadow-card">
-              <span className="text-xl">{emoji}</span>
-              <p className="mt-1">{label}</p>
-            </div>
-          ))}
-        </div>
+        {step < 3 && (
+          <div className="mt-6 grid grid-cols-3 gap-3 text-center text-xs">
+            {[
+              { emoji: '🎓', label: 'Free workshops & events' },
+              { emoji: '🏆', label: 'Hackathons & certificates' },
+              { emoji: '🤝', label: 'Developer community' },
+            ].map(({ emoji, label }) => (
+              <div key={label} className="rounded-xl border border-navy-100 bg-white p-3 text-ink-muted shadow-card">
+                <span className="text-xl">{emoji}</span>
+                <p className="mt-1">{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

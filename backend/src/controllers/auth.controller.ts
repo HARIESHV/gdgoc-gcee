@@ -5,7 +5,7 @@ import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import type { AuthRequest } from '../middleware/auth';
 import { connectDB } from '../config/db';
-import { sendStudentConfirmationEmail } from '../utils/email';
+import { sendStudentConfirmationEmail, sendOtpEmail } from '../utils/email';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -19,6 +19,14 @@ function setAuthCookie(res: Response, token: string) {
   res.cookie('gdgoc_token', token, COOKIE_OPTS);
 }
 
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function hashOtp(otp: string): string {
+  return bcrypt.hashSync(otp, 10);
+}
+
 export function publicStudent(student: any) {
   return {
     id: student._id,
@@ -30,6 +38,7 @@ export function publicStudent(student: any) {
     year: student.year,
     rollNumber: student.rollNumber,
     profileImage: student.profileImage,
+    isVerified: student.isVerified || false,
     points: student.points,
     bio: student.bio,
     socialLinks: student.socialLinks,
@@ -72,6 +81,10 @@ export async function register(req: AuthRequest, res: Response) {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const otp = generateOtp();
+    const otpHash = hashOtp(otp);
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     const student = await Student.create({
       name,
       email: email.toLowerCase(),
@@ -81,22 +94,130 @@ export async function register(req: AuthRequest, res: Response) {
       year: year || '',
       college: 'Government College of Engineering, Erode',
       passwordHash,
+      isVerified: false,
+      otp: otpHash,
+      otpExpiresAt,
     });
 
-    // Send confirmation email to student (non-blocking — don't fail registration if email fails)
+    // Send OTP email
     const studentEmail = student.email;
     if (studentEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
-      sendStudentConfirmationEmail({ to: studentEmail, studentName: student.name }).catch((err) => {
-        console.error('[auth] Confirmation email failed for', studentEmail, ':', err.message);
+      sendOtpEmail({ to: studentEmail, studentName: student.name, otp }).catch((err) => {
+        console.error('[auth] OTP email failed for', studentEmail, ':', err.message);
       });
     }
 
     const token = signToken({ id: String(student._id), role: 'student' });
     setAuthCookie(res, token);
 
-    res.status(201).json({ success: true, message: 'Account created. Welcome to GDGoC GCEE!', token, student: publicStudent(student) });
+    res.status(201).json({
+      success: true,
+      message: 'Account created. Please verify your email with the OTP sent.',
+      token,
+      student: publicStudent(student),
+      requiresVerification: true,
+    });
   } catch (err: any) {
     console.error('[auth] register error:', err.message);
+    res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+  }
+}
+
+// POST /api/auth/send-otp
+export async function sendOtp(req: AuthRequest, res: Response) {
+  try {
+    await connectDB();
+
+    const { email } = req.body;
+    if (!email) {
+      res.status(400).json({ success: false, message: 'Email is required.' });
+      return;
+    }
+
+    const student = await Student.findOne({ email: email.toLowerCase() });
+    if (!student) {
+      res.status(404).json({ success: false, message: 'No account found with this email.' });
+      return;
+    }
+
+    if (student.isVerified) {
+      res.json({ success: true, message: 'Email is already verified. You can log in.' });
+      return;
+    }
+
+    const otp = generateOtp();
+    const otpHash = hashOtp(otp);
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    student.otp = otpHash;
+    student.otpExpiresAt = otpExpiresAt;
+    await student.save();
+
+    const result = await sendOtpEmail({ to: student.email, studentName: student.name, otp });
+    if (result.success) {
+      res.json({ success: true, message: 'OTP sent to your email address.' });
+    } else {
+      res.status(500).json({ success: false, message: result.error || 'Failed to send OTP. Please try again.' });
+    }
+  } catch (err: any) {
+    console.error('[auth] sendOtp error:', err.message);
+    res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+  }
+}
+
+// POST /api/auth/verify-otp
+export async function verifyOtp(req: AuthRequest, res: Response) {
+  try {
+    await connectDB();
+
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      res.status(400).json({ success: false, message: 'Email and OTP are required.' });
+      return;
+    }
+
+    const student = await Student.findOne({ email: email.toLowerCase() });
+    if (!student) {
+      res.status(404).json({ success: false, message: 'No account found with this email.' });
+      return;
+    }
+
+    if (student.isVerified) {
+      res.json({ success: true, message: 'Email is already verified.' });
+      return;
+    }
+
+    if (!student.otp || !student.otpExpiresAt) {
+      res.status(400).json({ success: false, message: 'No OTP found. Please request a new one.' });
+      return;
+    }
+
+    if (new Date() > student.otpExpiresAt) {
+      res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
+      return;
+    }
+
+    const otpValid = await bcrypt.compare(otp, student.otp);
+    if (!otpValid) {
+      res.status(400).json({ success: false, message: 'Invalid OTP. Please check and try again.' });
+      return;
+    }
+
+    student.isVerified = true;
+    student.otp = null;
+    student.otpExpiresAt = null;
+    await student.save();
+
+    // Send Thank You / Welcome email after successful verification
+    if (student.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(student.email)) {
+      sendStudentConfirmationEmail({ to: student.email, studentName: student.name }).catch((err) => {
+        console.error('[auth] Thank you email failed for', student.email, ':', err.message);
+      });
+    }
+
+    res.json({ success: true, message: 'Email verified successfully! Welcome to GDGoC GCEE.' });
+  } catch (err: any) {
+    console.error('[auth] verifyOtp error:', err.message);
     res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
   }
 }
@@ -115,6 +236,11 @@ export async function login(req: AuthRequest, res: Response) {
     const student = await Student.findOne({ email: email.toLowerCase() });
     if (!student || !student.isActive) {
       res.status(401).json({ success: false, message: 'Invalid credentials or account disabled.' });
+      return;
+    }
+
+    if (!student.isVerified) {
+      res.status(403).json({ success: false, message: 'Please verify your email before logging in.', requiresVerification: true, email: student.email });
       return;
     }
 

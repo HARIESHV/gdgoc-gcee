@@ -8,6 +8,7 @@ export interface Student {
   year?: string;
   rollNumber?: string;
   profileImage?: string;
+  isVerified?: boolean;
   points?: number;
   bio?: string;
   socialLinks?: {
@@ -47,12 +48,17 @@ export interface GEvent {
   registrationDeadline: string;
   capacity: number;
   googleFormUrl: string;
+  registrationLink?: string;
   responseSheetId?: string;
   responseSheetName?: string;
   lastSyncedAt?: string;
   manualRegistrationCount: number;
   isCertificateEligible: boolean;
   isInauguration: boolean;
+  emailSent?: boolean;
+  emailSentAt?: string | null;
+  emailSentCount?: number;
+  emailFailedCount?: number;
   status: EventStatus;
   effectiveStatus: EventStatus;
   registeredCount: number;
@@ -200,6 +206,7 @@ export interface DashboardStats {
 
 export interface AdminStats {
   totalStudents: number;
+  verifiedStudents?: number;
   totalEvents: number;
   upcomingEvents: number;
   completedEvents: number;
@@ -208,4 +215,5 @@ export interface AdminStats {
   validCertificates: number;
   pendingCertificates: number;
   members: number;
+  eventsEmailSent?: number;
 }

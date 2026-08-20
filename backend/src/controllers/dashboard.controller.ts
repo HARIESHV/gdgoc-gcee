@@ -75,6 +75,7 @@ export async function adminDashboard(_: any, res: Response) {
 
     const [
       totalStudents,
+      verifiedStudents,
       totalEvents,
       upcomingEvents,
       completedEvents,
@@ -85,8 +86,10 @@ export async function adminDashboard(_: any, res: Response) {
       campaigns,
       totalFormRegistrations,
       recentFormRegistrations,
+      eventsEmailSent,
     ] = await Promise.all([
       Student.countDocuments({ isActive: true }),
+      Student.countDocuments({ isActive: true, isVerified: true }),
       EventModel.countDocuments(),
       EventModel.countDocuments({ status: { $ne: 'CANCELLED' }, date: { $gte: today } }),
       EventModel.countDocuments({ status: { $ne: 'CANCELLED' }, date: { $lt: today } }),
@@ -97,6 +100,7 @@ export async function adminDashboard(_: any, res: Response) {
       CertificateCampaign.find().sort({ createdAt: -1 }).lean(),
       GoogleFormRegistration.countDocuments(),
       GoogleFormRegistration.find().sort({ submittedAt: -1 }).limit(5).lean(),
+      EventModel.countDocuments({ emailSent: true }),
     ]);
 
     // Chart: registrations per event (top 8)
@@ -166,6 +170,7 @@ export async function adminDashboard(_: any, res: Response) {
       success: true,
       stats: {
         totalStudents,
+        verifiedStudents,
         totalEvents,
         upcomingEvents,
         completedEvents,
@@ -175,6 +180,7 @@ export async function adminDashboard(_: any, res: Response) {
         pendingCertificates: Math.max(certificates - validCertificates, 0),
         members,
         totalFormRegistrations,
+        eventsEmailSent,
       },
       charts: {
         registrationTrends,

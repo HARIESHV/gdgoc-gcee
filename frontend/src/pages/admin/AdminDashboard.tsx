@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Search,
   Download,
+  Mail,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -115,7 +116,9 @@ export default function AdminDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
         <StatCard label="Total Students" value={s.totalStudents} icon={<Users className="h-5 w-5" />} color="bg-g-blue/10 text-g-blue" />
+        <StatCard label="Verified Students" value={s.verifiedStudents || 0} icon={<CheckCircle2 className="h-5 w-5" />} color="bg-g-green/10 text-green-700" />
         <StatCard label="Total Events" value={s.totalEvents} icon={<CalendarDays className="h-5 w-5" />} color="bg-navy-900/5 text-navy-800" />
+        <StatCard label="Events Email Sent" value={s.eventsEmailSent || 0} icon={<Mail className="h-5 w-5" />} color="bg-g-yellow/15 text-yellow-700" />
         <StatCard label="Upcoming Events" value={s.upcomingEvents} icon={<CalendarClock className="h-5 w-5" />} color="bg-g-yellow/15 text-yellow-700" />
         <StatCard label="Completed Events" value={s.completedEvents} icon={<CheckCircle2 className="h-5 w-5" />} color="bg-g-green/10 text-green-700" />
         <StatCard label="Attendance Records" value={s.attendanceRecords} icon={<ClipboardCheck className="h-5 w-5" />} color="bg-g-red/10 text-g-red" />

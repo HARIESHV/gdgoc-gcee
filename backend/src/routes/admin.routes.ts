@@ -8,6 +8,7 @@ import {
   adminCreateEvent,
   adminUpdateEvent,
   adminDeleteEvent,
+  sendEventToAllStudents,
 } from '../controllers/event.controller';
 import {
   listCampaigns,
@@ -103,6 +104,9 @@ router.get('/events/:eventId', adminGetEvent);
 router.post('/events', adminCreateEvent);
 router.put('/events/:eventId', adminUpdateEvent);
 router.delete('/events/:eventId', adminDeleteEvent);
+
+// Send event email to all verified students
+router.post('/events/:eventId/send-to-all', sendEventToAllStudents);
 
 // Event registrations (Google Form webhook submissions per event)
 router.get('/registration-stats', getRegistrationStats);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Users, Search, UserX, UserCheck, Trash2, Download } from 'lucide-react';
+import { Users, Search, UserX, UserCheck, Trash2, Download, ShieldCheck, ShieldOff } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -16,6 +16,7 @@ interface Row {
   department?: string;
   year?: string;
   isActive: boolean;
+  isVerified?: boolean;
 }
 
 export default function AdminStudents() {
@@ -103,6 +104,7 @@ export default function AdminStudents() {
               <tr className="border-b border-navy-100 text-xs uppercase tracking-wide text-ink-faint">
                 <th className="p-4 font-medium">Student</th>
                 <th className="p-4 font-medium">Department</th>
+                <th className="p-4 font-medium">Verified</th>
                 <th className="p-4 font-medium">Status</th>
                 <th className="p-4 text-right font-medium">Actions</th>
               </tr>
@@ -115,6 +117,15 @@ export default function AdminStudents() {
                     <p className="text-xs text-ink-muted">{s.email} · {s.rollNumber || '—'}</p>
                   </td>
                   <td className="p-4 text-ink-soft">{s.department || '—'}</td>
+                  <td className="p-4">
+                    <span className={cn('chip', s.isVerified ? 'bg-g-green/10 text-green-700' : 'bg-g-yellow/15 text-yellow-700')}>
+                      {s.isVerified ? (
+                        <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Verified</span>
+                      ) : (
+                        <span className="flex items-center gap-1"><ShieldOff className="h-3 w-3" /> Pending</span>
+                      )}
+                    </span>
+                  </td>
                   <td className="p-4">
                     <span className={cn('chip', s.isActive ? 'bg-g-green/10 text-green-700' : 'bg-slate-100 text-slate-500')}>
                       {s.isActive ? 'Active' : 'Disabled'}
