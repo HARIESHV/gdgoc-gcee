@@ -38,9 +38,8 @@ import AdminCampaigns from './pages/admin/AdminCampaigns';
 import AdminCampaignDetail from './pages/admin/AdminCampaignDetail';
 import AdminGallery from './pages/admin/AdminGallery';
 import AdminResources from './pages/admin/AdminResources';
-import AdminSettings from './pages/admin/AdminSettings';
 import AdminFormRegistrations from './pages/admin/AdminFormRegistrations';
-import AdminEmailHistory from './pages/admin/AdminEmailHistory';
+import AdminSettings from './pages/admin/AdminSettings';
 
 function RequireStudent({ children }: { children: React.ReactNode }) {
   const { student, loading } = useAuth();
@@ -130,7 +129,6 @@ export default function App() {
         <Route path="gallery" element={<AdminGallery />} />
         <Route path="resources" element={<AdminResources />} />
         <Route path="form-registrations" element={<AdminFormRegistrations />} />
-        <Route path="email-history" element={<AdminEmailHistory />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 
