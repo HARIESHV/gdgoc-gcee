@@ -63,29 +63,36 @@ export async function downloadCertificate(req: any, res: Response) {
       return;
     }
 
-    // Serve stored PDF buffer (using official GDGoC GCEE template)
+    let pdf: Buffer | null = null;
+
     if (cert.pdfBuffer) {
-      res.setHeader('Content-Type', PDF_MIME);
-      res.setHeader('Content-Disposition', `attachment; filename="${cert.certificateId}.pdf"`);
-      res.send(Buffer.from(cert.pdfBuffer));
-      return;
+      if (Buffer.isBuffer(cert.pdfBuffer)) {
+        pdf = cert.pdfBuffer;
+      } else if ((cert.pdfBuffer as any).buffer) {
+        pdf = Buffer.from((cert.pdfBuffer as any).buffer);
+      } else if ((cert.pdfBuffer as any).data) {
+        pdf = Buffer.from((cert.pdfBuffer as any).data);
+      }
     }
 
-    // Fallback: regenerate using official certificate design
-    const pdf = await generateCertificatePDF({
-      certificateId: cert.certificateId,
-      studentName: cert.studentName,
-      eventName: cert.eventName || 'GDGoC GCEE Event',
-      eventDate: cert.eventDate || todayIST(),
-      issueDate: cert.issueDate || todayIST(),
-      qrCodeDataURL: cert.qrCode || '',
-      verificationUrl: cert.verificationUrl || `${env.appUrl}/certificate/${cert.certificateId}`,
-    });
+    if (!pdf) {
+      // Regenerate using official certificate design if buffer missing or invalid
+      pdf = await generateCertificatePDF({
+        certificateId: cert.certificateId,
+        studentName: cert.studentName,
+        eventName: cert.eventName || 'GDGoC GCEE Event',
+        eventDate: cert.eventDate || todayIST(),
+        issueDate: cert.issueDate || todayIST(),
+        qrCodeDataURL: cert.qrCode || '',
+        verificationUrl: cert.verificationUrl || `${env.appUrl}/certificate/${cert.certificateId}`,
+      });
+    }
 
     res.setHeader('Content-Type', PDF_MIME);
     res.setHeader('Content-Disposition', `attachment; filename="${cert.certificateId}.pdf"`);
     res.send(pdf);
   } catch (err: any) {
+    console.error('[downloadCertificate error]:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 }

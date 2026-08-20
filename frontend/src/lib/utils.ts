@@ -35,9 +35,20 @@ export function downloadBlob(data: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function downloadPdf(certificateId: string) {
-  const base = import.meta.env.VITE_API_URL || '/api';
-  window.open(`${base}/certificates/${certificateId}/download`, '_blank');
+export async function downloadPdf(certificateId: string) {
+  try {
+    const base = import.meta.env.VITE_API_URL || '/api';
+    const response = await fetch(`${base}/certificates/${certificateId}/download`);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+    const blob = await response.blob();
+    downloadBlob(blob, `${certificateId}.pdf`);
+  } catch (err) {
+    console.error('Blob download failed, using fallback:', err);
+    const base = import.meta.env.VITE_API_URL || '/api';
+    window.open(`${base}/certificates/${certificateId}/download`, '_blank');
+  }
 }
 
 export const EVENT_CATEGORIES = [
