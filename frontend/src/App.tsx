@@ -8,8 +8,7 @@ import Home from './pages/public/Home';
 import About from './pages/public/About';
 import Events from './pages/public/Events';
 import EventDetail from './pages/public/EventDetail';
-import Members from './pages/public/Members';
-import Team from './pages/public/Team';
+import TeamMembers from './pages/public/TeamMembers';
 import Gallery from './pages/public/Gallery';
 import Resources from './pages/public/Resources';
 import Contact from './pages/public/Contact';
@@ -75,8 +74,7 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:eventId" element={<EventDetail />} />
-        <Route path="/members" element={<Members />} />
-        <Route path="/team" element={<Team />} />
+        <Route path="/team-members" element={<TeamMembers />} />
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/contact" element={<Contact />} />

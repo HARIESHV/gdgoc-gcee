@@ -38,6 +38,12 @@ import {
   deleteMember,
 } from '../controllers/member.controller';
 import {
+  adminListCoordinatorRoles,
+  createCoordinatorRole,
+  updateCoordinatorRole,
+  deleteCoordinatorRole,
+} from '../controllers/coordinatorRole.controller';
+import {
   createGalleryItem,
   deleteGalleryItem,
 } from '../controllers/gallery.controller';
@@ -121,6 +127,12 @@ router.get('/members', adminListMembers);
 router.post('/members', createMember);
 router.put('/members/:id', updateMember);
 router.delete('/members/:id', deleteMember);
+
+// Coordinator Roles
+router.get('/coordinator-roles', adminListCoordinatorRoles);
+router.post('/coordinator-roles', createCoordinatorRole);
+router.put('/coordinator-roles/:id', updateCoordinatorRole);
+router.delete('/coordinator-roles/:id', deleteCoordinatorRole);
 
 // Certificate campaigns
 router.get('/certificate-campaigns', listCampaigns);

@@ -11,6 +11,7 @@ import eventRoutes from './routes/event.routes';
 import attendanceRoutes from './routes/attendance.routes';
 import certificateRoutes from './routes/certificate.routes';
 import memberRoutes from './routes/member.routes';
+import coordinatorRoleRoutes from './routes/coordinatorRole.routes';
 import galleryRoutes from './routes/gallery.routes';
 import resourceRoutes from './routes/resource.routes';
 import leaderboardRoutes from './routes/leaderboard.routes';
@@ -100,6 +101,7 @@ export function createApp(): Express {
   app.use('/api/attendance', attendanceRoutes);
   app.use('/api/certificates', certificateRoutes);
   app.use('/api/members', memberRoutes);
+  app.use('/api/members/coordinator-roles', coordinatorRoleRoutes);
   app.use('/api/gallery', galleryRoutes);
   app.use('/api/resources', resourceRoutes);
   app.use('/api/leaderboard', leaderboardRoutes);

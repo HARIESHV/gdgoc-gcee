@@ -25,6 +25,7 @@ const memberSchema = new Schema(
     name: { type: String, required: true, trim: true },
     team: { type: String, enum: TEAMS, default: 'Community Members' },
     role: { type: String, default: 'Member' },
+    coordinatorRole: { type: String, default: '' },
     department: { type: String, default: '' },
     year: { type: String, default: '' },
     photo: { type: String, default: '' },

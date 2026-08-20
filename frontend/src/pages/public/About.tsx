@@ -99,7 +99,7 @@ export default function About() {
               Whether you are a beginner writing your first line of code or a builder shipping your latest project,
               there is a place for you here.
             </p>
-            <Link to="/members" className="btn-primary mt-8">
+            <Link to="/team-members" className="btn-primary mt-8">
               Meet our team
               <ArrowRight className="h-4 w-4" />
             </Link>

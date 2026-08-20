@@ -8,6 +8,7 @@ function serialize(m: any) {
     name: m.name,
     team: m.team,
     role: m.role,
+    coordinatorRole: m.coordinatorRole || '',
     department: m.department,
     year: m.year,
     photo: m.photo,
@@ -56,6 +57,7 @@ export async function createMember(req: any, res: Response) {
       name,
       team: req.body.team || 'Community Members',
       role: req.body.role || 'Member',
+      coordinatorRole: req.body.coordinatorRole || '',
       department: req.body.department || '',
       year: req.body.year || '',
       photo: req.body.photo || '',
@@ -77,7 +79,7 @@ export async function updateMember(req: any, res: Response) {
       res.status(404).json({ success: false, message: 'Member not found.' });
       return;
     }
-    const allowed = ['name', 'team', 'role', 'department', 'year', 'photo', 'socialLinks', 'order', 'isActive'];
+    const allowed = ['name', 'team', 'role', 'coordinatorRole', 'department', 'year', 'photo', 'socialLinks', 'order', 'isActive'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) (member as any)[key] = req.body[key];
     }

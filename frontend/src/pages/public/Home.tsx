@@ -351,7 +351,7 @@ export default function Home() {
           </div>
           <Reveal>
             <div className="mt-10 text-center">
-              <Link to="/members" className="btn-outline">
+              <Link to="/team-members" className="btn-outline">
                 Meet everyone
                 <ArrowRight className="h-4 w-4" />
               </Link>

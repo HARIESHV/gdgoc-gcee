@@ -121,6 +121,7 @@ export interface Member {
   name: string;
   team: string;
   role: string;
+  coordinatorRole: string;
   department: string;
   year: string;
   photo: string;
@@ -130,6 +131,13 @@ export interface Member {
     instagram?: string;
     twitter?: string;
   };
+}
+
+export interface CoordinatorRole {
+  _id: string;
+  name: string;
+  order: number;
+  isActive: boolean;
 }
 
 export interface GalleryItem {
