@@ -103,9 +103,14 @@ export async function register(req: AuthRequest, res: Response) {
     // Send OTP email
     const studentEmail = student.email;
     if (studentEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
-      sendOtpEmail({ to: studentEmail, studentName: student.name, otp }).catch((err) => {
+      try {
+        const sendRes = await sendOtpEmail({ to: studentEmail, studentName: student.name, otp });
+        if (!sendRes.success) {
+          console.warn(`[auth] Warning: OTP email could not be delivered to ${studentEmail}: ${sendRes.error}`);
+        }
+      } catch (err: any) {
         console.error('[auth] OTP email failed for', studentEmail, ':', err.message);
-      });
+      }
     }
 
     const token = signToken({ id: String(student._id), role: 'student' });

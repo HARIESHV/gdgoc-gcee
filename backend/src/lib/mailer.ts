@@ -44,7 +44,9 @@ export function getTransport(): Transporter {
     throw new Error('Gmail SMTP is not configured.');
   }
   transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
       user: env.gmail.user,
       pass: env.gmail.appPassword,
