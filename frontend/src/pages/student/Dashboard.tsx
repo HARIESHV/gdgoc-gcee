@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import {
   Ticket,
   ClipboardCheck,
-  Award,
   Percent,
   CalendarDays,
   ArrowRight,
@@ -47,7 +46,6 @@ export default function Dashboard() {
     { icon: Ticket, label: 'Events Registered', value: data.stats.registered, color: 'bg-g-blue/10 text-g-blue' },
     { icon: ClipboardCheck, label: 'Events Attended', value: data.stats.attended, color: 'bg-g-green/10 text-g-green' },
     { icon: Percent, label: 'Attendance %', value: `${data.stats.attendancePercent}%`, color: 'bg-g-yellow/10 text-yellow-700' },
-    { icon: Award, label: 'Certificates', value: data.stats.certificates, color: 'bg-g-red/10 text-g-red' },
   ];
 
   return (
@@ -61,7 +59,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {cards.map(({ icon: Icon, label, value, color }) => (
           <div key={label} className="card p-5">
             <div className={cn('mb-3 flex h-10 w-10 items-center justify-center rounded-xl', color)}>

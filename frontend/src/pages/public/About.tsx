@@ -51,7 +51,6 @@ const activities = [
 ];
 
 const benefits = [
-  { icon: Award, title: 'Certificates', desc: 'Recognized participation certificates for eligible events.' },
   { icon: Users, title: 'Network', desc: 'Connections with students, faculty and industry mentors.' },
   { icon: Rocket, title: 'Portfolio', desc: 'Real projects that showcase your skills to recruiters.' },
   { icon: Globe, title: 'Community', desc: 'A supportive environment to experiment and grow.' },

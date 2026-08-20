@@ -11,3 +11,5 @@ export { Resource, RESOURCE_CATEGORIES } from './Resource';
 export { GoogleFormRegistration } from './GoogleFormRegistration';
 export { SendingHistory } from './SendingHistory';
 export { Feedback } from './Feedback';
+export { BulkEmailLog } from './BulkEmailLog';
+export { EmailLog } from './EmailLog';

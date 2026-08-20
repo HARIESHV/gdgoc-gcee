@@ -47,7 +47,7 @@ export default function Login() {
               <LogIn className="h-6 w-6" />
             </div>
             <h1 className="font-display text-2xl font-bold text-navy-900">Student Login</h1>
-            <p className="mt-1 text-sm text-ink-muted">Access your dashboard, events and certificates.</p>
+            <p className="mt-1 text-sm text-ink-muted">Access your dashboard and events.</p>
           </div>
 
           <form onSubmit={submit} className="space-y-5">

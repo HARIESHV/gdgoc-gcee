@@ -119,8 +119,6 @@ export default function AdminDashboard() {
         <StatCard label="Upcoming Events" value={s.upcomingEvents} icon={<CalendarClock className="h-5 w-5" />} color="bg-g-yellow/15 text-yellow-700" />
         <StatCard label="Completed Events" value={s.completedEvents} icon={<CheckCircle2 className="h-5 w-5" />} color="bg-g-green/10 text-green-700" />
         <StatCard label="Attendance Records" value={s.attendanceRecords} icon={<ClipboardCheck className="h-5 w-5" />} color="bg-g-red/10 text-g-red" />
-        <StatCard label="Certificates Generated" value={s.certificates} icon={<Award className="h-5 w-5" />} color="bg-g-blue/10 text-g-blue" />
-        <StatCard label="Certificates Valid" value={s.validCertificates} icon={<BadgeCheck className="h-5 w-5" />} color="bg-g-green/10 text-green-700" />
         <StatCard label="Community Members" value={s.members} icon={<UsersRound className="h-5 w-5" />} color="bg-g-yellow/15 text-yellow-700" />
         <StatCard label="Form Registrations" value={totalWebhookRegistrations} icon={<ClipboardList className="h-5 w-5" />} color="bg-g-blue/10 text-g-blue" />
       </div>
@@ -272,32 +270,6 @@ export default function AdminDashboard() {
               </BarChart>
             </ResponsiveContainer>
           )}
-        </div>
-      </div>
-
-      {/* Certificate pie */}
-      <div className="card p-6">
-        <h3 className="mb-4 font-display text-base font-bold text-navy-900">Certificate statistics</h3>
-        <div className="flex flex-col items-center gap-6 md:flex-row">
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={charts.certByStatus || []} dataKey="count" nameKey="_id" cx="50%" cy="50%" outerRadius={80} label>
-                {(charts.certByStatus || []).map((_: any, i: number) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-2 text-sm">
-            <p className="text-ink-muted">Total certificates: <strong className="text-navy-900">{s.certificates}</strong></p>
-            <p className="text-ink-muted">Valid: <strong className="text-green-700">{s.validCertificates}</strong></p>
-            <p className="text-ink-muted">Pending / Revoked: <strong className="text-ink-soft">{s.pendingCertificates}</strong></p>
-            <Link to="/admin/certificate-campaigns" className="inline-flex items-center gap-1 text-sm font-semibold text-g-blue hover:underline">
-              Manage campaigns <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
         </div>
       </div>
 

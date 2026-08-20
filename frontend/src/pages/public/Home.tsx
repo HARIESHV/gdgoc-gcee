@@ -14,7 +14,6 @@ import {
   Sparkles,
   Trophy,
   Users,
-  Award,
   Ticket,
   Zap,
   Globe,
@@ -39,7 +38,6 @@ const whyJoin = [
   { icon: Trophy, title: 'Hackathons & Contests', desc: 'Compete in build sprints, sharpen problem-solving and win recognition.' },
   { icon: HeartHandshake, title: 'Mentorship', desc: 'Guidance from seniors, faculty and industry developers throughout the year.' },
   { icon: Users, title: 'Community Network', desc: 'Connect with driven students across departments and batches.' },
-  { icon: Award, title: 'Certificates', desc: 'Earn participation certificates for active involvement in eligible events.' },
   { icon: Zap, title: 'Career Readiness', desc: 'Developer skills, tooling and a portfolio that recruiters notice.' },
 ];
 
@@ -215,7 +213,6 @@ export default function Home() {
                       <span className="chip bg-g-blue/10 text-blue-700">{featured.category}</span>
                       <span className="chip bg-navy-900/5 text-navy-700">{formatHumanDate(featured.date)}</span>
                       {featured.isInauguration && <span className="chip bg-g-yellow/15 text-yellow-700">Inauguration</span>}
-                      {featured.isCertificateEligible && <span className="chip bg-g-green/10 text-green-700">Certificate eligible</span>}
                     </div>
                     <h3 className="font-display text-2xl font-bold text-navy-900 sm:text-3xl">{featured.title}</h3>
                     <p className="mt-3 text-sm leading-relaxed text-ink-muted sm:text-base">{featured.description || featured.shortDescription}</p>
@@ -251,12 +248,11 @@ export default function Home() {
               className="[&_h2]:text-white [&_.mx-auto]:text-white/60"
             />
           </Reveal>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-6">
             {[
               { label: 'Community Members', value: stats?.members ?? stats?.totalStudents ?? 0, icon: Users },
               { label: 'Events Hosted', value: stats?.totalEvents ?? 0, icon: CalendarDays },
               { label: 'Hackathons & Workshops', value: (stats?.workshops ?? 0) + (stats?.hackathons ?? 0), icon: Trophy },
-              { label: 'Certificates Issued', value: stats?.certificates ?? 0, icon: Award },
             ].map(({ label, value, icon: Icon }, i) => (
               <Reveal key={label} delay={i * 80}>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
@@ -364,80 +360,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Certificates */}
-      <section className="bg-slate-50 py-20">
-        <div className="container-x max-w-4xl">
-          <Reveal>
-            <SectionHeading align="center" eyebrow="Certificates" title="Get recognized for participating" subtitle="Active members receive consolidated participation certificates for eligible events." />
-            <div className="card overflow-hidden">
-              <div className="bg-gradient-to-br from-navy-900 to-navy-700 p-6 text-white sm:p-8">
-                <div className="flex items-center gap-2">
-                  <Award className="h-6 w-6 text-g-yellow" />
-                  <p className="font-display text-lg font-bold">Certificate of Participation</p>
-                </div>
-                <p className="mt-2 text-sm text-white/70">GDGoC GCEE · Government College of Engineering, Erode</p>
-                <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/80">
-                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Issued by</span><span>GDGoC GCEE</span></p>
-                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Verification</span><span className="text-g-green">QR-scannable & online</span></p>
-                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Download</span><span>Instant PDF download</span></p>
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <p className="font-mono text-[10px] text-white/60">GDGCEE-YYYYMMDD-XXXX</p>
-                  <div className="flex gap-1.5">
-                    <span className="h-10 w-10 rounded border border-white/20 bg-white p-0.5" />
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-3 p-6 sm:flex-row">
-                <Link to="/register" className="btn-primary flex-1">
-                  Join to earn yours
-                  <Ticket className="h-4 w-4" />
-                </Link>
-                <Link to="/certificates" className="btn-outline flex-1">
-                  Verify a certificate
-                </Link>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* Gallery preview */}
-      {gallery.length > 0 && (
-        <section className="bg-white py-20">
-          <div className="container-x">
-            <Reveal>
-              <SectionHeading
-                eyebrow="Gallery"
-                title="Moments from the community"
-                subtitle="A glimpse of our workshops, hackathons and meetups."
-              />
-            </Reveal>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-              {gallery.map((item, i) => (
-                <Reveal key={item.id} delay={i * 60} className={cn(i === 0 && 'md:row-span-2')}>
-                  <Link to="/gallery" className="group relative block h-44 overflow-hidden rounded-2xl md:h-56">
-                    <img src={item.image} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-navy-950/70 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                    <span className="absolute bottom-3 left-3 text-sm font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
-                      {item.title || item.category}
-                    </span>
-                  </Link>
-                </Reveal>
-              ))}
-            </div>
-            <Reveal>
-              <div className="mt-10 text-center">
-                <Link to="/gallery" className="btn-outline">
-                  Open gallery
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </Reveal>
-          </div>
-        </section>
-      )}
-
       {/* Contact Us */}
       <section className="bg-white py-20">
         <div className="container-x">
@@ -445,7 +367,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="Get in touch"
               title="Contact Us"
-              subtitle="Have questions about events, membership, or certificates? We'd love to hear from you."
+              subtitle="Have questions about events or membership? We'd love to hear from you."
             />
           </Reveal>
           <Reveal delay={100}>

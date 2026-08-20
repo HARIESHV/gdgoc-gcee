@@ -4,7 +4,6 @@ import {
   UserCircle,
   Ticket,
   ClipboardCheck,
-  Award,
   BookOpen,
   Settings,
 } from 'lucide-react';
@@ -19,7 +18,6 @@ export function StudentLayout() {
     { label: 'My Profile', to: '/dashboard/profile', icon: UserCircle },
     { label: 'My Events', to: '/dashboard/events', icon: Ticket },
     { label: 'My Attendance', to: '/dashboard/attendance', icon: ClipboardCheck },
-    { label: 'My Certificates', to: '/dashboard/certificates', icon: Award },
     { label: 'Available Events', to: '/events', icon: CalendarDays },
     { label: 'Resources', to: '/dashboard/resources', icon: BookOpen },
     { label: 'Settings', to: '/dashboard/settings', icon: Settings },

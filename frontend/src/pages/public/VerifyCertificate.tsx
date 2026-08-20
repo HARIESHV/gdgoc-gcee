@@ -57,8 +57,8 @@ export default function VerifyCertificate() {
             We could not find a certificate with ID <span className="font-mono text-navy-900">{certificateId}</span>.
             Check the ID and try again.
           </p>
-          <Link to="/certificates" className="btn-primary mt-6">
-            Back to certificates
+          <Link to="/" className="btn-primary mt-6">
+            Back to home
           </Link>
         </div>
       </div>

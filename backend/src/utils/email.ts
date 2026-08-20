@@ -435,3 +435,66 @@ export async function sendStudentConfirmationEmail(opts: {
   console.log('[email] Student confirmation email sent to', opts.to, 'Resend ID:', data?.id);
 }
 
+export async function sendBulkEmail(opts: {
+  to: string;
+  studentName: string;
+  subject: string;
+  message: string;
+  htmlContent?: string;
+}): Promise<{ id?: string; error?: string }> {
+  const resend = getResend();
+  if (!resend) {
+    return { error: 'Email service is not configured.' };
+  }
+
+  const safeName = escapeHtml(opts.studentName);
+  const safeSubject = escapeHtml(opts.subject);
+  const safeMessage = opts.htmlContent || `<p style="white-space:pre-wrap;">${escapeHtml(opts.message)}</p>`;
+
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head><meta charset="utf-8"><title>${safeSubject}</title></head>
+  <body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding: 24px 0;">
+      <tr>
+        <td align="center">
+          <table width="100%" style="max-width: 580px; background-color:#ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="background-color:#0b1b33; padding: 24px 32px; text-align: left;">
+                <h1 style="margin:0; color:#ffffff; font-size: 20px; font-weight: 700;">GDGoC GCEE</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 32px;">
+                <p style="margin-top:0; color:#1e293b; font-size: 15px;">Dear <strong>${safeName}</strong>,</p>
+                <div style="color:#334155; font-size: 14px; line-height: 1.6;">${safeMessage}</div>
+                <hr style="border:none; border-top:1px solid #e2e8f0; margin: 24px 0;" />
+                <p style="margin:0; color:#64748b; font-size: 12px;">Best regards,<br/><strong>GDGoC GCEE Team</strong></p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: getFromAddress(),
+      to: opts.to,
+      subject: opts.subject,
+      html,
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+    return { id: data?.id };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
