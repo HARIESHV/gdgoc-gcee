@@ -87,9 +87,7 @@ export async function register(req: AuthRequest, res: Response) {
       // If student registered previously but never completed OTP verification, update with new details & password
       const passwordHash = await bcrypt.hash(password, 10);
       const otp = generateOtp();
-      if (env.nodeEnv !== 'production') {
-        console.log(`\n========================================\n[auth] 🔑 OTP for ${cleanEmail}: ${otp}\n========================================\n`);
-      }
+      console.log(`\n========================================\n[auth] 🔑 OTP for ${cleanEmail}: ${otp}\n========================================\n`);
       const otpHash = hashOtp(otp);
       const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -139,9 +137,7 @@ export async function register(req: AuthRequest, res: Response) {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const otp = generateOtp();
-    if (env.nodeEnv !== 'production') {
-      console.log(`\n========================================\n[auth] 🔑 OTP for ${cleanEmail}: ${otp}\n========================================\n`);
-    }
+    console.log(`\n========================================\n[auth] 🔑 OTP for ${cleanEmail}: ${otp}\n========================================\n`);
     const otpHash = hashOtp(otp);
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
