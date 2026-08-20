@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { EventModel, Registration, GoogleFormRegistration, Student, SendingHistory, EventRegistration } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { nextEventId } from '../utils/ids';
-import { todayIST, isDateBefore } from '../utils/dates';
+import { todayIST, isDateBefore, formatTimeRange } from '../utils/dates';
 import { connectDB } from '../config/db';
 import { env } from '../config/env';
 import { sendEventEmail, sendBulkEventRegistrationEmails, emailIsConfigured } from '../lib/mailer';
@@ -751,7 +751,7 @@ export async function sendEventRegistrationEmailToStudents(req: any, res: Respon
           title: event.title,
           description: event.description,
           date: event.date,
-          time: event.startTime ? `${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}` : 'TBA',
+          time: formatTimeRange(event.startTime, event.endTime),
           venue: event.venue || 'Government College of Engineering, Erode',
           poster: event.banner || '',
           registrationLink: regUrl,

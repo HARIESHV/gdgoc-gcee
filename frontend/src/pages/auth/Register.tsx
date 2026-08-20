@@ -5,16 +5,7 @@ import {
   UserPlus,
   Eye,
   EyeOff,
-  ArrowRight,
   ArrowLeft,
-  Code2,
-  Cpu,
-  Cloud,
-  GitBranch,
-  Smartphone,
-  ShieldCheck,
-  Globe,
-  Terminal,
   CheckCircle2,
   Mail,
   KeyRound,
@@ -24,18 +15,7 @@ import { ButtonSpinner } from '../../components/ui/Spinner';
 import { useAuth, getErrorMessage } from '../../context/AuthContext';
 import { DEPARTMENTS, YEARS } from '../../lib/utils';
 
-const SKILLS = [
-  { icon: Code2, label: 'Web Development', color: 'text-g-blue border-g-blue/30 bg-g-blue/5' },
-  { icon: Cpu, label: 'AI / ML', color: 'text-g-green border-g-green/30 bg-g-green/5' },
-  { icon: Cloud, label: 'Cloud Computing', color: 'text-g-yellow border-g-yellow/30 bg-g-yellow/5' },
-  { icon: GitBranch, label: 'Git & GitHub', color: 'text-g-red border-g-red/30 bg-g-red/5' },
-  { icon: Smartphone, label: 'Android', color: 'text-g-green border-g-green/30 bg-g-green/5' },
-  { icon: ShieldCheck, label: 'Cybersecurity', color: 'text-g-blue border-g-blue/30 bg-g-blue/5' },
-  { icon: Terminal, label: 'Dev Tools', color: 'text-g-red border-g-red/30 bg-g-red/5' },
-  { icon: Globe, label: 'Open Source', color: 'text-g-yellow border-g-yellow/30 bg-g-yellow/5' },
-];
-
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 
 export default function Register() {
   const { registerStudent, sendOtp, verifyOtp } = useAuth();
@@ -54,28 +34,20 @@ export default function Register() {
     password: '',
     confirmPassword: '',
   });
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<Step>(1);
   const [otp, setOtp] = useState('');
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
-  const toggleSkill = (skill: string) => {
-    setSelectedSkills((prev) =>
-      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
-    );
-  };
-
-  const goToStep2 = (e: React.FormEvent) => {
+  const submitRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password) {
-      toast.error('Please fill in the required fields.');
+      toast.error('Please fill in all required fields.');
       return;
     }
     if (form.password.length < 6) {
@@ -86,20 +58,12 @@ export default function Register() {
       toast.error('Passwords do not match.');
       return;
     }
-    setStep(2);
-  };
 
-  const submitRegistration = async (e: React.FormEvent) => {
-    e.preventDefault();
     setBusy(true);
     try {
-      await registerStudent({
-        ...form,
-        skills: selectedSkills.join(', '),
-      });
-      setOtpSent(true);
+      await registerStudent(form);
       toast.success('Account created! Please check your email for the OTP.');
-      setStep(3);
+      setStep(2);
       startResendCooldown();
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -144,7 +108,7 @@ export default function Register() {
     setOtpVerifying(true);
     try {
       await verifyOtp(form.email, otp);
-      toast.success('Email verified! Welcome to GDGoC GCEE! A thank you email has been sent.');
+      toast.success('Email verified! Welcome to GDGoC GCEE!');
       if (redirectUrl) {
         navigate(redirectUrl);
       } else {
@@ -192,11 +156,10 @@ export default function Register() {
       </div>
 
       {/* Step indicators */}
-      <div className="container-x -mt-6 flex max-w-xl justify-center gap-3">
+      <div className="container-x -mt-6 flex max-w-md justify-center gap-3">
         {[
           { num: 1 as Step, label: 'Your info' },
-          { num: 2 as Step, label: 'Interests' },
-          { num: 3 as Step, label: 'Verify email' },
+          { num: 2 as Step, label: 'Verify email' },
         ].map(({ num, label }) => (
           <div
             key={num}
@@ -220,10 +183,10 @@ export default function Register() {
       <div className="container-x mx-auto mb-20 mt-6 max-w-xl">
         <div className="card p-7 sm:p-9">
           {step === 1 && (
-            <form onSubmit={goToStep2} className="space-y-5">
+            <form onSubmit={submitRegistration} className="space-y-5">
               <div>
                 <h2 className="font-display text-xl font-bold text-navy-900">Basic information</h2>
-                <p className="mt-1 text-sm text-ink-muted">Tell us a little about yourself.</p>
+                <p className="mt-1 text-sm text-ink-muted">Fill in your student details to join.</p>
               </div>
 
               <div>
@@ -237,6 +200,7 @@ export default function Register() {
                   onChange={(e) => update('name', e.target.value)}
                   placeholder="Your full name"
                   autoComplete="name"
+                  required
                 />
               </div>
 
@@ -253,6 +217,7 @@ export default function Register() {
                     onChange={(e) => update('email', e.target.value)}
                     placeholder="you@example.com"
                     autoComplete="email"
+                    required
                   />
                 </div>
                 <div>
@@ -339,6 +304,7 @@ export default function Register() {
                       onChange={(e) => update('password', e.target.value)}
                       placeholder="Min 6 characters"
                       autoComplete="new-password"
+                      required
                     />
                     <button
                       type="button"
@@ -362,77 +328,23 @@ export default function Register() {
                     onChange={(e) => update('confirmPassword', e.target.value)}
                     placeholder="Repeat password"
                     autoComplete="new-password"
+                    required
                   />
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary w-full !py-3">
-                Continue
-                <ArrowRight className="h-4 w-4" />
+              <button
+                type="submit"
+                disabled={busy}
+                className="btn-primary w-full !py-3 font-semibold text-sm"
+              >
+                {busy ? <ButtonSpinner /> : <UserPlus className="h-4 w-4" />}
+                {busy ? 'Creating account…' : 'Join Community'}
               </button>
             </form>
           )}
 
           {step === 2 && (
-            <form onSubmit={submitRegistration} className="space-y-6">
-              <div>
-                <h2 className="font-display text-xl font-bold text-navy-900">Your interests</h2>
-                <p className="mt-1 text-sm text-ink-muted">
-                  Select the technologies and areas you want to explore. We'll use this to tailor events for you.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {SKILLS.map(({ icon: Icon, label, color }) => {
-                  const selected = selectedSkills.includes(label);
-                  return (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => toggleSkill(label)}
-                      className={`group flex flex-col items-center gap-2 rounded-xl border p-4 text-center text-xs font-semibold transition-all duration-200 hover:shadow-md ${
-                        selected
-                          ? `${color} ring-2 ring-offset-1 ${color.split(' ')[0].replace('text-', 'ring-')}`
-                          : 'border-navy-100 bg-white text-ink-muted hover:border-navy-200'
-                      }`}
-                    >
-                      <Icon className={`h-5 w-5 ${selected ? color.split(' ')[0] : 'text-ink-faint group-hover:text-ink-soft'}`} />
-                      {label}
-                      {selected && <CheckCircle2 className="h-3.5 w-3.5 text-g-green" />}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {selectedSkills.length > 0 && (
-                <div className="rounded-xl bg-g-blue/5 p-4">
-                  <p className="text-xs font-semibold text-g-blue">
-                    Selected: {selectedSkills.join(', ')}
-                  </p>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="btn-outline flex-1"
-                >
-                  <ArrowLeft className="h-4 w-4" /> Back
-                </button>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="btn-primary flex-1 !py-3"
-                >
-                  {busy ? <ButtonSpinner /> : <UserPlus className="h-4 w-4" />}
-                  {busy ? 'Creating account…' : 'Join Community'}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {step === 3 && (
             <form onSubmit={handleVerifyOtp} className="space-y-6">
               <div className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-g-blue/10">
@@ -464,7 +376,7 @@ export default function Register() {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(1)}
                   className="btn-outline flex-1"
                 >
                   <ArrowLeft className="h-4 w-4" /> Back
@@ -472,7 +384,7 @@ export default function Register() {
                 <button
                   type="submit"
                   disabled={otpVerifying || otp.length !== 6}
-                  className="btn-primary flex-1 !py-3"
+                  className="btn-primary flex-1 !py-3 font-semibold text-sm"
                 >
                   {otpVerifying ? <ButtonSpinner /> : <CheckCircle2 className="h-4 w-4" />}
                   {otpVerifying ? 'Verifying…' : 'Verify & Complete'}
@@ -496,7 +408,7 @@ export default function Register() {
             </form>
           )}
 
-          {step < 3 && (
+          {step === 1 && (
             <p className="mt-6 text-center text-sm text-ink-soft">
               Already have an account?{' '}
               <Link to="/login" className="font-semibold text-g-blue hover:underline">
@@ -507,7 +419,7 @@ export default function Register() {
         </div>
 
         {/* Benefits strip */}
-        {step < 3 && (
+        {step === 1 && (
           <div className="mt-6 grid grid-cols-3 gap-3 text-center text-xs">
             {[
               { emoji: '🎓', label: 'Free workshops & events' },

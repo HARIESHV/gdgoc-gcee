@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { EventModel, GoogleFormRegistration, Registration, SendingHistory } from '../models';
 import { connectDB } from '../config/db';
 import { emailIsConfigured, getEmailConfigStatus, sendEventRegistrationPDFEmail } from '../utils/email';
@@ -339,7 +340,9 @@ export async function getEventSendingHistory(req: any, res: Response) {
   try {
     await connectDB();
     const { eventId } = req.params;
-    const event = await EventModel.findOne({ eventId }).lean();
+    const event = mongoose.Types.ObjectId.isValid(eventId)
+      ? await EventModel.findById(eventId).lean()
+      : await EventModel.findOne({ eventId }).lean();
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;

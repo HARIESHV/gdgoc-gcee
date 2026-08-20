@@ -18,10 +18,10 @@ export function AdminLayout() {
 
   const navItems = [
     { label: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard, end: true },
-    { label: 'Members', to: '/admin/students', icon: Users },
+    { label: 'Students', to: '/admin/students', icon: Users },
     { label: 'Events', to: '/admin/events', icon: CalendarDays },
     { label: 'Event Registrations', to: '/admin/form-registrations', icon: ClipboardList },
-    { label: 'Team', to: '/admin/members', icon: UsersRound },
+    { label: 'Members', to: '/admin/members', icon: UsersRound },
     { label: 'Emails', to: '/admin/emails', icon: Mail },
     { label: 'Certificates', to: '/admin/certificates', icon: Award },
     { label: 'Gallery', to: '/admin/gallery', icon: Image },

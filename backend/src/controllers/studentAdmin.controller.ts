@@ -1,7 +1,14 @@
 import type { Response } from 'express';
+import mongoose from 'mongoose';
 import { Student, Registration, Attendance } from '../models';
 import { publicStudent } from './auth.controller';
 import { connectDB } from '../config/db';
+
+function badStudentId(req: any, res: Response): boolean {
+  if (mongoose.Types.ObjectId.isValid(req.params.id)) return false;
+  res.status(404).json({ success: false, message: 'Student not found.' });
+  return true;
+}
 
 // GET /api/admin/students
 export async function adminListStudents(req: any, res: Response) {
@@ -53,6 +60,7 @@ export async function adminListStudents(req: any, res: Response) {
 export async function adminGetStudent(req: any, res: Response) {
   try {
     await connectDB();
+    if (badStudentId(req, res)) return;
     const student = await Student.findById(req.params.id).lean();
     if (!student) {
       res.status(404).json({ success: false, message: 'Student not found.' });
@@ -72,6 +80,7 @@ export async function adminGetStudent(req: any, res: Response) {
 export async function adminToggleStudentStatus(req: any, res: Response) {
   try {
     await connectDB();
+    if (badStudentId(req, res)) return;
     const student = await Student.findById(req.params.id);
     if (!student) {
       res.status(404).json({ success: false, message: 'Student not found.' });
@@ -106,6 +115,7 @@ export async function adminUpdateStudentPoints(req: any, res: Response) {
 export async function adminDeleteStudent(req: any, res: Response) {
   try {
     await connectDB();
+    if (badStudentId(req, res)) return;
     await Student.findByIdAndDelete(req.params.id);
     await Attendance.deleteMany({ studentId: req.params.id });
     await Registration.deleteMany({ studentId: req.params.id });

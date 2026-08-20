@@ -90,3 +90,40 @@ export function isDateBefore(a: string, b: string): boolean {
 export function isDateAfter(a: string, b: string): boolean {
   return normalizeDate(a) > normalizeDate(b);
 }
+
+/**
+ * Convert a time string to 12-hour display, e.g. "09:00" -> "9:00 AM",
+ * "17:00" -> "5:00 PM", and leaves already-formatted times like "10:00 AM" untouched.
+ */
+export function formatTime12h(timeStr: string): string {
+  const t = (timeStr || '').trim();
+  if (!t) return '';
+
+  const explicit = t.match(/^(\d{1,2})[:.](\d{2})\s*(AM|PM)$/i);
+  if (explicit) {
+    const h = parseInt(explicit[1], 10);
+    const min = explicit[2];
+    const period = explicit[3].toUpperCase();
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${min} ${period}`;
+  }
+
+  const numeric = t.match(/^(\d{1,2})[:.](\d{2})(:\d{2})?$/);
+  if (numeric) {
+    const h = parseInt(numeric[1], 10);
+    const min = numeric[2];
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${min} ${period}`;
+  }
+
+  return t;
+}
+
+/** Format a start/end time pair for emails and UI, e.g. "10:00 AM" or "10:00 AM - 5:00 PM". */
+export function formatTimeRange(start?: string, end?: string): string {
+  const s = start ? formatTime12h(start) : '';
+  const e = end ? formatTime12h(end) : '';
+  if (s && e) return `${s} - ${e}`;
+  return s || e || 'TBA';
+}

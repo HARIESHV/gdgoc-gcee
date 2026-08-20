@@ -1,7 +1,22 @@
 import dotenv from 'dotenv';
 import dns from 'node:dns';
+import fs from 'node:fs';
+import path from 'node:path';
 
 dotenv.config();
+
+// Local development convenience: this repo keeps credentials in the root
+// `.env.local` (gitignored). dotenv never overrides already-set variables,
+// so this only fills gaps when the backend runs from its own directory.
+for (const candidate of [
+  path.resolve(process.cwd(), '.env.local'),
+  path.resolve(process.cwd(), '..', '.env.local'),
+]) {
+  if (fs.existsSync(candidate)) {
+    dotenv.config({ path: candidate });
+    break;
+  }
+}
 
 // Workaround for environments whose system DNS server refuses SRV queries
 // (Node's c-ares resolver gets ECONNREFUSED -> Mongo "querySrv ECONNREFUSED").
@@ -37,6 +52,9 @@ export const env = {
     user: process.env.GMAIL_USER || '',
     appPassword: process.env.GMAIL_APP_PASSWORD || '',
   },
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  resendFromEmail: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+  resendFromName: process.env.RESEND_FROM_NAME || 'GDGoC GCEE',
   googleFormWebhookSecret: process.env.GOOGLE_FORM_WEBHOOK_SECRET || '',
 };
 

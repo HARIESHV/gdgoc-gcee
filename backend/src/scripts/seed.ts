@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
-import { connectDB } from '../config/db';
 import { env } from '../config/env';
+import { connectDB } from '../config/db';
 import { todayIST } from '../utils/dates';
 import { nextEventId, nextCertificateId } from '../utils/ids';
 import { generateQRCodeDataURL } from '../utils/qr';

@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { connectDB, isConnected } from './config/db';
 
 import authRoutes from './routes/auth.routes';
+import registerRoutes from './routes/register.routes';
 import adminAuthRoutes from './routes/adminAuth.routes';
 import eventRoutes from './routes/event.routes';
 import attendanceRoutes from './routes/attendance.routes';
@@ -96,6 +97,7 @@ export function createApp(): Express {
   });
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/register', registerRoutes);
   app.use('/api/admin/auth', adminAuthRoutes);
   app.use('/api/events', eventRoutes);
   app.use('/api/attendance', attendanceRoutes);

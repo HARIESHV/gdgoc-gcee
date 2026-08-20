@@ -1,24 +1,38 @@
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 import { env, CLUB } from '../config/env';
 import { formatFullDate } from '../utils/dates';
 
 const FROM_NAME = 'GDGoC GCEE';
 
-/** True when Gmail SMTP credentials are configured on the server. */
+let resendInstance: Resend | null = null;
+function getResendInstance(): Resend | null {
+  if (env.resendApiKey) {
+    if (!resendInstance) {
+      resendInstance = new Resend(env.resendApiKey);
+    }
+    return resendInstance;
+  }
+  return null;
+}
+
+/** True when either Resend API Key or Gmail SMTP credentials are configured on the server. */
 export function emailIsConfigured(): boolean {
-  return Boolean(env.gmail.user && env.gmail.appPassword);
+  return Boolean(env.resendApiKey || (env.gmail.user && env.gmail.appPassword));
 }
 
 /** Public config status — never includes secrets, safe to return to the browser/admin UI. */
 export function getEmailConfigStatus() {
   return {
     configured: emailIsConfigured(),
+    provider: env.resendApiKey ? 'resend' : env.gmail.user ? 'gmail' : 'none',
+    hasApiKey: Boolean(env.resendApiKey),
     hasUser: Boolean(env.gmail.user),
-    hasFromEmail: Boolean(env.gmail.user),
+    hasFromEmail: Boolean(env.resendFromEmail || env.gmail.user),
     hasAppPassword: Boolean(env.gmail.appPassword),
     adminEmail: env.adminEmail || 'gdgocgcee@gmail.com',
-    fromEmail: env.gmail.user || '',
+    fromEmail: env.resendFromEmail || env.gmail.user || 'onboarding@resend.dev',
   };
 }
 
@@ -26,8 +40,8 @@ let transporter: Transporter | null = null;
 
 export function getTransport(): Transporter {
   if (transporter) return transporter;
-  if (!emailIsConfigured()) {
-    throw new Error('Email service is not configured.');
+  if (!env.gmail.user || !env.gmail.appPassword) {
+    throw new Error('Gmail SMTP is not configured.');
   }
   transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -40,6 +54,9 @@ export function getTransport(): Transporter {
 }
 
 function getFromAddress(): string {
+  if (env.resendFromEmail) {
+    return `${env.resendFromName || FROM_NAME} <${env.resendFromEmail}>`;
+  }
   return `${FROM_NAME} <${env.gmail.user || 'gdgocgcee@gmail.com'}>`;
 }
 
@@ -63,28 +80,72 @@ export interface SendMailOptions {
 
 export type SendMailResult = { success: boolean; id?: string; error?: string };
 
-/** Send one email via Gmail SMTP. Returns a result object — never throws for the caller. */
+/** Send one email via Resend (or fallback to Gmail SMTP). Returns a result object. */
 export async function sendMail(opts: SendMailOptions): Promise<SendMailResult> {
   if (!emailIsConfigured()) {
-    console.error('[mailer] Email service is not configured (GMAIL_USER / GMAIL_APP_PASSWORD missing).');
+    console.error('[mailer] Email service is not configured (missing RESEND_API_KEY and GMAIL_USER/GMAIL_APP_PASSWORD).');
     return { success: false, error: 'Email service is not configured.' };
   }
-  try {
-    const transport = getTransport();
-    const info = await transport.sendMail({
-      from: getFromAddress(),
-      to: opts.to,
-      replyTo: opts.replyTo,
-      subject: opts.subject,
-      html: opts.html,
-      text: opts.text,
-      attachments: opts.attachments,
-    });
-    return { success: true, id: info.messageId };
-  } catch (err: any) {
-    console.error('[mailer] sendMail error:', err.message);
-    return { success: false, error: err.message };
+
+  // 1. Send via Resend if RESEND_API_KEY is available
+  if (env.resendApiKey) {
+    try {
+      const resend = getResendInstance()!;
+      const from = getFromAddress();
+
+      const payload: any = {
+        from,
+        to: opts.to,
+        subject: opts.subject,
+        html: opts.html,
+      };
+      if (opts.text) payload.text = opts.text;
+      if (opts.replyTo) payload.reply_to = opts.replyTo;
+      if (opts.attachments && opts.attachments.length > 0) {
+        payload.attachments = opts.attachments.map((a) => ({
+          filename: a.filename,
+          content: Buffer.isBuffer(a.content) ? a.content : Buffer.from(a.content),
+        }));
+      }
+
+      const res = await resend.emails.send(payload);
+      if (res.error) {
+        console.error('[mailer] Resend API error:', res.error);
+        if (!env.gmail.user || !env.gmail.appPassword) {
+          return { success: false, error: res.error.message || 'Resend delivery failed' };
+        }
+      } else {
+        return { success: true, id: res.data?.id };
+      }
+    } catch (err: any) {
+      console.error('[mailer] Resend error:', err.message);
+      if (!env.gmail.user || !env.gmail.appPassword) {
+        return { success: false, error: err.message };
+      }
+    }
   }
+
+  // 2. Fallback to Gmail SMTP if configured
+  if (env.gmail.user && env.gmail.appPassword) {
+    try {
+      const transport = getTransport();
+      const info = await transport.sendMail({
+        from: getFromAddress(),
+        to: opts.to,
+        replyTo: opts.replyTo,
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
+        attachments: opts.attachments,
+      });
+      return { success: true, id: info.messageId };
+    } catch (err: any) {
+      console.error('[mailer] Gmail SMTP error:', err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  return { success: false, error: 'Email service failed to deliver message.' };
 }
 
 function baseHtml(content: string): string {

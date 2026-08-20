@@ -7,7 +7,7 @@ import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StatusBadge } from '../../components/ui/Badge';
 import { api, getErrorMessage } from '../../lib/api';
-import { formatHumanDate, cn } from '../../lib/utils';
+import { formatHumanDate, cn, downloadBlob } from '../../lib/utils';
 import type { GEvent } from '../../types';
 
 export default function AdminEvents() {
@@ -53,6 +53,7 @@ export default function AdminEvents() {
 
   const totalUpcoming = events.filter((e) => e.status === 'UPCOMING' || e.status === 'ONGOING').length;
   const totalRegistrations = events.reduce((acc, e) => acc + (e.registeredCount || 0) + (e.manualRegistrationCount || 0), 0);
+  const filtered = filter === 'ALL' ? events : events.filter((e) => e.status === filter);
 
   return (
     <div className="space-y-6">
