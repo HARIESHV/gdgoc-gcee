@@ -135,7 +135,6 @@ export default function Dashboard() {
               ['Roll number', student?.rollNumber || '—'],
               ['Department', student?.department || '—'],
               ['Year', student?.year || '—'],
-              ['Points', String(student?.points || 0)],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between">
                 <dt className="text-ink-muted">{label}</dt>
