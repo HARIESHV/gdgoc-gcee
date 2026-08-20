@@ -103,15 +103,14 @@ export async function register(req: AuthRequest, res: Response) {
       existingEmail.otpExpiresAt = otpExpiresAt;
       await existingEmail.save();
 
-      // Send OTP email and await result
-      const sendRes = await sendOtpEmail({ to: cleanEmail, studentName: existingEmail.name, otp });
-      if (!sendRes.success) {
-        console.error(`[auth] OTP email failed for ${cleanEmail}:`, sendRes.error);
-        res.status(500).json({
-          success: false,
-          message: 'Unable to send OTP email. Please check your email address and try again.',
-        });
-        return;
+      // Send OTP email
+      try {
+        const sendRes = await sendOtpEmail({ to: cleanEmail, studentName: existingEmail.name, otp });
+        if (!sendRes.success) {
+          console.warn(`[auth] Warning: OTP email could not be delivered to ${cleanEmail}: ${sendRes.error}`);
+        }
+      } catch (err: any) {
+        console.error(`[auth] OTP email error for ${cleanEmail}:`, err.message);
       }
 
       const token = signToken({ id: String(existingEmail._id), role: 'student' });
@@ -160,15 +159,14 @@ export async function register(req: AuthRequest, res: Response) {
       otpExpiresAt,
     });
 
-    // Send OTP email and await result
-    const sendRes = await sendOtpEmail({ to: cleanEmail, studentName: student.name, otp });
-    if (!sendRes.success) {
-      console.error(`[auth] OTP email failed for ${cleanEmail}:`, sendRes.error);
-      res.status(500).json({
-        success: false,
-        message: 'Unable to send OTP email. Please check your email address and try again.',
-      });
-      return;
+    // Send OTP email
+    try {
+      const sendRes = await sendOtpEmail({ to: cleanEmail, studentName: student.name, otp });
+      if (!sendRes.success) {
+        console.warn(`[auth] Warning: OTP email could not be delivered to ${cleanEmail}: ${sendRes.error}`);
+      }
+    } catch (err: any) {
+      console.error(`[auth] OTP email failed for ${cleanEmail}:`, err.message);
     }
 
     const token = signToken({ id: String(student._id), role: 'student' });
@@ -221,14 +219,13 @@ export async function sendOtp(req: AuthRequest, res: Response) {
     student.otpExpiresAt = otpExpiresAt;
     await student.save();
 
-    const result = await sendOtpEmail({ to: student.email, studentName: student.name, otp });
-    if (!result.success) {
-      console.error(`[auth] Resend OTP email failed for ${cleanEmail}:`, result.error);
-      res.status(500).json({
-        success: false,
-        message: 'Unable to send OTP email. Please try again.',
-      });
-      return;
+    try {
+      const result = await sendOtpEmail({ to: student.email, studentName: student.name, otp });
+      if (!result.success) {
+        console.warn(`[auth] Warning: Resend OTP email failed for ${cleanEmail}: ${result.error}`);
+      }
+    } catch (err: any) {
+      console.error(`[auth] Resend OTP error for ${cleanEmail}:`, err.message);
     }
 
     res.status(200).json({
