@@ -45,70 +45,6 @@ function drawOrnamentalRule(doc: PDFKit.PDFDocument, cx: number, y: number, half
   doc.restore();
 }
 
-function drawMedalBadge(doc: PDFKit.PDFDocument, cx: number, cy: number) {
-  doc.save();
-  doc.circle(cx, cy, 44).lineWidth(3).stroke(GOLD);
-  doc.circle(cx, cy, 40).fill(NAVY);
-  doc.circle(cx, cy, 40).lineWidth(1.5).stroke(LGOLD);
-  doc.circle(cx, cy, 34).lineWidth(0.8).stroke(LGOLD);
-
-  for (let i = 0; i < 12; i++) {
-    const angle = (Math.PI * 2 * i) / 12;
-    const r = 37;
-    const sx = cx + r * Math.cos(angle);
-    const sy = cy + r * Math.sin(angle);
-    doc.circle(sx, sy, 1.2).fill(LGOLD);
-  }
-
-  doc.font('Helvetica-Bold').fontSize(7).fillColor(WHITE);
-  doc.text('BUILD', cx - 40, cy - 18, { width: 80, align: 'center' });
-  doc.text('CONNECT', cx - 40, cy - 7, { width: 80, align: 'center' });
-  doc.text('INSPIRE', cx - 40, cy + 4, { width: 80, align: 'center' });
-
-  doc.font('Helvetica').fontSize(6).fillColor(LGOLD);
-  doc.text('★  ★  ★', cx - 40, cy + 14, { width: 80, align: 'center' });
-
-  const ribW = 22;
-  const ribTop = cy + 44;
-  const ribH = 30;
-
-  doc.save();
-  doc.moveTo(cx - ribW, ribTop).lineTo(cx - 4, ribTop).lineTo(cx - 4, ribTop + ribH).lineTo(cx - ribW, ribTop + ribH - 8).lineTo(cx - ribW, ribTop).closePath().fill(BLUE);
-  doc.restore();
-
-  doc.save();
-  doc.moveTo(cx + 4, ribTop).lineTo(cx + ribW, ribTop).lineTo(cx + ribW, ribTop + ribH - 8).lineTo(cx + 4, ribTop + ribH).lineTo(cx + 4, ribTop).closePath().fill(BLUE);
-  doc.restore();
-
-  doc.restore();
-}
-
-function drawBuildingWatermark(doc: PDFKit.PDFDocument, x: number, y: number, w: number, h: number) {
-  doc.save();
-  doc.opacity(0.06);
-  doc.strokeColor(NAVY).fillColor(NAVY);
-
-  const bx = x + w * 0.4;
-  const by = y + h * 0.05;
-
-  doc.rect(bx - 30, by + h * 0.2, 60, h * 0.7).lineWidth(1.5).stroke();
-  doc.moveTo(bx - 35, by + h * 0.2).lineTo(bx, by).lineTo(bx + 35, by + h * 0.2).stroke();
-  doc.circle(bx, by + h * 0.35, 18).stroke();
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      doc.rect(bx - 25 + col * 20, by + h * 0.45 + row * 20, 10, 12).stroke();
-    }
-  }
-  doc.rect(bx - 10, by + h * 0.78, 20, 20).stroke();
-
-  doc.rect(bx - 60, by + h * 0.4, 20, h * 0.5).stroke();
-  doc.rect(bx + 40, by + h * 0.4, 20, h * 0.5).stroke();
-  doc.moveTo(bx - 60, by + h * 0.4).lineTo(bx - 50, by + h * 0.25).lineTo(bx - 40, by + h * 0.4).stroke();
-  doc.moveTo(bx + 40, by + h * 0.4).lineTo(bx + 50, by + h * 0.25).lineTo(bx + 60, by + h * 0.4).stroke();
-
-  doc.restore();
-}
-
 /**
  * Professional A4 landscape certificate PDF using official GDGoC GCEE certificate design.
  */
@@ -172,100 +108,84 @@ export async function generateCertificatePDF(data: CertificatePdfData): Promise<
     doc.text(data.certificateId.toUpperCase(), 355, 562, { width: 300, align: 'left', characterSpacing: 0.5 });
 
   } else {
-    // ── Fallback Procedural Background ────────────────────────────
+    // ── Clean & Elegant Minimalist PDF Generator ──────────────────
     doc.rect(0, 0, W, H).fill(WHITE);
 
-    doc.save();
-    doc.opacity(0.08);
-    doc.moveTo(W - 120, 0).lineTo(W, 0).lineTo(W, 120).closePath().fill(NAVY);
-    doc.moveTo(0, H - 120).lineTo(120, H).lineTo(0, H).closePath().fill(NAVY);
-    doc.restore();
+    // Perimeter Thin Navy & Gold Borders
+    doc.rect(20, 20, W - 40, H - 40).lineWidth(1.5).stroke(NAVY);
+    doc.rect(25, 25, W - 50, H - 50).lineWidth(0.8).stroke(GOLD);
 
-    doc.rect(18, 18, W - 36, H - 36).lineWidth(2.5).stroke(GOLD);
-    doc.rect(24, 24, W - 48, H - 48).lineWidth(1).stroke(NAVY);
-    doc.rect(28, 28, W - 56, H - 56).lineWidth(0.5).stroke(GOLD);
+    drawCorner(doc, 20, 20, 1, 1);
+    drawCorner(doc, W - 20, 20, -1, 1);
+    drawCorner(doc, 20, H - 20, 1, -1);
+    drawCorner(doc, W - 20, H - 20, -1, -1);
 
-    drawCorner(doc, 18, 18, 1, 1);
-    drawCorner(doc, W - 18, 18, -1, 1);
-    drawCorner(doc, 18, H - 18, 1, -1);
-    drawCorner(doc, W - 18, H - 18, -1, -1);
+    // Header Top Line
+    doc.moveTo(40, 75).lineTo(W - 40, 75).lineWidth(0.8).stroke(LGRAY);
 
-    doc.moveTo(40, 80).lineTo(W - 40, 80).lineWidth(1).stroke(GOLD);
+    // Top Left Logo Text: GDGoC GCEE
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('Google Developer Groups', 45, 36);
+    doc.font('Helvetica').fontSize(9.5).fillColor(BLUE).text('on Campus', 45, 49);
+    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(GOLD).text('GDGoC GCEE', 45, 61);
 
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY).text('Google Developer Groups', 50, 38);
-    doc.font('Helvetica').fontSize(9).fillColor(BLUE).text('on Campus', 50, 51);
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(GOLD).text('GDGoC GCEE', 50, 63);
+    // Top Right Logo Text: Government College of Engineering, Erode
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('GOVERNMENT COLLEGE', W - 245, 36, { width: 200, align: 'right' });
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('OF ENGINEERING, ERODE', W - 245, 49, { width: 200, align: 'right' });
+    doc.font('Helvetica').fontSize(7.5).fillColor(GOLD).text('LEARN  •  BUILD  •  IMPACT', W - 245, 62, { width: 200, align: 'right' });
 
-    const sealX = cx;
-    const sealY = 55;
-    doc.circle(sealX, sealY, 26).lineWidth(1.5).stroke(NAVY);
-    doc.circle(sealX, sealY, 22).lineWidth(0.5).stroke(GOLD);
-    doc.font('Helvetica-Bold').fontSize(5.5).fillColor(NAVY);
-    doc.text('GCEE', sealX - 20, sealY - 8, { width: 40, align: 'center' });
-    doc.font('Helvetica').fontSize(4.5).fillColor(GRAY);
-    doc.text('KNOWLEDGE IS POWER', sealX - 20, sealY + 2, { width: 40, align: 'center' });
+    // Center Headings
+    doc.font('Helvetica-Bold').fontSize(46).fillColor(NAVY).text('CERTIFICATE', 0, 105, { align: 'center', width: W, characterSpacing: 2 });
+    doc.font('Helvetica-Bold').fontSize(14).fillColor(GOLD).text('OF  PARTICIPATION', 0, 158, { align: 'center', width: W, characterSpacing: 4 });
 
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY).text('GOVERNMENT COLLEGE', W - 240, 34, { width: 200, align: 'right' });
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY).text('OF ENGINEERING, ERODE', W - 240, 47, { width: 200, align: 'right' });
-    doc.font('Helvetica').fontSize(7.5).fillColor(GOLD).text('LEARN  •  BUILD  •  IMPACT', W - 240, 63, { width: 200, align: 'right' });
+    drawOrnamentalRule(doc, cx, 185, 140);
 
-    drawBuildingWatermark(doc, cx + 100, 85, 280, 380);
-    drawMedalBadge(doc, 100, 360);
+    // Presenter line
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(GRAY);
+    doc.text('THIS IS PROUDLY PRESENTED TO', 0, 198, { align: 'center', width: W, characterSpacing: 2 });
 
-    doc.font('Helvetica-Bold').fontSize(52).fillColor(NAVY).text('CERTIFICATE', 0, 90, { align: 'center', width: W });
-    doc.moveTo(cx - 80, 148).lineTo(cx + 80, 148).lineWidth(1).stroke(GOLD);
-    drawDiamond(doc, cx - 85, 148, 4);
-    drawDiamond(doc, cx + 85, 148, 4);
-
-    doc.font('Helvetica').fontSize(16).fillColor(BLUE);
-    doc.text('OF  PARTICIPATION', 0, 156, { align: 'center', width: W, characterSpacing: 4 });
-    drawOrnamentalRule(doc, cx, 185, 180);
-
-    doc.font('Helvetica').fontSize(10).fillColor(GRAY);
-    doc.text('THIS IS PROUDLY PRESENTED TO', 0, 193, { align: 'center', width: W, characterSpacing: 2 });
-
-    drawDiamond(doc, cx, 215, 4);
+    // Student Name (Prominent & Elegant Script / Oblique)
     const nameSize = data.studentName.length > 22 ? 34 : data.studentName.length > 16 ? 38 : 44;
     doc.font('Helvetica-BoldOblique').fontSize(nameSize).fillColor(NAVY);
-    doc.text(data.studentName, 120, 220, { align: 'center', width: W - 240 });
+    doc.text(data.studentName, 100, 222, { align: 'center', width: W - 200 });
 
-    const nameBottom = 220 + nameSize + 6;
-    doc.moveTo(cx - 140, nameBottom).lineTo(cx + 140, nameBottom).lineWidth(1.2).stroke(GOLD);
-    drawDiamond(doc, cx, nameBottom + 6, 4);
+    const nameBottom = 222 + nameSize + 6;
+    doc.moveTo(cx - 120, nameBottom).lineTo(cx + 120, nameBottom).lineWidth(1).stroke(GOLD);
 
-    doc.font('Helvetica').fontSize(10).fillColor(GRAY);
-    doc.text('for actively participating in the event', 0, nameBottom + 16, { align: 'center', width: W });
+    // Event Info
+    doc.font('Helvetica').fontSize(10.5).fillColor(GRAY);
+    doc.text('for actively participating in the event', 0, nameBottom + 12, { align: 'center', width: W });
 
-    const evSize = data.eventName.length > 40 ? 13 : data.eventName.length > 28 ? 15 : 17;
+    const evSize = data.eventName.length > 40 ? 14 : data.eventName.length > 28 ? 16 : 18;
     doc.font('Helvetica-Bold').fontSize(evSize).fillColor(NAVY);
-    doc.text(data.eventName, 120, nameBottom + 30, { align: 'center', width: W - 240 });
+    doc.text(data.eventName, 100, nameBottom + 28, { align: 'center', width: W - 200 });
 
     doc.font('Helvetica').fontSize(10).fillColor(GRAY);
-    doc.text('organized by GDGoC GCEE', 0, nameBottom + 50, { align: 'center', width: W });
-
-    drawOrnamentalRule(doc, cx, nameBottom + 68, 100);
+    doc.text('organized by GDGoC GCEE', 0, nameBottom + 48, { align: 'center', width: W });
 
     const formattedDate = formatFullDate(data.eventDate);
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(NAVY);
-    doc.text(`📅  ${formattedDate}`, 0, nameBottom + 78, { align: 'center', width: W });
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY);
+    doc.text(`📅  ${formattedDate}`, 0, nameBottom + 66, { align: 'center', width: W });
 
-    const qrX = W - 100;
-    const qrY = H - 105;
+    // Bottom Coordinator Signature Area
+    const sigY = H - 85;
+    doc.moveTo(70, sigY).lineTo(210, sigY).lineWidth(1).stroke(NAVY);
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(NAVY).text('Faculty / Lead Coordinator', 70, sigY + 5, { width: 140, align: 'center' });
+    doc.font('Helvetica').fontSize(8).fillColor(GRAY).text('GDGoC GCEE', 70, sigY + 17, { width: 140, align: 'center' });
+
+    // QR Code & Verification (Bottom Right)
+    const qrX = W - 110;
+    const qrY = H - 98;
     if (data.qrCodeDataURL) {
-      doc.circle(qrX, qrY, 42).lineWidth(2).stroke(GOLD);
-      doc.circle(qrX, qrY, 38).lineWidth(0.5).stroke(LGOLD);
-      doc.image(data.qrCodeDataURL, qrX - 30, qrY - 30, { width: 60, height: 60 });
+      doc.rect(qrX, qrY, 56, 56).lineWidth(1).stroke(GOLD);
+      doc.image(data.qrCodeDataURL, qrX + 3, qrY + 3, { width: 50, height: 50 });
       doc.font('Helvetica-Bold').fontSize(5.5).fillColor(NAVY);
-      doc.text('SCAN TO DOWNLOAD', qrX - 40, qrY + 46, { width: 80, align: 'center', characterSpacing: 0.5 });
-      doc.text('YOUR CERTIFICATE', qrX - 40, qrY + 54, { width: 80, align: 'center', characterSpacing: 0.5 });
+      doc.text('SCAN TO VERIFY', qrX - 10, qrY + 58, { width: 76, align: 'center' });
     }
 
-    const flourishY = H - 60;
-    doc.font('Helvetica').fontSize(14).fillColor(GOLD).text('— ❧ ❦ ❧ —', 0, flourishY - 8, { align: 'center', width: W });
-
-    doc.moveTo(40, H - 48).lineTo(W - 40, H - 48).lineWidth(0.5).stroke(LGRAY);
-    doc.font('Helvetica').fontSize(8).fillColor(NAVY);
-    doc.text(`CERTIFICATE ID:  ${data.certificateId.toUpperCase()}`, 50, H - 40, { width: W - 100, characterSpacing: 0.5 });
+    // Bottom Footer Line & Certificate ID
+    doc.moveTo(40, H - 36).lineTo(W - 40, H - 36).lineWidth(0.5).stroke(LGRAY);
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(NAVY);
+    doc.text(`CERTIFICATE ID:  ${data.certificateId.toUpperCase()}`, 45, H - 30, { width: W - 90, characterSpacing: 0.5 });
   }
 
   doc.end();

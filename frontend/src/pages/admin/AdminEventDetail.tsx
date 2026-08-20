@@ -15,7 +15,7 @@ import {
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EventForm } from '../../components/admin/EventForm';
-import { api, getErrorMessage } from '../../lib/api';
+import { api, getErrorMessage, downloadPdf } from '../../lib/api';
 import { cn, downloadBlob, formatHumanDate } from '../../lib/utils';
 import type { GEvent } from '../../types';
 
@@ -220,9 +220,9 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
               <th className="p-3">College</th>
               <th className="p-3">Dept</th>
               <th className="p-3">Year</th>
-              <th className="p-3">Phone</th>
+              <th className="p-3">Certificate</th>
               <th className="p-3">Registration Date</th>
-              <th className="p-3 text-right">Action</th>
+              <th className="p-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-black/5">
@@ -243,17 +243,38 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
                   <td className="p-3 text-xs text-black/70">{r.college || 'GCEE'}</td>
                   <td className="p-3 text-xs text-black/70">{r.department || '—'}</td>
                   <td className="p-3 text-xs text-black/70">{r.year || '—'}</td>
-                  <td className="p-3 font-mono text-xs text-black/60">{r.phone || '—'}</td>
+                  <td className="p-3">
+                    {r.hasCertificate ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-0.5 font-mono text-[10px] font-bold text-green-800">
+                        ✓ Issued
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-500">
+                        Pending
+                      </span>
+                    )}
+                  </td>
                   <td className="p-3 font-mono text-xs text-black/50">
                     {r.submittedAt ? new Date(r.submittedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
                   </td>
                   <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleDeleteRegistration(r._id)}
-                      className="font-mono text-xs text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex items-center justify-end gap-3">
+                      {r.certificateId && (
+                        <button
+                          onClick={() => downloadPdf(r.certificateId)}
+                          className="font-mono text-xs font-bold text-green-700 hover:underline flex items-center gap-1"
+                          title="Download Certificate PDF"
+                        >
+                          Certificate
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteRegistration(r._id)}
+                        className="font-mono text-xs text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

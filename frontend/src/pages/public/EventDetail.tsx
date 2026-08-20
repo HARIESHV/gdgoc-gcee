@@ -19,7 +19,7 @@ import { PageLoader } from '../../components/ui/Spinner';
 import { StatusBadge } from '../../components/ui/Badge';
 import { EventRegistrationForm } from '../../components/events/EventRegistrationForm';
 import { useAuth } from '../../context/AuthContext';
-import { api, getErrorMessage } from '../../lib/api';
+import { api, getErrorMessage, downloadPdf } from '../../lib/api';
 import { formatHumanDate, formatHumanDateTime } from '../../lib/utils';
 import type { GEvent } from '../../types';
 
@@ -29,6 +29,7 @@ export default function EventDetail() {
   const [event, setEvent] = useState<GEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [registered, setRegistered] = useState(false);
+  const [certificate, setCertificate] = useState<any>(null);
   const [totalRegistered, setTotalRegistered] = useState(0);
   const [regBusy, setRegBusy] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -41,6 +42,7 @@ export default function EventDetail() {
         if (!mounted) return;
         setEvent(res.data.event);
         setRegistered(res.data.registered || false);
+        setCertificate(res.data.certificate || null);
         setTotalRegistered(res.data.event.registeredCount || 0);
       })
       .catch((err) => toast.error(getErrorMessage(err)))
@@ -60,6 +62,9 @@ export default function EventDetail() {
       const res = await api.post(`/events/${eventId}/register`);
       toast.success(res.data.message);
       setRegistered(true);
+      if (res.data.certificateId) {
+        setCertificate({ certificateId: res.data.certificateId });
+      }
       setTotalRegistered((c) => c + 1);
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -286,8 +291,18 @@ export default function EventDetail() {
                         Event cancelled
                       </div>
                     ) : registered ? (
-                      <div className="rounded border border-green-200 bg-green-50 p-3 text-center font-mono text-sm font-bold text-green-700">
-                        ✓ You are registered!
+                      <div className="space-y-3">
+                        <div className="rounded border border-green-200 bg-green-50 p-3 text-center font-mono text-sm font-bold text-green-700">
+                          ✓ You are registered!
+                        </div>
+                        {certificate && (
+                          <button
+                            onClick={() => downloadPdf(certificate.certificateId)}
+                            className="flex w-full items-center justify-center gap-2 rounded bg-g-green px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-xs hover:bg-green-700 transition"
+                          >
+                            <Award className="h-4 w-4" /> DOWNLOAD EVENT CERTIFICATE
+                          </button>
+                        )}
                       </div>
                     ) : hasGoogleForm && isUpcoming ? (
                       <a

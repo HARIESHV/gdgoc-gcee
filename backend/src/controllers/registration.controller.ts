@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { GoogleFormRegistration, EventModel } from '../models';
+import { GoogleFormRegistration, EventModel, Student, Certificate } from '../models';
 import { connectDB } from '../config/db';
 
 function extractField(data: Record<string, any>, keys: string[]): string {
@@ -128,10 +128,13 @@ export async function listEventRegistrations(req: any, res: Response) {
       ];
     }
 
-    const [items, total] = await Promise.all([
+    const [items, total, certs] = await Promise.all([
       GoogleFormRegistration.find(filter).sort({ submittedAt: -1 }).skip(skip).limit(limit).lean(),
       GoogleFormRegistration.countDocuments(filter),
+      Certificate.find({ eventId: event._id, status: 'VALID' }).select('studentEmail certificateId').lean(),
     ]);
+
+    const certMap = new Map(certs.map((c) => [c.studentEmail.toLowerCase(), c.certificateId]));
 
     res.json({
       success: true,
@@ -146,6 +149,8 @@ export async function listEventRegistrations(req: any, res: Response) {
         college: r.college || 'GCEE',
         source: r.source,
         submittedAt: r.submittedAt,
+        hasCertificate: certMap.has(r.email.toLowerCase()),
+        certificateId: certMap.get(r.email.toLowerCase()) || null,
       })),
       total,
       page,
@@ -383,8 +388,15 @@ export async function deleteEventRegistration(req: any, res: Response) {
       return;
     }
 
+    if (deleted.email) {
+      const student = await Student.findOne({ email: deleted.email.toLowerCase() });
+      if (student) {
+        await Certificate.deleteMany({ eventId: event._id, studentId: student._id });
+      }
+    }
+
     const newCount = await GoogleFormRegistration.countDocuments({ eventId: event._id });
-    res.json({ success: true, message: 'Registration deleted successfully.', remainingCount: newCount });
+    res.json({ success: true, message: 'Registration deleted and associated certificate removed.', remainingCount: newCount });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
