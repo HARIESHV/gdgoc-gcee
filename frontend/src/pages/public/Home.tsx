@@ -500,16 +500,64 @@ export default function Home() {
 
           <Reveal delay={100}>
             <SectionHeading align="left" eyebrow="Certificates" title="Get recognized for participating" subtitle="Active members receive consolidated participation certificates for eligible events." />
-            <div className="card group overflow-hidden border border-navy-100 bg-white shadow-sm transition-all duration-300 hover:shadow-lift">
-              <div className="relative overflow-hidden bg-navy-950">
-                <img
-                  src="/certificate-sample.jpg"
-                  alt="GDGoC GCEE Certificate of Participation Preview"
-                  draggable={false}
-                  className="w-full object-cover transition-transform duration-500 group-hover:scale-102 pointer-events-none select-none"
-                />
+            <div className="card group overflow-hidden border-4 border-[#c8902a] bg-white p-6 shadow-xl transition-all duration-300 hover:shadow-lift relative">
+              {/* Header Logos */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <p className="font-display text-xs font-bold text-[#0b2559]">Google Developer Groups <span className="font-normal text-[10px] text-slate-500">on Campus</span></p>
+                  <p className="font-mono text-[11px] font-bold text-[#c8902a]">GDGoC GCEE</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-display text-[10px] font-bold text-[#0b2559]">GOVERNMENT COLLEGE OF ENGINEERING, ERODE</p>
+                  <p className="font-mono text-[9px] text-[#c8902a]">LEARN • BUILD • IMPACT</p>
+                </div>
               </div>
-              <div className="flex flex-col gap-3 p-6 sm:flex-row">
+
+              {/* Certificate Body */}
+              <div className="py-6 text-center space-y-2">
+                <h3 className="font-display text-xl font-extrabold tracking-tight text-[#0b2559]">
+                  CERTIFICATE <span className="text-xs block font-semibold text-[#c8902a] tracking-widest mt-0.5">OF PARTICIPATION</span>
+                </h3>
+
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400 pt-1">
+                  THIS IS PROUDLY PRESENTED TO
+                </p>
+
+                <p className="font-serif italic text-2xl font-bold text-[#0b2559]">
+                  Student Name
+                </p>
+
+                <p className="text-[11px] text-slate-600">
+                  for actively participating in the event
+                </p>
+
+                <p className="font-display text-sm font-bold text-[#0b2559]">
+                  AI Prompt Engineering Workshop
+                </p>
+
+                <p className="text-[11px] text-slate-500">
+                  organized by <strong>GDGoC GCEE</strong>
+                </p>
+
+                <div className="pt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-[#0b2559]">
+                  <span>📅</span> 18 August 2026
+                </div>
+              </div>
+
+              {/* Footer ID and QR Code */}
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-mono text-[#0b2559]">
+                <div>
+                  <span className="font-bold">CERTIFICATE ID:</span> GDGCEE-20260818-A123
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-bold uppercase text-slate-400 text-right leading-tight">Scan to<br/>verify</span>
+                  <div className="h-8 w-8 rounded border border-[#c8902a] bg-slate-900 flex items-center justify-center text-[8px] font-bold text-white">
+                    QR
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row pt-2 border-t border-slate-100">
                 <Link to="/register" className="btn-primary flex-1">
                   Join to earn yours
                   <Ticket className="h-4 w-4" />
