@@ -13,4 +13,5 @@ export { SendingHistory } from './SendingHistory';
 export { BulkEmailLog } from './BulkEmailLog';
 export { Feedback } from './Feedback';
 export { SiteSettings } from './SiteSettings';
+export { EmailLog } from './EmailLog';
 

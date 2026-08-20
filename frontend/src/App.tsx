@@ -9,7 +9,6 @@ import About from './pages/public/About';
 import Events from './pages/public/Events';
 import EventDetail from './pages/public/EventDetail';
 import Members from './pages/public/Members';
-import Team from './pages/public/Team';
 import Gallery from './pages/public/Gallery';
 import Resources from './pages/public/Resources';
 import Contact from './pages/public/Contact';
@@ -41,7 +40,7 @@ import AdminGallery from './pages/admin/AdminGallery';
 import AdminResources from './pages/admin/AdminResources';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminFormRegistrations from './pages/admin/AdminFormRegistrations';
-import AdminBulkEmail from './pages/admin/AdminBulkEmail';
+import AdminEmailHistory from './pages/admin/AdminEmailHistory';
 
 function RequireStudent({ children }: { children: React.ReactNode }) {
   const { student, loading } = useAuth();
@@ -78,7 +77,7 @@ export default function App() {
         <Route path="/events" element={<Events />} />
         <Route path="/events/:eventId" element={<EventDetail />} />
         <Route path="/members" element={<Members />} />
-        <Route path="/team" element={<Team />} />
+        <Route path="/team" element={<Navigate to="/members" replace />} />
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/contact" element={<Contact />} />
@@ -131,6 +130,7 @@ export default function App() {
         <Route path="gallery" element={<AdminGallery />} />
         <Route path="resources" element={<AdminResources />} />
         <Route path="form-registrations" element={<AdminFormRegistrations />} />
+        <Route path="email-history" element={<AdminEmailHistory />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 

@@ -10,7 +10,18 @@ import { api, getErrorMessage } from '../../lib/api';
 import { TEAMS, DEPARTMENTS, YEARS } from '../../lib/utils';
 import type { Member } from '../../types';
 
-const emptyForm = { name: '', team: 'Community Members', role: 'Member', department: '', year: '', photo: '', github: '', linkedin: '', instagram: '', twitter: '' };
+const COORDINATOR_ROLES = [
+  'Lead Coordinator',
+  'Technical Coordinator',
+  'Event Coordinator',
+  'Design Coordinator',
+  'Content Coordinator',
+  'Social Media Coordinator',
+  'Marketing Coordinator',
+  'Other Coordinator',
+];
+
+const emptyForm = { name: '', team: 'Community Members', role: 'Lead Coordinator', customRole: '', department: '', year: '', photo: '', github: '', linkedin: '', instagram: '', twitter: '' };
 
 export default function AdminMembers() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -44,10 +55,12 @@ export default function AdminMembers() {
 
   const openEdit = (m: Member) => {
     setEditing(m);
+    const isStandardRole = COORDINATOR_ROLES.includes(m.role);
     setForm({
       name: m.name,
       team: m.team,
-      role: m.role,
+      role: isStandardRole ? m.role : 'Other Coordinator',
+      customRole: isStandardRole ? '' : m.role,
       department: m.department,
       year: m.year,
       photo: m.photo,
@@ -72,11 +85,16 @@ export default function AdminMembers() {
       toast.error('Name is required.');
       return;
     }
+
+    const finalRole = form.role === 'Other Coordinator' && form.customRole.trim()
+      ? form.customRole.trim()
+      : form.role;
+
     setBusy(true);
     const payload = {
       name: form.name,
       team: form.team,
-      role: form.role,
+      role: finalRole,
       department: form.department,
       year: form.year,
       photo: form.photo,
@@ -112,8 +130,8 @@ export default function AdminMembers() {
   return (
     <div className="w-full space-y-8">
       <PageHeader
-        title="Members"
-        subtitle={`${members.length} team members`}
+        title="Team Members & Roles"
+        subtitle={`${members.length} team members registered`}
         actions={
           <button onClick={openCreate} className="btn-primary">
             <Plus className="h-4 w-4" /> Add member
@@ -137,7 +155,6 @@ export default function AdminMembers() {
                 {g.team} <span className="text-sm font-normal text-ink-muted">({g.members.length})</span>
               </h2>
 
-              {/* Responsive Grid: 1 col on mobile, 2 on sm, 3 on md/lg, 4 on xl */}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
                 {g.members.map((m) => (
                   <div
@@ -145,7 +162,6 @@ export default function AdminMembers() {
                     className="card group flex flex-col justify-between overflow-hidden rounded-2xl border border-navy-100 bg-white shadow-sm transition-all duration-300 hover:shadow-lift"
                   >
                     <div>
-                      {/* Aspect-[4/5] Portrait Photo Area */}
                       <div className="relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-br from-navy-900 to-navy-950 flex items-center justify-center border-b border-navy-50">
                         {m.photo ? (
                           <img
@@ -161,17 +177,17 @@ export default function AdminMembers() {
                         )}
                       </div>
 
-                      {/* Info Area */}
-                      <div className="p-4 space-y-0.5">
+                      <div className="p-4 space-y-1">
                         <p className="truncate text-sm font-bold text-navy-900 sm:text-base">{m.name}</p>
-                        <p className="truncate text-xs font-medium text-g-blue">{m.role}</p>
+                        <span className="inline-block rounded-full bg-g-blue/10 px-2 py-0.5 font-mono text-xs font-bold text-g-blue truncate max-w-full">
+                          {m.role || 'Member'}
+                        </span>
                         <p className="truncate text-[11px] text-ink-faint">
                           {[m.department, m.year].filter(Boolean).join(' · ') || 'GCEE'}
                         </p>
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="px-4 pb-4">
                       <div className="flex items-center justify-end gap-1 border-t border-slate-100 pt-2.5">
                         <button
@@ -199,65 +215,90 @@ export default function AdminMembers() {
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit member' : 'Add member'}>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="label">Name</label>
-            <input className="input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+            <label className="label">Name <span className="text-g-red">*</span></label>
+            <input className="input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Student Full Name" />
           </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="label">Team</label>
+              <label className="label">Team / Category</label>
               <select className="input" value={form.team} onChange={(e) => setForm((f) => ({ ...f, team: e.target.value }))}>
                 {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+
             <div>
-              <label className="label">Role</label>
-              <input className="input" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} placeholder="e.g. Head, Coordinator" />
+              <label className="label">Coordinator Role</label>
+              <select className="input font-semibold" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}>
+                {COORDINATOR_ROLES.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
             </div>
+          </div>
+
+          {form.role === 'Other Coordinator' && (
+            <div>
+              <label className="label">Custom Role Title</label>
+              <input
+                className="input"
+                value={form.customRole}
+                onChange={(e) => setForm((f) => ({ ...f, customRole: e.target.value }))}
+                placeholder="e.g. Media Lead, Logistics Coordinator"
+              />
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">Department</label>
               <select className="input" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}>
-                <option value="">Select</option>
+                <option value="">Select Department</option>
                 {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
+
             <div>
-              <label className="label">Year</label>
+              <label className="label">Year / Class</label>
               <select className="input" value={form.year} onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}>
-                <option value="">Select</option>
+                <option value="">Select Year</option>
                 {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
           </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">GitHub URL</label>
-              <input className="input" value={form.github} onChange={(e) => setForm((f) => ({ ...f, github: e.target.value }))} />
+              <input className="input" value={form.github} onChange={(e) => setForm((f) => ({ ...f, github: e.target.value }))} placeholder="https://github.com/username" />
             </div>
             <div>
               <label className="label">LinkedIn URL</label>
-              <input className="input" value={form.linkedin} onChange={(e) => setForm((f) => ({ ...f, linkedin: e.target.value }))} />
+              <input className="input" value={form.linkedin} onChange={(e) => setForm((f) => ({ ...f, linkedin: e.target.value }))} placeholder="https://linkedin.com/in/username" />
             </div>
             <div>
               <label className="label">Instagram URL</label>
-              <input className="input" value={form.instagram} onChange={(e) => setForm((f) => ({ ...f, instagram: e.target.value }))} />
+              <input className="input" value={form.instagram} onChange={(e) => setForm((f) => ({ ...f, instagram: e.target.value }))} placeholder="https://instagram.com/username" />
             </div>
             <div>
-              <label className="label">Twitter URL</label>
-              <input className="input" value={form.twitter} onChange={(e) => setForm((f) => ({ ...f, twitter: e.target.value }))} />
+              <label className="label">Twitter / X URL</label>
+              <input className="input" value={form.twitter} onChange={(e) => setForm((f) => ({ ...f, twitter: e.target.value }))} placeholder="https://x.com/username" />
             </div>
           </div>
+
           <div>
-            <label className="label">Photo</label>
+            <label className="label">Profile Photo</label>
             <div className="flex items-center gap-3">
               <input type="file" accept="image/*" onChange={(e) => handleFile(e.target.files?.[0])} className="text-sm text-ink-muted" />
-              {form.photo && <img src={form.photo} alt="preview" className="h-24 w-24 rounded-lg object-contain bg-navy-950/50 border border-navy-100 p-1" />}
+              {form.photo && <img src={form.photo} alt="preview" className="h-20 w-20 rounded-xl object-cover border border-navy-100 p-0.5" />}
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
             <button type="button" onClick={() => setModal(false)} className="btn-outline">Cancel</button>
             <button type="submit" disabled={busy} className="btn-primary">
               {busy ? <ButtonSpinner /> : null}
-              {busy ? 'Saving…' : editing ? 'Update' : 'Add member'}
+              {busy ? 'Saving…' : editing ? 'Update Member' : 'Add Member'}
             </button>
           </div>
         </form>

@@ -40,10 +40,10 @@ export default function Members() {
           <div className="absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-g-red/15 blur-3xl" />
         </div>
         <div className="container-x relative z-10">
-          <span className="chip border border-white/15 bg-white/5 text-white/80">GDGOC GCEE Team</span>
-          <h1 className="mt-4 font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">Members Directory</h1>
+          <span className="chip border border-white/15 bg-white/5 text-white/80">GDGoC GCEE Team</span>
+          <h1 className="mt-4 font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">Team Members</h1>
           <p className="mx-auto mt-4 max-w-xl text-sm text-white/70 sm:text-base">
-            Meet the active student developers, coordinators and leaders behind GDGOC GCEE.
+            Meet the student leads, coordinators, and community members behind GDGoC GCEE.
           </p>
         </div>
         <div className="relative z-10 mt-10 flex h-1.5">
@@ -58,7 +58,7 @@ export default function Members() {
       <section className="bg-slate-50 py-14">
         <div className="container-x space-y-12">
           {loading ? (
-            <PageLoader label="Loading members…" />
+            <PageLoader label="Loading team members…" />
           ) : TEAMS.some((t) => (grouped[t] || []).length > 0) ? (
             TEAMS.filter((team) => (grouped[team] || []).length > 0).map((team) => {
               const isBoardTeam = team === 'Core Team' || team === 'Student Coordinators';
@@ -76,7 +76,7 @@ export default function Members() {
                         <span className="text-sm font-normal text-ink-muted">({grouped[team].length})</span>
                       </h2>
 
-                      {/* 2026–27 Year Selector Badge */}
+                      {/* Year Selector Badge */}
                       {isBoardTeam && (
                         <div className="flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3.5 py-1.5 shadow-xs">
                           <Calendar className="h-4 w-4 text-g-blue" />
@@ -93,7 +93,7 @@ export default function Members() {
                     </div>
                   </Reveal>
 
-                  {/* Responsive Grid: 2 columns on mobile, 3 on tablet, 4 on desktop */}
+                  {/* Responsive Grid */}
                   <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
                     {grouped[team].map((member, i) => (
                       <Reveal key={member._id} delay={i * 50}>

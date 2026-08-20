@@ -6,18 +6,20 @@ import {
   Download,
   Users,
   FileText,
-  ChevronLeft,
-  ChevronRight,
   Send,
+  Mail,
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EventForm } from '../../components/admin/EventForm';
 import { api, getErrorMessage } from '../../lib/api';
-import { cn, downloadBlob } from '../../lib/utils';
+import { cn, downloadBlob, formatHumanDate } from '../../lib/utils';
 import type { GEvent } from '../../types';
 
-type Tab = 'details' | 'registrations';
+type Tab = 'details' | 'registrations' | 'announcement';
 
 export default function AdminEventDetail() {
   const { eventId } = useParams();
@@ -62,7 +64,7 @@ export default function AdminEventDetail() {
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-black/10">
-        {(['details', 'registrations'] as Tab[]).map((t) => (
+        {(['details', 'registrations', 'announcement'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -75,6 +77,7 @@ export default function AdminEventDetail() {
           >
             {t === 'details' && 'Edit Details'}
             {t === 'registrations' && 'Registrations'}
+            {t === 'announcement' && 'Send Announcement'}
           </button>
         ))}
       </div>
@@ -86,6 +89,10 @@ export default function AdminEventDetail() {
 
       {tab === 'registrations' && (
         <EventRegistrations eventId={event.eventId} event={event} />
+      )}
+
+      {tab === 'announcement' && (
+        <EventAnnouncementComposer event={event} />
       )}
     </div>
   );
@@ -101,7 +108,6 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
   const [search, setSearch] = useState('');
   const [generating, setGenerating] = useState(false);
   const [sendingPdf, setSendingPdf] = useState(false);
-  const [pdfResult, setPdfResult] = useState<{ sent: number; failed: number; total: number; failedEmails?: string[] } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -146,10 +152,8 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
 
   const handleSendPdf = async () => {
     setSendingPdf(true);
-    setPdfResult(null);
     try {
       const res = await api.post(`/admin/events/${eventId}/send-pdf`);
-      setPdfResult(res.data);
       toast.success(`PDF sent to ${res.data.sent} student(s)!`);
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -205,110 +209,217 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-2 rounded border border-black/10 bg-white px-4 py-2.5">
-        <input
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search by name, email, phone, roll..."
-          className="w-full bg-transparent font-mono text-sm text-black placeholder:text-black/30 focus:outline-none"
-        />
-      </div>
-
-      {/* Table */}
-      {loading ? (
-        <PageLoader label="Loading registrations..." />
-      ) : registrations.length === 0 ? (
-        <div className="rounded border border-black/10 bg-white p-8 text-center font-mono text-sm text-black/40">
-          No registrations found.
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded border border-black/10 bg-white">
-          {pdfResult && (
-            <div className="border-b border-black/5 bg-gray-50 px-4 py-3">
-              <p className="font-mono text-xs">
-                <span className="font-bold text-green-700">{pdfResult.sent} sent</span>
-                {' · '}
-                <span className="font-bold text-red-600">{pdfResult.failed} failed</span>
-                {' · '}
-                <span className="text-black/40">{pdfResult.total} total</span>
-              </p>
-              {pdfResult.failedEmails && pdfResult.failedEmails.length > 0 && (
-                <p className="mt-1 text-[10px] text-red-500">{pdfResult.failedEmails.slice(0, 3).join(', ')}</p>
-              )}
-            </div>
-          )}
-          <table className="w-full min-w-[700px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-black/5 bg-gray-50">
-                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">#</th>
-                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Name</th>
-                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Email</th>
-                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Phone</th>
-                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Dept</th>
-                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Source</th>
-                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Action</th>
+      {/* Registrations list table */}
+      <div className="overflow-x-auto rounded border border-black/10 bg-white">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-black/10 bg-gray-50/80 font-mono text-[11px] font-bold uppercase tracking-wider text-black/50">
+              <th className="p-3">#</th>
+              <th className="p-3">Student Name</th>
+              <th className="p-3">Email</th>
+              <th className="p-3">College</th>
+              <th className="p-3">Dept</th>
+              <th className="p-3">Year</th>
+              <th className="p-3">Phone</th>
+              <th className="p-3">Registration Date</th>
+              <th className="p-3 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-black/5">
+            {loading ? (
+              <tr>
+                <td colSpan={9} className="p-8 text-center text-black/40">Loading registrations...</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
-              {registrations.map((r, i) => (
-                <tr key={r._id} className="transition hover:bg-gray-50">
+            ) : registrations.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="p-8 text-center text-black/40">No registrations found.</td>
+              </tr>
+            ) : (
+              registrations.map((r, i) => (
+                <tr key={r._id} className="transition hover:bg-gray-50/50">
                   <td className="p-3 font-mono text-xs text-black/40">{(page - 1) * 50 + i + 1}</td>
                   <td className="p-3 font-semibold text-black">{r.name}</td>
                   <td className="p-3 font-mono text-xs text-black/60">{r.email}</td>
-                  <td className="p-3 text-xs text-black/50">{r.phone || '—'}</td>
-                  <td className="p-3 text-xs text-black/50">{r.department || '—'}</td>
-                  <td className="p-3">
-                    <span className="rounded bg-black/5 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-black/40">
-                      {r.source}
-                    </span>
+                  <td className="p-3 text-xs text-black/70">{r.college || 'GCEE'}</td>
+                  <td className="p-3 text-xs text-black/70">{r.department || '—'}</td>
+                  <td className="p-3 text-xs text-black/70">{r.year || '—'}</td>
+                  <td className="p-3 font-mono text-xs text-black/60">{r.phone || '—'}</td>
+                  <td className="p-3 font-mono text-xs text-black/50">
+                    {r.submittedAt ? new Date(r.submittedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
                   </td>
-                  <td className="p-3">
-                    {deleteConfirm === r._id ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleDeleteRegistration(r._id)}
-                          className="rounded bg-red-600 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-white transition hover:bg-red-700"
-                        >Confirm</button>
-                        <button
-                          onClick={() => setDeleteConfirm(null)}
-                          className="font-mono text-[10px] text-black/40 hover:text-black"
-                        >Cancel</button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setDeleteConfirm(r._id)}
-                        className="rounded border border-red-200 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-red-500 transition hover:bg-red-50"
-                      >Delete</button>
-                    )}
+                  <td className="p-3 text-right">
+                    <button
+                      onClick={() => handleDeleteRegistration(r._id)}
+                      className="font-mono text-xs text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
-      {/* Pagination */}
-      {count > 50 && (
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="border border-black/10 px-3 py-1.5 font-mono text-xs font-bold text-black/40 transition hover:text-black disabled:opacity-30"
-          >
-            <ChevronLeft className="inline h-4 w-4" /> Prev
-          </button>
-          <span className="font-mono text-xs text-black/40">Page {page} of {Math.ceil(count / 50)}</span>
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page >= Math.ceil(count / 50)}
-            className="border border-black/10 px-3 py-1.5 font-mono text-xs font-bold text-black/40 transition hover:text-black disabled:opacity-30"
-          >
-            Next <ChevronRight className="inline h-4 w-4" />
-          </button>
+/* ─── Event Announcement Composer ─────────────────────────────────────── */
+
+function EventAnnouncementComposer({ event }: { event: GEvent }) {
+  const [recipientGroup, setRecipientGroup] = useState<'all' | 'registered' | 'unregistered'>('all');
+  const [subject, setSubject] = useState(`Registration Open – ${event.title}`);
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ sentCount: number; failedCount: number; status: string } | null>(null);
+
+  const regUrl = `https://gdgoc-gcee.vercel.app/events/${event.eventId}/register`;
+
+  const handleSendAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subject) {
+      toast.error('Subject is required.');
+      return;
+    }
+
+    if (!window.confirm(`Send this announcement email to target group "${recipientGroup.toUpperCase()}"?`)) return;
+
+    setBusy(true);
+    setResult(null);
+    try {
+      const res = await api.post(`/admin/events/${event.eventId}/send-announcement`, {
+        recipientGroup,
+        subject,
+        message,
+      });
+      setResult(res.data);
+      toast.success(res.data.message);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-2">
+      {/* Composer form */}
+      <form onSubmit={handleSendAnnouncement} className="space-y-6 card p-6">
+        <div>
+          <h3 className="font-display text-base font-bold text-navy-900">Send Event Announcement</h3>
+          <p className="mt-1 text-xs text-ink-muted">
+            Send an official email announcement directly to students' Gmail accounts with the event registration link.
+          </p>
         </div>
-      )}
+
+        <div>
+          <label className="label">Recipients Group</label>
+          <select
+            className="input"
+            value={recipientGroup}
+            onChange={(e) => setRecipientGroup(e.target.value as any)}
+          >
+            <option value="all">All Students (Default)</option>
+            <option value="registered">Registered Students Only</option>
+            <option value="unregistered">Unregistered Students Only</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="label">Subject</label>
+          <input
+            className="input"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="e.g. Registration Open – AI & GenAI Workshop"
+          />
+        </div>
+
+        <div>
+          <label className="label">Additional Message (Optional)</label>
+          <textarea
+            rows={4}
+            className="input resize-y"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Add custom notes or instructions for students..."
+          />
+        </div>
+
+        <div>
+          <label className="label">Website Registration Link</label>
+          <div className="flex items-center gap-2 rounded border border-black/10 bg-gray-50 px-3 py-2 font-mono text-xs text-black/70">
+            <ExternalLink className="h-3.5 w-3.5 text-black/40" />
+            <span className="truncate">{regUrl}</span>
+          </div>
+        </div>
+
+        {result && (
+          <div className={cn(
+            'rounded-xl border p-4 text-sm',
+            result.status === 'Success' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-900'
+          )}>
+            <p className="font-bold">
+              {result.status === 'Success' ? '✓ Announcement Sent Successfully' : '⚠ Announcement Processed with Warnings'}
+            </p>
+            <p className="mt-1 text-xs">
+              Successfully delivered: <strong>{result.sentCount}</strong> | Failed: <strong>{result.failedCount}</strong>
+            </p>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-50"
+        >
+          <Mail className="h-4 w-4" />
+          {busy ? 'Sending Announcement...' : 'Send Event Announcement'}
+        </button>
+      </form>
+
+      {/* Live Email Preview */}
+      <div className="card p-6 bg-slate-50 space-y-4">
+        <div>
+          <span className="chip bg-navy-900 text-white font-mono text-[10px] uppercase">Email Live Preview</span>
+          <h4 className="mt-2 font-bold text-navy-900">{subject || 'Registration Open – Event'}</h4>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 text-xs text-slate-700">
+          <p>Hi <strong>Student Name</strong>,</p>
+          <p>We are excited to announce an upcoming event organized by GDGoC GCEE.</p>
+
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 space-y-2 font-mono">
+            <p><strong>Event:</strong> {event.title}</p>
+            <p><strong>Date:</strong> {formatHumanDate(event.date)}</p>
+            <p><strong>Time:</strong> {event.startTime ? `${event.startTime} - ${event.endTime || ''}` : 'TBA'}</p>
+            <p><strong>Venue:</strong> {event.venue || 'TBA'}</p>
+            <p><strong>Event Type:</strong> {event.category}</p>
+          </div>
+
+          {message && <p className="whitespace-pre-wrap">{message}</p>}
+
+          <p>Registration is now open.</p>
+
+          <div className="text-center py-2">
+            <span className="inline-block rounded-md bg-blue-600 px-6 py-2.5 font-mono font-bold text-white shadow-xs">
+              REGISTER FOR EVENT
+            </span>
+          </div>
+
+          <p className="text-center text-[11px] text-slate-400">
+            Registration Deadline: {event.registrationDeadline || 'Until Event Date'}
+          </p>
+
+          <hr className="border-slate-100" />
+          <p className="text-[11px] text-slate-500">
+            Regards,<br/>
+            <strong>GDGoC GCEE Team</strong><br/>
+            Government College of Engineering, Erode
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

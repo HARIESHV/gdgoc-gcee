@@ -238,8 +238,9 @@ export default function EventDetail() {
                     <InfoRow icon={CalendarDays} label="Date" value={formatHumanDate(event.date)} />
                     <InfoRow icon={Clock} label="Time" value={event.startTime ? `${event.startTime} — ${event.endTime || 'TBA'}` : 'TBA'} />
                     <InfoRow icon={MapPin} label="Venue" value={event.venue || 'TBA'} />
+                    <InfoRow icon={User2} label="Handled By" value={(event as any).handledBy || 'GDGoC GCEE Team'} />
                     <InfoRow icon={Building2} label="Organizer" value="GDGoC GCEE" />
-                    <InfoRow icon={Users} label="Registered" value={`${totalRegistered}${event.capacity > 0 ? ` / ${event.capacity}` : ''}`} />
+                    <InfoRow icon={Users} label="Registered" value={`${totalRegistered}`} />
                   </div>
                 </div>
 
@@ -270,34 +271,17 @@ export default function EventDetail() {
                   )}
 
                   <div className="mt-4">
-                    {/* Check if student is NOT logged in */}
-                    {!student && isUpcoming ? (
-                      <div className="rounded-xl border border-red-200 bg-red-50/80 p-4 text-center">
-                        <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600">
-                          <Lock className="h-4 w-4" />
-                        </div>
-                        <p className="font-mono text-xs font-bold uppercase tracking-wider text-red-700">
-                          Not Logged In?
+                    {hasGoogleForm && isUpcoming && (
+                      <div className="mb-4 rounded-lg bg-navy-50/80 p-3 text-center border border-navy-100">
+                        <p className="font-mono text-xs font-bold uppercase tracking-wider text-navy-900">
+                          Ready to Register?
                         </p>
-                        <p className="mt-1 text-xs text-red-600">
-                          "Please sign up or log in before registering for this event."
+                        <p className="mt-1 text-xs text-ink-muted">
+                          Complete the official Google Form to register for this event.
                         </p>
-                        <div className="mt-3 flex gap-2">
-                          <Link
-                            to={`/register?eventId=${event.eventId}`}
-                            className="flex-1 rounded-md bg-emerald-600 py-2 font-mono text-xs font-bold text-white transition hover:bg-emerald-700 text-center"
-                          >
-                            Sign Up
-                          </Link>
-                          <Link
-                            to={`/login?redirect=/events/${event.eventId}`}
-                            className="flex-1 rounded-md bg-blue-600 py-2 font-mono text-xs font-bold text-white transition hover:bg-blue-700 text-center"
-                          >
-                            Login
-                          </Link>
-                        </div>
                       </div>
-                    ) : event.effectiveStatus === 'CANCELLED' ? (
+                    )}
+                    {event.effectiveStatus === 'CANCELLED' ? (
                       <div className="rounded border border-red-200 bg-red-50 p-3 text-center font-mono text-sm font-bold text-red-600">
                         Event cancelled
                       </div>
@@ -310,17 +294,17 @@ export default function EventDetail() {
                         href={event.googleFormUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black"
+                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black"
                       >
-                        Register via Google Form <ExternalLink className="h-4 w-4" />
+                        REGISTER VIA GOOGLE FORM <ExternalLink className="h-4 w-4" />
                       </a>
                     ) : isUpcoming && event.registrationEnabled ? (
                       <button
                         onClick={handleStudentRegister}
                         disabled={regBusy}
-                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black disabled:opacity-50"
+                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-50"
                       >
-                        {regBusy ? 'Registering...' : 'Register Now'}
+                        {regBusy ? 'Registering...' : 'REGISTER FOR EVENT'}
                       </button>
                     ) : (
                       <div className="rounded border border-black/10 bg-gray-50 p-3 text-center font-mono text-sm text-black/40">

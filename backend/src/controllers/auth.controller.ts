@@ -5,7 +5,7 @@ import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import type { AuthRequest } from '../middleware/auth';
 import { connectDB } from '../config/db';
-import { sendStudentConfirmationEmail } from '../utils/email';
+import { sendWelcomeEmail } from '../services/email.service';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -92,7 +92,7 @@ export async function register(req: AuthRequest, res: Response) {
     const studentEmail = student.email;
     if (studentEmail && emailRegex.test(studentEmail)) {
       try {
-        const emailResult = await sendStudentConfirmationEmail({ to: studentEmail, studentName: student.name });
+        const emailResult = await sendWelcomeEmail({ to: studentEmail, studentName: student.name });
         emailSent = emailResult.success;
         if (!emailResult.success) {
           emailError = emailResult.error || 'Email delivery failed.';
