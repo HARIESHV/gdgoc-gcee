@@ -23,7 +23,6 @@ interface EventFormData {
   registrationDeadline: string;
   capacity: string;
   googleFormUrl: string;
-  manualRegistrationCount: string;
   isCertificateEligible: boolean;
   isInauguration: boolean;
   status: string;
@@ -47,7 +46,6 @@ function toForm(event?: GEvent): EventFormData {
     registrationDeadline: event?.registrationDeadline || '',
     capacity: event?.capacity ? String(event.capacity) : '',
     googleFormUrl: event?.googleFormUrl || '',
-    manualRegistrationCount: event?.manualRegistrationCount ? String(event.manualRegistrationCount) : '0',
     isCertificateEligible: event?.isCertificateEligible ?? false,
     isInauguration: event?.isInauguration ?? false,
     status: event?.status || 'UPCOMING',
@@ -87,7 +85,6 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
     const payload = {
       ...form,
       capacity: form.capacity ? Number(form.capacity) : 0,
-      manualRegistrationCount: form.manualRegistrationCount ? Number(form.manualRegistrationCount) : 0,
       technologies: form.technologies
         .split(',')
         .map((t) => t.trim())
@@ -205,11 +202,6 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
             </label>
             <input id="ev-google-form" className="input font-mono text-sm" value={form.googleFormUrl} onChange={(e) => update('googleFormUrl', e.target.value)} placeholder="https://docs.google.com/forms/d/..." />
             <p className="mt-1 text-xs text-ink-faint">Students will see a "Register Now" button that opens this form.</p>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="label" htmlFor="ev-manual-reg-count">Manual registration count</label>
-            <input id="ev-manual-reg-count" type="number" min={0} className="input" value={form.manualRegistrationCount} onChange={(e) => update('manualRegistrationCount', e.target.value)} placeholder="0" />
-            <p className="mt-1 text-xs text-ink-faint">Update this count manually from Google Form responses. This is added to in-app registrations.</p>
           </div>
         </div>
 
