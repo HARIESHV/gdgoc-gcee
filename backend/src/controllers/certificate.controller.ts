@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { Certificate, EventModel, Student, GoogleFormRegistration } from '../models';
+import { Certificate, EventModel, Student, GoogleFormRegistration, Registration } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { formatDotDate, todayIST } from '../utils/dates';
 import { generateCertificatePDF } from '../utils/pdf';
@@ -147,10 +147,13 @@ export async function generateEventCertificates(req: any, res: Response) {
     await connectDB();
     const { eventId, eventName, eventDate, recipientGroup, studentIds } = req.body;
 
-    if (!eventName || !eventDate) {
+    if (!eventName || !eventName.trim() || !eventDate || !eventDate.trim()) {
       res.status(400).json({ success: false, message: 'Event Name and Event Date are required.' });
       return;
     }
+
+    const trimmedEventName = eventName.trim();
+    const trimmedEventDate = eventDate.trim();
 
     let targetStudents: Array<{ id: any; name: string; email: string }> = [];
 
@@ -158,37 +161,46 @@ export async function generateEventCertificates(req: any, res: Response) {
       const dbStudents = await Student.find({ _id: { $in: studentIds } }).lean();
       targetStudents = dbStudents.map((s) => ({ id: s._id, name: s.name, email: s.email }));
     } else if (eventId && recipientGroup !== 'all') {
-      // Find event registrations
-      const formRegs = await GoogleFormRegistration.find({ eventId }).lean();
-      if (formRegs.length > 0) {
-        // Map to registered students
-        const regEmails = formRegs.map((r) => r.email.toLowerCase());
-        const dbStudents = await Student.find({ email: { $in: regEmails } }).lean();
-        
-        // Combine registered DB students + guest form registrations
-        const foundEmails = new Set(dbStudents.map((s) => s.email.toLowerCase()));
-        targetStudents = dbStudents.map((s) => ({ id: s._id, name: s.name, email: s.email }));
+      // Query both Registration (App) and GoogleFormRegistration (Form)
+      const [appRegs, formRegs] = await Promise.all([
+        Registration.find({ eventId, status: 'REGISTERED' }).populate('studentId').lean(),
+        GoogleFormRegistration.find({ eventId }).lean(),
+      ]);
 
-        for (const fr of formRegs) {
-          if (!foundEmails.has(fr.email.toLowerCase())) {
-            // Find or create student stub
-            let stub = await Student.findOne({ email: fr.email.toLowerCase() });
-            if (!stub) {
-              stub = await Student.create({
-                name: fr.name,
-                email: fr.email.toLowerCase(),
-                phone: fr.phone || '',
-                department: fr.department || '',
-                year: fr.year || '',
-                college: fr.college || 'Government College of Engineering, Erode',
-                passwordHash: 'GENERATED_CERTIFICATE_STUB',
-              });
-            }
-            targetStudents.push({ id: stub._id, name: stub.name, email: stub.email });
-          }
+      const studentMap = new Map<string, { id: any; name: string; email: string }>();
+
+      // 1. App registrations
+      for (const ar of appRegs) {
+        if (ar.studentId && (ar.studentId as any).email) {
+          const st = ar.studentId as any;
+          studentMap.set(st.email.toLowerCase(), { id: st._id, name: st.name, email: st.email });
         }
-      } else {
-        // Fallback: all active students
+      }
+
+      // 2. Form registrations
+      for (const fr of formRegs) {
+        const normEmail = fr.email.toLowerCase().trim();
+        if (normEmail && !studentMap.has(normEmail)) {
+          let stub = await Student.findOne({ email: normEmail });
+          if (!stub) {
+            stub = await Student.create({
+              name: fr.name || 'Student',
+              email: normEmail,
+              phone: fr.phone || '',
+              department: fr.department || '',
+              year: fr.year || '',
+              college: fr.college || 'Government College of Engineering, Erode',
+              passwordHash: 'GENERATED_CERTIFICATE_STUB',
+            });
+          }
+          studentMap.set(normEmail, { id: stub._id, name: stub.name, email: stub.email });
+        }
+      }
+
+      targetStudents = Array.from(studentMap.values());
+
+      // Fallback: if no registrations found for this event, query all active students
+      if (targetStudents.length === 0) {
         const dbStudents = await Student.find({ isActive: true }).lean();
         targetStudents = dbStudents.map((s) => ({ id: s._id, name: s.name, email: s.email }));
       }
@@ -207,51 +219,65 @@ export async function generateEventCertificates(req: any, res: Response) {
     const skipped: string[] = [];
 
     for (const student of targetStudents) {
-      // Check duplicate
-      const exists = await Certificate.exists({
-        studentId: student.id,
-        eventName,
-        status: 'VALID',
-      });
+      try {
+        // Check duplicate
+        const exists = await Certificate.exists({
+          studentId: student.id,
+          eventName: trimmedEventName,
+          status: 'VALID',
+        });
 
-      if (exists) {
-        skipped.push(student.name);
-        continue;
+        if (exists) {
+          skipped.push(student.name);
+          continue;
+        }
+
+        const certificateId = await nextCertificateId();
+        const verificationUrl = `${env.appUrl}/certificate/${certificateId}`;
+        const qrCode = await generateQRCodeDataURL(verificationUrl);
+        const issueDate = todayIST();
+
+        const pdfBuffer = await generateCertificatePDF({
+          certificateId,
+          studentName: student.name,
+          eventName: trimmedEventName,
+          eventDate: trimmedEventDate,
+          issueDate,
+          qrCodeDataURL: qrCode,
+          verificationUrl,
+        });
+
+        await Certificate.create({
+          certificateId,
+          studentId: student.id,
+          studentName: student.name,
+          studentEmail: student.email,
+          organization: 'GDGoC GCEE',
+          institution: 'Government College of Engineering, Erode',
+          eventId: eventId || null,
+          eventName: trimmedEventName,
+          eventDate: trimmedEventDate,
+          issueDate,
+          verificationUrl,
+          qrCode,
+          pdfBuffer,
+          status: 'VALID',
+        });
+
+        generatedCount++;
+      } catch (itemErr: any) {
+        console.error(`[generateEventCertificates] Error issuing for ${student.email}:`, itemErr.message);
       }
+    }
 
-      const certificateId = await nextCertificateId();
-      const verificationUrl = `${env.appUrl}/certificate/${certificateId}`;
-      const qrCode = await generateQRCodeDataURL(verificationUrl);
-      const issueDate = todayIST();
-
-      const pdfBuffer = await generateCertificatePDF({
-        certificateId,
-        studentName: student.name,
-        eventName,
-        eventDate,
-        issueDate,
-        qrCodeDataURL: qrCode,
-        verificationUrl,
+    if (generatedCount === 0 && skipped.length > 0) {
+      res.json({
+        success: true,
+        message: `All ${skipped.length} student(s) already have certificates issued for "${trimmedEventName}".`,
+        generatedCount: 0,
+        skippedCount: skipped.length,
       });
-
-      await Certificate.create({
-        certificateId,
-        studentId: student.id,
-        studentName: student.name,
-        studentEmail: student.email,
-        organization: 'GDGoC GCEE',
-        institution: 'Government College of Engineering, Erode',
-        eventId: eventId || null,
-        eventName,
-        eventDate,
-        issueDate,
-        verificationUrl,
-        qrCode,
-        pdfBuffer,
-        status: 'VALID',
-      });
-
-      generatedCount++;
+      return;
     }
 
     res.json({
@@ -261,7 +287,8 @@ export async function generateEventCertificates(req: any, res: Response) {
       skippedCount: skipped.length,
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error('[generateEventCertificates error]:', err);
+    res.status(500).json({ success: false, message: err.message || 'Failed to generate certificates.' });
   }
 }
 
