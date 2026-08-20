@@ -38,7 +38,7 @@ import { PageHeader, StatCard } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { ButtonSpinner } from '../../components/ui/Spinner';
 import { api, getErrorMessage } from '../../lib/api';
-import { formatDotDate, formatHumanDate, formatHumanDateTime, cn } from '../../lib/utils';
+import { formatHumanDate, formatHumanDateTime, cn } from '../../lib/utils';
 import type { AdminStats } from '../../types';
 
 const COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#1b3a66', '#3b6fc4'];
@@ -308,47 +308,6 @@ export default function AdminDashboard() {
                   <td className="p-4 text-ink-soft">{r.email || '—'}</td>
                   <td className="p-4 text-ink-soft">{r.department || '—'}</td>
                   <td className="p-4 text-ink-muted text-xs">{formatHumanDateTime(r.submittedAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Recent campaigns */}
-      {data.campaigns?.length > 0 && (
-        <div className="card overflow-x-auto">
-          <div className="border-b border-navy-50 p-5">
-            <h3 className="font-display text-base font-bold text-navy-900">Certificate campaigns</h3>
-          </div>
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-navy-100 text-xs uppercase tracking-wide text-ink-faint">
-                <th className="p-4 font-medium">Campaign</th>
-                <th className="p-4 font-medium">Period</th>
-                <th className="p-4 font-medium">Min attendance</th>
-                <th className="p-4 font-medium">Min events</th>
-                <th className="p-4 font-medium">Status</th>
-                <th className="p-4 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-navy-50">
-              {data.campaigns.map((c: any) => (
-                <tr key={c._id} className="transition hover:bg-navy-50/50">
-                  <td className="p-4 font-semibold text-navy-900">{c.name}</td>
-                  <td className="p-4 text-ink-soft">{formatDotDate(c.startDate)} → {formatDotDate(c.endDate)}</td>
-                  <td className="p-4 text-ink-soft">{c.minimumAttendancePercentage}%</td>
-                  <td className="p-4 text-ink-soft">{c.minimumEligibleEvents}</td>
-                  <td className="p-4">
-                    <span className={`chip ${c.status === 'ACTIVE' ? 'bg-g-green/10 text-green-700' : c.status === 'CLOSED' ? 'bg-navy-900/5 text-navy-800' : 'bg-g-yellow/15 text-yellow-700'}`}>
-                      {c.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <Link to={`/admin/certificate-campaigns/${c._id}`} className="text-sm font-semibold text-g-blue hover:underline">
-                      View
-                    </Link>
-                  </td>
                 </tr>
               ))}
             </tbody>
