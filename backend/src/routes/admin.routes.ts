@@ -70,6 +70,7 @@ import {
   eventRegistrationCount,
   exportEventRegistrationsAsCsv,
   bulkAddRegistrations,
+  getRegistrationStats,
 } from '../controllers/registration.controller';
 import {
   generateRegistrationListPDF,
@@ -96,6 +97,7 @@ router.put('/events/:eventId', adminUpdateEvent);
 router.delete('/events/:eventId', adminDeleteEvent);
 
 // Event registrations (Google Form webhook submissions per event)
+router.get('/registration-stats', getRegistrationStats);
 router.get('/events-with-registrations', listEventsWithRegistrationCounts);
 router.get('/events/:eventId/registrations', listEventRegistrations);
 router.get('/events/:eventId/registration-count', eventRegistrationCount);

@@ -61,18 +61,6 @@ export async function eventWebhook(req: Request, res: Response) {
       }
     }
 
-    if (email) {
-      const recentDupe = await GoogleFormRegistration.findOne({
-        eventId: event._id,
-        email: email.toLowerCase(),
-        submittedAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) },
-      }).lean();
-      if (recentDupe) {
-        res.json({ success: true, message: 'Already recorded.', duplicate: true });
-        return;
-      }
-    }
-
     const registration = await GoogleFormRegistration.create({
       responseId: responseId || undefined,
       eventId: event._id,
@@ -91,6 +79,10 @@ export async function eventWebhook(req: Request, res: Response) {
     console.log(`[webhook] Event registration saved: ${name} (${email}) for event ${eventId} — id=${registration._id}`);
     res.json({ success: true, message: 'Registration saved.', id: String(registration._id) });
   } catch (err: any) {
+    if (err.code === 11000) {
+      res.json({ success: true, message: 'Already recorded.', duplicate: true });
+      return;
+    }
     console.error('[webhook] Error:', err.message);
     res.status(500).json({ success: false, message: 'Server error.' });
   }
@@ -232,6 +224,11 @@ export async function bulkAddRegistrations(req: any, res: Response) {
       const existing = await GoogleFormRegistration.findOne({ responseId }).lean();
       if (existing) { skipped++; continue; }
 
+      if (email) {
+        const emailDupe = await GoogleFormRegistration.findOne({ eventId: event._id, email }).lean();
+        if (emailDupe) { skipped++; continue; }
+      }
+
       await GoogleFormRegistration.create({
         responseId,
         eventId: event._id,
@@ -286,6 +283,40 @@ export async function listEventsWithRegistrationCounts(req: any, res: Response) 
         registrationCount: countMap.get(String(e._id)) || 0,
         status: e.status,
       })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// GET /api/admin/registration-stats
+export async function getRegistrationStats(_req: any, res: Response) {
+  try {
+    await connectDB();
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
+    const [totalRegistrations, todayRegistrations, weekRegistrations, totalEvents, eventsWithForms] = await Promise.all([
+      GoogleFormRegistration.countDocuments(),
+      GoogleFormRegistration.countDocuments({ submittedAt: { $gte: todayStart } }),
+      GoogleFormRegistration.countDocuments({ submittedAt: { $gte: weekStart } }),
+      EventModel.countDocuments(),
+      EventModel.countDocuments({ googleFormUrl: { $ne: '' } }),
+    ]);
+
+    res.json({
+      success: true,
+      stats: {
+        totalRegistrations,
+        todayRegistrations,
+        weekRegistrations,
+        totalEvents,
+        eventsWithForms,
+      },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

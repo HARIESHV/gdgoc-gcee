@@ -24,7 +24,7 @@ googleFormRegistrationSchema.index({ eventId: 1 });
 googleFormRegistrationSchema.index({ email: 1 });
 googleFormRegistrationSchema.index({ isRead: 1 });
 googleFormRegistrationSchema.index({ submittedAt: -1 });
-googleFormRegistrationSchema.index({ eventId: 1, email: 1 });
+googleFormRegistrationSchema.index({ eventId: 1, email: 1 }, { unique: true });
 
 export type GoogleFormRegistrationDoc = Document & InferSchemaType<typeof googleFormRegistrationSchema>;
 

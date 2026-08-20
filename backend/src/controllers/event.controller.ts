@@ -13,6 +13,19 @@ export function eventQuery(identifier: string) {
   return { eventId: identifier };
 }
 
+function isValidGoogleFormUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.hostname === 'docs.google.com' &&
+      parsed.pathname.includes('/forms/')
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function serializeEvent(event: any) {
   const today = todayIST();
   let effectiveStatus = event.status;
@@ -441,6 +454,11 @@ export async function adminCreateEvent(req: any, res: Response) {
       return;
     }
 
+    if (req.body.googleFormUrl && !isValidGoogleFormUrl(req.body.googleFormUrl)) {
+      res.status(400).json({ success: false, message: 'Invalid Google Form URL. Must be a valid docs.google.com/forms/ link.' });
+      return;
+    }
+
     const eventId = await nextEventId();
     const event = await EventModel.create({
       eventId,
@@ -480,6 +498,11 @@ export async function adminUpdateEvent(req: any, res: Response) {
     const existing = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!existing) {
       res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    if (req.body.googleFormUrl && !isValidGoogleFormUrl(req.body.googleFormUrl)) {
+      res.status(400).json({ success: false, message: 'Invalid Google Form URL. Must be a valid docs.google.com/forms/ link.' });
       return;
     }
 
