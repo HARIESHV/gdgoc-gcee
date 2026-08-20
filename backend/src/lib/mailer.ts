@@ -110,6 +110,8 @@ export async function sendMail(opts: SendMailOptions): Promise<SendMailResult> {
         text: opts.text,
         attachments: opts.attachments,
       });
+      console.log(`[MAIL] Message accepted:`, info.accepted);
+      console.log(`[MAIL] Message rejected:`, info.rejected);
       return { success: true, id: info.messageId };
     } catch (err: any) {
       console.error('[mailer] Gmail SMTP error:', err.message);
@@ -212,85 +214,57 @@ export async function sendOtpEmail(opts: {
   otp: string;
 }): Promise<SendMailResult> {
   const name = escapeHtml(opts.studentName || 'Student');
-  const otp = escapeHtml(opts.otp);
+  const otp = String(opts.otp || '').trim();
 
-  console.log(`[mailer] Generating OTP email for ${opts.to} (OTP length: ${opts.otp.length})`);
+  // Validate OTP length and format
+  if (!otp || !/^\d{6}$/.test(otp)) {
+    console.error('[OTP] Invalid OTP supplied to sendOtpEmail:', otp);
+    throw new Error('Invalid OTP supplied to email function');
+  }
+
+  console.log('[OTP] Generated: 6-digit OTP');
+  console.log('[OTP] Mailer received valid OTP:', /^\d{6}$/.test(otp));
 
   const html = `<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GDGoC GCEE - Email Verification OTP</title>
+  <meta charset="UTF-8">
+  <title>GDGoC GCEE OTP</title>
 </head>
-<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#1e293b;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding:24px 0;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e2e8f0;">
-          <tr>
-            <td style="background-color:#0b1b33; padding:24px 28px; text-align:left;">
-              <h1 style="margin:0; color:#ffffff; font-size:20px; font-weight:800; letter-spacing:-0.5px;">GDGoC GCEE</h1>
-              <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px;">Google Developer Groups on Campus · ${CLUB.institution}</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:28px 28px 12px 28px;">
-              <p style="margin:0 0 16px 0; color:#0f172a; font-size:16px; line-height:1.5;">Hello <strong>${name}</strong>,</p>
-              <p style="margin:0 0 16px 0; color:#334155; font-size:14px; line-height:1.6;">
-                Thank you for joining <strong>GDGoC GCEE</strong>.
-              </p>
-              <p style="margin:0 0 16px 0; color:#334155; font-size:14px; line-height:1.6;">
-                Your email verification OTP is:
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:8px 28px 20px 28px;">
-              <table border="0" cellpadding="0" cellspacing="0" style="margin:0 auto; background-color:#1a73e8; border-radius:10px;">
-                <tr>
-                  <td align="center" style="padding:16px 36px;">
-                    <div style="color:#ffffff !important; font-size:36px; font-weight:bold; font-family:'Courier New', Consolas, Menlo, monospace; letter-spacing:8px; line-height:1;">
-                      ${otp}
-                    </div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 28px 28px 28px;">
-              <p style="margin:0 0 10px 0; color:#64748b; font-size:13px; line-height:1.6;">
-                This OTP will expire in <strong>10 minutes</strong>.
-              </p>
-              <p style="margin:0 0 20px 0; color:#64748b; font-size:13px; line-height:1.6;">
-                If you did not request this OTP, please ignore this email.
-              </p>
-              <p style="margin:0; color:#0f172a; font-size:13px; font-weight:700; line-height:1.5;">
-                Regards,<br/>
-                GDGoC GCEE
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="background-color:#f8fafc; padding:16px 28px; border-top:1px solid #e2e8f0; text-align:center;">
-              <p style="margin:0; color:#94a3b8; font-size:11px; line-height:1.6;">
-                ${FROM_NAME} · ${CLUB.institution}
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
+<body style="margin:0;padding:20px;font-family:Arial,sans-serif;background-color:#ffffff;color:#1e293b;">
+  <div style="max-width:560px;margin:0 auto;border:1px solid #e2e8f0;border-radius:12px;padding:24px;">
+    <h2 style="color:#0b1b33;margin-top:0;">GDGoC GCEE Email Verification</h2>
+    <p>Hello ${name},</p>
+    <p>Your email verification OTP is:</p>
+    <p style="
+      font-size:36px;
+      font-weight:bold;
+      letter-spacing:10px;
+      text-align:center;
+      padding:20px;
+      margin:20px 0;
+      border:2px solid #4285F4;
+      background-color:#f8fafc;
+      color:#000000;
+      font-family:Consolas,monospace;
+    ">
+      ${otp}
+    </p>
+    <p>This OTP expires in 10 minutes.</p>
+    <p>If you did not request this OTP, please ignore this email.</p>
+    <p style="margin-bottom:0;">
+      Regards,<br>
+      <strong>GDGoC GCEE</strong>
+    </p>
+  </div>
 </body>
 </html>`;
 
-  const plainText = `Hello ${opts.studentName || 'Student'},
+  const text = `Hello ${opts.studentName || 'Student'},
 
-Thank you for joining GDGoC GCEE.
+Your GDGoC GCEE email verification OTP is:
 
-Your email verification OTP is: ${opts.otp}
+${otp}
 
 This OTP expires in 10 minutes.
 
@@ -299,13 +273,21 @@ If you did not request this OTP, please ignore this email.
 Regards,
 GDGoC GCEE`;
 
+  // Pre-SMTP validation check: verify OTP is actually inside both HTML and plain text
+  if (!html.includes(otp)) {
+    throw new Error('OTP is missing from generated email HTML');
+  }
+  if (!text.includes(otp)) {
+    throw new Error('OTP is missing from generated email text');
+  }
+
   const result = await sendMail({
     to: opts.to,
     subject: 'GDGoC GCEE - Email Verification OTP',
     html,
-    text: plainText,
+    text,
   });
-  console.log(`[mailer] sendOtpEmail -> ${opts.to} (${result.success ? 'sent' : 'failed'})`);
+  console.log(`[OTP] Email accepted by SMTP: ${result.success}`);
   return result;
 }
 
