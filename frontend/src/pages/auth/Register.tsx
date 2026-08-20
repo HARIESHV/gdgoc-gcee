@@ -61,11 +61,8 @@ export default function Register() {
 
     setBusy(true);
     try {
-      const res: any = await registerStudent(form);
-      if (res?.devOtp) {
-        setOtp(res.devOtp);
-      }
-      toast.success('Account created! Please check your email for the OTP.');
+      await registerStudent(form);
+      toast.success('OTP sent to your Gmail! Please check your inbox.');
       setStep(2);
       startResendCooldown();
     } catch (err) {
@@ -79,11 +76,8 @@ export default function Register() {
     if (resendCooldown > 0) return;
     setOtpSending(true);
     try {
-      const res: any = await sendOtp(form.email);
-      if (res?.devOtp) {
-        setOtp(res.devOtp);
-      }
-      toast.success('OTP resent to your email.');
+      await sendOtp(form.email);
+      toast.success('New OTP sent to your Gmail.');
       startResendCooldown();
     } catch (err) {
       toast.error(getErrorMessage(err));

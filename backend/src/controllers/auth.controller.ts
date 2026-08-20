@@ -103,11 +103,15 @@ export async function register(req: AuthRequest, res: Response) {
       existingEmail.otpExpiresAt = otpExpiresAt;
       await existingEmail.save();
 
-      // Send OTP email
-      try {
-        await sendOtpEmail({ to: cleanEmail, studentName: existingEmail.name, otp });
-      } catch (err: any) {
-        console.error('[auth] OTP email error:', err.message);
+      // Send OTP email and await result
+      const sendRes = await sendOtpEmail({ to: cleanEmail, studentName: existingEmail.name, otp });
+      if (!sendRes.success) {
+        console.error(`[auth] OTP email failed for ${cleanEmail}:`, sendRes.error);
+        res.status(500).json({
+          success: false,
+          message: 'Unable to send OTP email. Please check your email address and try again.',
+        });
+        return;
       }
 
       const token = signToken({ id: String(existingEmail._id), role: 'student' });
@@ -119,7 +123,6 @@ export async function register(req: AuthRequest, res: Response) {
         token,
         student: publicStudent(existingEmail),
         requiresVerification: true,
-        devOtp: env.nodeEnv !== 'production' ? otp : undefined,
       });
       return;
     }
@@ -157,11 +160,15 @@ export async function register(req: AuthRequest, res: Response) {
       otpExpiresAt,
     });
 
-    // Send OTP email
-    try {
-      await sendOtpEmail({ to: cleanEmail, studentName: student.name, otp });
-    } catch (err: any) {
-      console.error('[auth] OTP email failed for', cleanEmail, ':', err.message);
+    // Send OTP email and await result
+    const sendRes = await sendOtpEmail({ to: cleanEmail, studentName: student.name, otp });
+    if (!sendRes.success) {
+      console.error(`[auth] OTP email failed for ${cleanEmail}:`, sendRes.error);
+      res.status(500).json({
+        success: false,
+        message: 'Unable to send OTP email. Please check your email address and try again.',
+      });
+      return;
     }
 
     const token = signToken({ id: String(student._id), role: 'student' });
@@ -173,7 +180,6 @@ export async function register(req: AuthRequest, res: Response) {
       token,
       student: publicStudent(student),
       requiresVerification: true,
-      devOtp: env.nodeEnv !== 'production' ? otp : undefined,
     });
   } catch (err: any) {
     console.error('[auth] register error:', err.message);
@@ -216,10 +222,18 @@ export async function sendOtp(req: AuthRequest, res: Response) {
     await student.save();
 
     const result = await sendOtpEmail({ to: student.email, studentName: student.name, otp });
+    if (!result.success) {
+      console.error(`[auth] Resend OTP email failed for ${cleanEmail}:`, result.error);
+      res.status(500).json({
+        success: false,
+        message: 'Unable to send OTP email. Please try again.',
+      });
+      return;
+    }
+
     res.status(200).json({
       success: true,
       message: 'OTP sent to your email address.',
-      devOtp: env.nodeEnv !== 'production' ? otp : undefined,
     });
   } catch (err: any) {
     console.error('[auth] sendOtp error:', err.message);

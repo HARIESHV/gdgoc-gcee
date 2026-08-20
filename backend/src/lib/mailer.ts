@@ -24,15 +24,16 @@ export function emailIsConfigured(): boolean {
 
 /** Public config status — never includes secrets, safe to return to the browser/admin UI. */
 export function getEmailConfigStatus() {
+  const gmailConfigured = Boolean(env.gmail.user && env.gmail.appPassword);
   return {
     configured: emailIsConfigured(),
-    provider: env.resendApiKey ? 'resend' : env.gmail.user ? 'gmail' : 'none',
+    provider: gmailConfigured ? 'gmail' : env.resendApiKey ? 'resend' : 'none',
     hasApiKey: Boolean(env.resendApiKey),
     hasUser: Boolean(env.gmail.user),
-    hasFromEmail: Boolean(env.resendFromEmail || env.gmail.user),
+    hasFromEmail: Boolean(env.gmail.user || env.resendFromEmail),
     hasAppPassword: Boolean(env.gmail.appPassword),
     adminEmail: env.adminEmail || 'gdgocgcee@gmail.com',
-    fromEmail: env.resendFromEmail || env.gmail.user || 'onboarding@resend.dev',
+    fromEmail: (gmailConfigured ? env.gmail.user : env.resendFromEmail) || '',
   };
 }
 
@@ -55,11 +56,12 @@ export function getTransport(): Transporter {
   return transporter;
 }
 
-function getFromAddress(): string {
-  if (env.resendFromEmail) {
-    return `${env.resendFromName || FROM_NAME} <${env.resendFromEmail}>`;
-  }
+function getGmailFromAddress(): string {
   return `${FROM_NAME} <${env.gmail.user || 'gdgocgcee@gmail.com'}>`;
+}
+
+function getResendFromAddress(): string {
+  return `${env.resendFromName || FROM_NAME} <${env.resendFromEmail || 'onboarding@resend.dev'}>`;
 }
 
 export function escapeHtml(str: string): string {
@@ -82,18 +84,41 @@ export interface SendMailOptions {
 
 export type SendMailResult = { success: boolean; id?: string; error?: string };
 
-/** Send one email via Resend (or fallback to Gmail SMTP). Returns a result object. */
+/** Send one email via Gmail SMTP (primary) or fall back to Resend. Returns a result object. */
 export async function sendMail(opts: SendMailOptions): Promise<SendMailResult> {
   if (!emailIsConfigured()) {
-    console.error('[mailer] Email service is not configured (missing RESEND_API_KEY and GMAIL_USER/GMAIL_APP_PASSWORD).');
+    console.error('[mailer] Email service is not configured (missing GMAIL_USER/GMAIL_APP_PASSWORD or RESEND_API_KEY).');
     return { success: false, error: 'Email service is not configured.' };
   }
 
-  // 1. Send via Resend if RESEND_API_KEY is available
+  // 1. Send via Gmail SMTP if GMAIL credentials are present (primary per spec)
+  if (env.gmail.user && env.gmail.appPassword) {
+    try {
+      const transport = getTransport();
+      const info = await transport.sendMail({
+        from: getGmailFromAddress(),
+        to: opts.to,
+        replyTo: opts.replyTo,
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
+        attachments: opts.attachments,
+      });
+      return { success: true, id: info.messageId };
+    } catch (err: any) {
+      console.error('[mailer] Gmail SMTP error:', err.message);
+      if (!env.resendApiKey) {
+        return { success: false, error: err.message };
+      }
+      console.warn('[mailer] Gmail SMTP failed, falling back to Resend.');
+    }
+  }
+
+  // 2. Fallback to Resend if an API key is configured
   if (env.resendApiKey) {
     try {
       const resend = getResendInstance()!;
-      const from = getFromAddress();
+      const from = getResendFromAddress();
 
       const payload: any = {
         from,
@@ -113,36 +138,11 @@ export async function sendMail(opts: SendMailOptions): Promise<SendMailResult> {
       const res = await resend.emails.send(payload);
       if (res.error) {
         console.error('[mailer] Resend API error:', res.error);
-        if (!env.gmail.user || !env.gmail.appPassword) {
-          return { success: false, error: res.error.message || 'Resend delivery failed' };
-        }
-      } else {
-        return { success: true, id: res.data?.id };
+        return { success: false, error: res.error.message || 'Resend delivery failed' };
       }
+      return { success: true, id: res.data?.id };
     } catch (err: any) {
       console.error('[mailer] Resend error:', err.message);
-      if (!env.gmail.user || !env.gmail.appPassword) {
-        return { success: false, error: err.message };
-      }
-    }
-  }
-
-  // 2. Fallback to Gmail SMTP if configured
-  if (env.gmail.user && env.gmail.appPassword) {
-    try {
-      const transport = getTransport();
-      const info = await transport.sendMail({
-        from: getFromAddress(),
-        to: opts.to,
-        replyTo: opts.replyTo,
-        subject: opts.subject,
-        html: opts.html,
-        text: opts.text,
-        attachments: opts.attachments,
-      });
-      return { success: true, id: info.messageId };
-    } catch (err: any) {
-      console.error('[mailer] Gmail SMTP error:', err.message);
       return { success: false, error: err.message };
     }
   }
@@ -183,6 +183,23 @@ function baseHtml(content: string): string {
 </html>`;
 }
 
+/** Verify Gmail SMTP connection at runtime safely without exposing credentials. */
+export async function verifyGmailConnection(): Promise<{ ok: boolean; error?: string }> {
+  if (!env.gmail.user || !env.gmail.appPassword) {
+    console.warn('[mailer] GMAIL_USER or GMAIL_APP_PASSWORD is not configured');
+    return { ok: false, error: 'GMAIL_USER or GMAIL_APP_PASSWORD is not configured' };
+  }
+  try {
+    const transport = getTransport();
+    await transport.verify();
+    console.log('[mailer] ✓ Gmail SMTP connection verified successfully');
+    return { ok: true };
+  } catch (err: any) {
+    console.error('[mailer] Gmail SMTP connection failed:', err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
 /* ─── Templates ────────────────────────────────────────────────────── */
 
 export async function sendOtpEmail(opts: {
@@ -195,26 +212,47 @@ export async function sendOtpEmail(opts: {
 
   const html = baseHtml(`
     <tr><td style="padding:32px 32px 12px 32px;">
-      <p style="margin:0; color:#1e293b; font-size:16px; line-height:1.5;">Hi <strong>${name}</strong>,</p>
-      <p style="margin:20px 0 0 0; color:#475569; font-size:14px; line-height:1.6;">
-        Thank you for signing up for the GDGoC GCEE community. Please use the one-time password below to verify your email address and complete your registration:
+      <p style="margin:0; color:#1e293b; font-size:16px; line-height:1.5;">Hello <strong>${name}</strong>,</p>
+      <p style="margin:16px 0 0 0; color:#475569; font-size:14px; line-height:1.6;">
+        Thank you for joining <strong>GDGoC GCEE</strong>.
+      </p>
+      <p style="margin:16px 0 0 0; color:#475569; font-size:14px; line-height:1.6;">
+        Your email verification OTP is:
       </p>
     </td></tr>
-    <tr><td style="padding:8px 32px;">
+    <tr><td style="padding:12px 32px;">
       <div style="background-color:#f8fafc; border:2px dashed #4285F4; border-radius:12px; padding:24px; text-align:center;">
         <p style="margin:0 0 8px 0; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:1.5px;">Your One-Time Password</p>
-        <p style="margin:0; color:#0b1b33; font-size:34px; font-weight:900; letter-spacing:10px; font-family:Consolas, Menlo, monospace;">${otp}</p>
+        <p style="margin:0; color:#0b1b33; font-size:36px; font-weight:900; letter-spacing:12px; font-family:Consolas, Menlo, monospace;">${otp}</p>
       </div>
     </td></tr>
     <tr><td style="padding:16px 32px 32px 32px;">
-      <p style="margin:0; color:#64748b; font-size:12px; line-height:1.6;">This OTP will expire in <strong>10 minutes</strong>. If you did not request this, please ignore this email.</p>
+      <p style="margin:0; color:#64748b; font-size:13px; line-height:1.6;">This OTP expires in <strong>10 minutes</strong>.</p>
+      <p style="margin:10px 0 0 0; color:#64748b; font-size:13px; line-height:1.6;">If you did not request this OTP, please ignore this email.</p>
+      <p style="margin:20px 0 0 0; color:#0b1b33; font-size:13px; font-weight:700;">Regards,<br/>GDGoC GCEE</p>
     </td></tr>
   `);
 
+  const plainText = `Hello ${opts.studentName || 'Student'},
+
+Thank you for joining GDGoC GCEE.
+
+Your email verification OTP is:
+
+${opts.otp}
+
+This OTP expires in 10 minutes.
+
+If you did not request this OTP, please ignore this email.
+
+Regards,
+GDGoC GCEE`;
+
   const result = await sendMail({
     to: opts.to,
-    subject: 'Verify Your Email – GDGoC GCEE',
+    subject: 'GDGoC GCEE - Email Verification OTP',
     html,
+    text: plainText,
   });
   console.log(`[mailer] sendOtpEmail -> ${opts.to} (${result.success ? 'sent' : 'failed'})`);
   return result;

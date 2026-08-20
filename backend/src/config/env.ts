@@ -49,8 +49,8 @@ export const env = {
   adminPassword: process.env.ADMIN_PASSWORD || 'Admin@123',
   adminName: process.env.ADMIN_NAME || 'GDGoC GCEE Admin',
   gmail: {
-    user: process.env.GMAIL_USER || '',
-    appPassword: process.env.GMAIL_APP_PASSWORD || '',
+    user: (process.env.GMAIL_USER || '').trim().toLowerCase(),
+    appPassword: (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, ''),
   },
   resendApiKey: process.env.RESEND_API_KEY || '',
   resendFromEmail: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
