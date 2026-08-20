@@ -12,7 +12,6 @@ const NAV = [
   { label: 'Team Members', to: '/members' },
   { label: 'Gallery', to: '/gallery' },
   { label: 'Resources', to: '/resources' },
-  { label: 'Certificates', to: '/certificates' },
   { label: 'Contact', to: '/contact' },
 ];
 
