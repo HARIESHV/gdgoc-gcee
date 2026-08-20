@@ -71,28 +71,85 @@ export async function register(req: AuthRequest, res: Response) {
       return;
     }
 
-    const existing = await Student.findOne({ $or: [{ email: email.toLowerCase() }, { rollNumber: rollNumber || '' }] });
-    if (existing) {
-      res.status(409).json({
-        success: false,
-        message: existing.email === email.toLowerCase() ? 'An account with this email already exists.' : 'This roll number is already registered.',
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanRollNumber = (rollNumber || '').trim();
+
+    // Check if an account with this email exists
+    const existingEmail = await Student.findOne({ email: cleanEmail });
+    if (existingEmail) {
+      if (existingEmail.isVerified) {
+        res.status(409).json({
+          success: false,
+          message: 'An account with this email already exists. Please log in.',
+        });
+        return;
+      }
+      // If student registered previously but never completed OTP verification, update with new details & password
+      const passwordHash = await bcrypt.hash(password, 10);
+      const otp = generateOtp();
+      if (env.nodeEnv !== 'production') {
+        console.log(`\n========================================\n[auth] 🔑 OTP for ${cleanEmail}: ${otp}\n========================================\n`);
+      }
+      const otpHash = hashOtp(otp);
+      const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+      existingEmail.name = name.trim();
+      existingEmail.phone = (phone || '').trim();
+      existingEmail.rollNumber = cleanRollNumber;
+      existingEmail.department = (department || '').trim();
+      existingEmail.year = (year || '').trim();
+      existingEmail.passwordHash = passwordHash;
+      existingEmail.otp = otpHash;
+      existingEmail.otpExpiresAt = otpExpiresAt;
+      await existingEmail.save();
+
+      // Send OTP email
+      try {
+        await sendOtpEmail({ to: cleanEmail, studentName: existingEmail.name, otp });
+      } catch (err: any) {
+        console.error('[auth] OTP email error:', err.message);
+      }
+
+      const token = signToken({ id: String(existingEmail._id), role: 'student' });
+      setAuthCookie(res, token);
+
+      res.status(200).json({
+        success: true,
+        message: 'Account updated. Please verify your email with the OTP sent.',
+        token,
+        student: publicStudent(existingEmail),
+        requiresVerification: true,
+        devOtp: env.nodeEnv !== 'production' ? otp : undefined,
       });
       return;
     }
 
+    if (cleanRollNumber) {
+      const existingRoll = await Student.findOne({ rollNumber: cleanRollNumber, isVerified: true });
+      if (existingRoll) {
+        res.status(409).json({
+          success: false,
+          message: 'This register number is already registered.',
+        });
+        return;
+      }
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
     const otp = generateOtp();
-    if (env.nodeEnv !== 'production') console.log(`[auth] OTP for ${email}: ${otp} (dev only)`);
+    if (env.nodeEnv !== 'production') {
+      console.log(`\n========================================\n[auth] 🔑 OTP for ${cleanEmail}: ${otp}\n========================================\n`);
+    }
     const otpHash = hashOtp(otp);
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     const student = await Student.create({
-      name,
-      email: email.toLowerCase(),
-      phone: phone || '',
-      rollNumber: rollNumber || '',
-      department: department || '',
-      year: year || '',
+      name: name.trim(),
+      email: cleanEmail,
+      phone: (phone || '').trim(),
+      rollNumber: cleanRollNumber,
+      department: (department || '').trim(),
+      year: (year || '').trim(),
       college: 'Government College of Engineering, Erode',
       passwordHash,
       isVerified: false,
@@ -101,16 +158,10 @@ export async function register(req: AuthRequest, res: Response) {
     });
 
     // Send OTP email
-    const studentEmail = student.email;
-    if (studentEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
-      try {
-        const sendRes = await sendOtpEmail({ to: studentEmail, studentName: student.name, otp });
-        if (!sendRes.success) {
-          console.warn(`[auth] Warning: OTP email could not be delivered to ${studentEmail}: ${sendRes.error}`);
-        }
-      } catch (err: any) {
-        console.error('[auth] OTP email failed for', studentEmail, ':', err.message);
-      }
+    try {
+      await sendOtpEmail({ to: cleanEmail, studentName: student.name, otp });
+    } catch (err: any) {
+      console.error('[auth] OTP email failed for', cleanEmail, ':', err.message);
     }
 
     const token = signToken({ id: String(student._id), role: 'student' });
@@ -122,6 +173,7 @@ export async function register(req: AuthRequest, res: Response) {
       token,
       student: publicStudent(student),
       requiresVerification: true,
+      devOtp: env.nodeEnv !== 'production' ? otp : undefined,
     });
   } catch (err: any) {
     console.error('[auth] register error:', err.message);
@@ -140,7 +192,8 @@ export async function sendOtp(req: AuthRequest, res: Response) {
       return;
     }
 
-    const student = await Student.findOne({ email: email.toLowerCase() });
+    const cleanEmail = email.toLowerCase().trim();
+    const student = await Student.findOne({ email: cleanEmail });
     if (!student) {
       res.status(404).json({ success: false, message: 'No account found with this email.' });
       return;
@@ -152,7 +205,9 @@ export async function sendOtp(req: AuthRequest, res: Response) {
     }
 
     const otp = generateOtp();
-    if (env.nodeEnv !== 'production') console.log(`[auth] OTP for ${email}: ${otp} (dev only)`);
+    if (env.nodeEnv !== 'production') {
+      console.log(`\n========================================\n[auth] 🔑 Resent OTP for ${cleanEmail}: ${otp}\n========================================\n`);
+    }
     const otpHash = hashOtp(otp);
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -161,11 +216,11 @@ export async function sendOtp(req: AuthRequest, res: Response) {
     await student.save();
 
     const result = await sendOtpEmail({ to: student.email, studentName: student.name, otp });
-    if (result.success) {
-      res.json({ success: true, message: 'OTP sent to your email address.' });
-    } else {
-      res.status(500).json({ success: false, message: result.error || 'Failed to send OTP. Please try again.' });
-    }
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent to your email address.',
+      devOtp: env.nodeEnv !== 'production' ? otp : undefined,
+    });
   } catch (err: any) {
     console.error('[auth] sendOtp error:', err.message);
     res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
@@ -183,19 +238,24 @@ export async function verifyOtp(req: AuthRequest, res: Response) {
       return;
     }
 
-    const student = await Student.findOne({ email: email.toLowerCase() });
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanOtp = String(otp).trim();
+
+    const student = await Student.findOne({ email: cleanEmail });
     if (!student) {
       res.status(404).json({ success: false, message: 'No account found with this email.' });
       return;
     }
 
     if (student.isVerified) {
-      res.json({ success: true, message: 'Email is already verified.' });
+      const token = signToken({ id: String(student._id), role: 'student' });
+      setAuthCookie(res, token);
+      res.json({ success: true, message: 'Email is already verified.', token, student: publicStudent(student) });
       return;
     }
 
     if (!student.otp || !student.otpExpiresAt) {
-      res.status(400).json({ success: false, message: 'No OTP found. Please request a new one.' });
+      res.status(400).json({ success: false, message: 'No active OTP found. Please request a new one.' });
       return;
     }
 
@@ -204,34 +264,41 @@ export async function verifyOtp(req: AuthRequest, res: Response) {
       return;
     }
 
-    const otpValid = await bcrypt.compare(otp, student.otp);
+    const otpValid = await bcrypt.compare(cleanOtp, student.otp);
     if (!otpValid) {
       res.status(400).json({ success: false, message: 'Invalid OTP. Please check and try again.' });
       return;
     }
 
-    // Atomic verify — prevents duplicate "Thank You" emails if the same request hits twice.
-    // findOneAndUpdate only succeeds when the student is not yet verified.
+    // Atomic verify
     const updated = await Student.findOneAndUpdate(
-      { _id: student._id, isVerified: false },
+      { _id: student._id },
       { $set: { isVerified: true }, $unset: { otp: 1, otpExpiresAt: 1 } },
       { new: true }
     );
 
     if (!updated) {
-      res.json({ success: true, message: 'Email is already verified.' });
+      res.status(404).json({ success: false, message: 'Account not found.' });
       return;
     }
 
-    // Send Thank You / Welcome email ONLY after successful verification.
+    // Send Thank You / Welcome email ONLY after successful verification
     if (updated.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updated.email)) {
-      const result = await sendThankYouEmail({ to: updated.email, studentName: updated.name });
-      if (!result.success) {
-        console.error('[auth] Thank you email failed for', updated.email, ':', result.error);
-      }
+      sendThankYouEmail({ to: updated.email, studentName: updated.name }).catch((err) => {
+        console.error('[auth] Thank you email error:', err.message);
+      });
     }
 
-    res.json({ success: true, message: 'Email verified successfully! Welcome to GDGoC GCEE.' });
+    // Generate token and automatically log student in
+    const token = signToken({ id: String(updated._id), role: 'student' });
+    setAuthCookie(res, token);
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully! Welcome to GDGoC GCEE.',
+      token,
+      student: publicStudent(updated),
+    });
   } catch (err: any) {
     console.error('[auth] verifyOtp error:', err.message);
     res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
@@ -249,20 +316,40 @@ export async function login(req: AuthRequest, res: Response) {
       return;
     }
 
-    const student = await Student.findOne({ email: email.toLowerCase() });
+    const identifier = String(email).trim().toLowerCase();
+    const student = await Student.findOne({
+      $or: [{ email: identifier }, { rollNumber: identifier.toUpperCase() }],
+    });
+
     if (!student || !student.isActive) {
-      res.status(401).json({ success: false, message: 'Invalid credentials or account disabled.' });
+      res.status(401).json({ success: false, message: 'Invalid email or password.' });
+      return;
+    }
+
+    const ok = await bcrypt.compare(String(password), student.passwordHash);
+    if (!ok) {
+      res.status(401).json({ success: false, message: 'Invalid email or password.' });
       return;
     }
 
     if (!student.isVerified) {
-      res.status(403).json({ success: false, message: 'Please verify your email before logging in.', requiresVerification: true, email: student.email });
-      return;
-    }
+      // Generate and send a fresh OTP immediately
+      const otp = generateOtp();
+      if (env.nodeEnv !== 'production') {
+        console.log(`\n========================================\n[auth] 🔑 OTP for ${student.email}: ${otp}\n========================================\n`);
+      }
+      student.otp = hashOtp(otp);
+      student.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      await student.save();
+      sendOtpEmail({ to: student.email, studentName: student.name, otp }).catch(() => null);
 
-    const ok = await bcrypt.compare(password, student.passwordHash);
-    if (!ok) {
-      res.status(401).json({ success: false, message: 'Invalid email or password.' });
+      res.status(403).json({
+        success: false,
+        message: 'Please verify your email before logging in. An OTP has been sent to your email.',
+        requiresVerification: true,
+        email: student.email,
+        devOtp: env.nodeEnv !== 'production' ? otp : undefined,
+      });
       return;
     }
 

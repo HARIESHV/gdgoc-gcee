@@ -127,8 +127,6 @@ export default function App() {
         <Route path="events/:eventId/registrations" element={<AdminEventDetail />} />
         <Route path="students" element={<AdminStudents />} />
         <Route path="members" element={<AdminMembers />} />
-        <Route path="emails" element={<AdminBulkEmail />} />
-        <Route path="bulk-email" element={<AdminBulkEmail />} />
         <Route path="certificates" element={<AdminCertificates />} />
         <Route path="certificate-campaigns" element={<AdminCampaigns />} />
         <Route path="certificate-campaigns/:id" element={<AdminCampaignDetail />} />

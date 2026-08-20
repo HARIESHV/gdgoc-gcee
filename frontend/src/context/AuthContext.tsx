@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function registerStudent(data: Record<string, string>) {
     const res = await api.post('/auth/register', data);
     setStudent(res.data.student);
-    return res.data.student as Student;
+    return res.data;
   }
 
   async function logoutStudent() {
@@ -75,7 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function sendOtp(email: string) {
-    await api.post('/auth/send-otp', { email });
+    const res = await api.post('/auth/send-otp', { email });
+    return res.data;
   }
 
   async function verifyOtp(email: string, otp: string) {
