@@ -262,17 +262,6 @@ export function EventForm({ event, onSaved }: { event?: GEvent; onSaved?: () => 
         </div>
       </div>
 
-      {isEdit && (
-        <div className="card p-6">
-          <label className="label" htmlFor="ev-status">Status</label>
-          <select id="ev-status" className="input" value={form.status} onChange={(e) => update('status', e.target.value)}>
-            <option value="UPCOMING">UPCOMING</option>
-            <option value="ONGOING">ONGOING</option>
-            <option value="COMPLETED">COMPLETED</option>
-            <option value="CANCELLED">CANCELLED</option>
-          </select>
-        </div>
-      )}
 
       <div className="flex items-center justify-end gap-3">
         <Link to="/admin/events" className="btn-outline">Cancel</Link>
