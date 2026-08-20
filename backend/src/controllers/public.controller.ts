@@ -96,8 +96,8 @@ export async function contactForm(req: any, res: Response) {
     if (!emailIsConfigured()) {
       const status = getEmailConfigStatus();
       const missing = [
-        !status.hasApiKey ? 'RESEND_API_KEY' : null,
-        !status.hasFromEmail ? 'RESEND_FROM_EMAIL' : null,
+        !status.hasApiKey ? 'GMAIL_USER / GMAIL_APP_PASSWORD' : null,
+        !status.hasFromEmail ? 'GMAIL_USER' : null,
       ].filter(Boolean);
       console.error(`[contact] Email not configured. Missing env vars: ${missing.join(', ') || 'unknown'}`);
       res.status(503).json({

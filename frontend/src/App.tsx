@@ -8,6 +8,7 @@ import Home from './pages/public/Home';
 import About from './pages/public/About';
 import Events from './pages/public/Events';
 import EventDetail from './pages/public/EventDetail';
+import EventRegister from './pages/public/EventRegister';
 import TeamMembers from './pages/public/TeamMembers';
 import Gallery from './pages/public/Gallery';
 import Resources from './pages/public/Resources';
@@ -39,6 +40,7 @@ import AdminGallery from './pages/admin/AdminGallery';
 import AdminResources from './pages/admin/AdminResources';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminFormRegistrations from './pages/admin/AdminFormRegistrations';
+import AdminBulkEmail from './pages/admin/AdminBulkEmail';
 import AdminMessages from './pages/admin/AdminMessages';
 
 function RequireStudent({ children }: { children: React.ReactNode }) {
@@ -75,6 +77,7 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:eventId" element={<EventDetail />} />
+        <Route path="/events/:eventId/register" element={<EventRegister />} />
         <Route path="/team" element={<TeamMembers />} />
         <Route path="/team-members" element={<TeamMembers />} />
         <Route path="/join" element={<Register />} />
@@ -121,8 +124,11 @@ export default function App() {
         <Route path="events" element={<AdminEvents />} />
         <Route path="events/create" element={<AdminEventCreate />} />
         <Route path="events/:eventId" element={<AdminEventDetail />} />
+        <Route path="events/:eventId/registrations" element={<AdminEventDetail />} />
         <Route path="students" element={<AdminStudents />} />
         <Route path="members" element={<AdminMembers />} />
+        <Route path="emails" element={<AdminBulkEmail />} />
+        <Route path="bulk-email" element={<AdminBulkEmail />} />
         <Route path="certificates" element={<AdminCertificates />} />
         <Route path="certificate-campaigns" element={<AdminCampaigns />} />
         <Route path="certificate-campaigns/:id" element={<AdminCampaignDetail />} />

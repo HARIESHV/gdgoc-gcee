@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   UserPlus,
@@ -40,6 +40,8 @@ type Step = 1 | 2 | 3;
 export default function Register() {
   const { registerStudent, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectUrl = searchParams.get('redirect') || '';
 
   const [form, setForm] = useState({
     name: '',
@@ -143,7 +145,11 @@ export default function Register() {
     try {
       await verifyOtp(form.email, otp);
       toast.success('Email verified! Welcome to GDGoC GCEE! A thank you email has been sent.');
-      navigate('/dashboard');
+      if (redirectUrl) {
+        navigate(redirectUrl);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {

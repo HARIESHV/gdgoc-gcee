@@ -7,8 +7,8 @@ import {
   Settings,
   ClipboardList,
   MessageSquare,
-  UserCog,
   Image,
+  Mail,
 } from 'lucide-react';
 import { DashboardShell } from './DashboardShell';
 import { useAuth } from '../../context/AuthContext';
@@ -18,12 +18,13 @@ export function AdminLayout() {
 
   const navItems = [
     { label: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard, end: true },
-    { label: 'Members', to: '/admin/members', icon: UsersRound },
+    { label: 'Members', to: '/admin/students', icon: Users },
     { label: 'Events', to: '/admin/events', icon: CalendarDays },
     { label: 'Event Registrations', to: '/admin/form-registrations', icon: ClipboardList },
+    { label: 'Team', to: '/admin/members', icon: UsersRound },
+    { label: 'Emails', to: '/admin/emails', icon: Mail },
     { label: 'Certificates', to: '/admin/certificates', icon: Award },
     { label: 'Gallery', to: '/admin/gallery', icon: Image },
-    { label: 'Team Members', to: '/admin/students', icon: UserCog },
     { label: 'Messages', to: '/admin/messages', icon: MessageSquare },
     { label: 'Settings', to: '/admin/settings', icon: Settings },
   ];

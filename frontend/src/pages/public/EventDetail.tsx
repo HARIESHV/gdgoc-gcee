@@ -291,23 +291,13 @@ export default function EventDetail() {
                       <div className="rounded border border-green-200 bg-green-50 p-3 text-center font-mono text-sm font-bold text-green-700">
                         ✓ You are registered!
                       </div>
-                    ) : hasGoogleForm && isUpcoming ? (
-                      <a
-                        href={event.googleFormUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                    ) : isUpcoming && event.registrationEnabled ? (
+                      <Link
+                        to={`/events/${event.eventId}/register`}
                         className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black"
                       >
-                        Register Now <ExternalLink className="h-4 w-4" />
-                      </a>
-                    ) : isUpcoming && event.registrationEnabled ? (
-                      <button
-                        onClick={handleStudentRegister}
-                        disabled={regBusy}
-                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black disabled:opacity-50"
-                      >
-                        {regBusy ? 'Registering...' : 'Register Now'}
-                      </button>
+                        Register for Event <ExternalLink className="h-4 w-4" />
+                      </Link>
                     ) : (
                       <div className="rounded border border-black/10 bg-gray-50 p-3 text-center font-mono text-sm text-black/40">
                         {isUpcoming ? 'Registration opens soon' : 'Registration closed'}

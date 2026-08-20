@@ -2,8 +2,8 @@ import type { Request, Response } from 'express';
 import { EventModel, GoogleFormRegistration, Registration, SendingHistory } from '../models';
 import { connectDB } from '../config/db';
 import { emailIsConfigured, getEmailConfigStatus, sendEventRegistrationPDFEmail } from '../utils/email';
+import { getResendCompatibleMailer } from '../lib/mailer';
 import { generateRegistrationListPDFBuffer, type StudentRegistrationPdfRow } from '../utils/pdf';
-import { env } from '../config/env';
 
 function escapeHtml(str: string): string {
   return str
@@ -17,7 +17,7 @@ function escapeHtml(str: string): string {
 function getFromAddress(): string {
   const status = getEmailConfigStatus();
   if (status.hasFromEmail) return `GDGoC GCEE <${status.fromEmail}>`;
-  return 'GDGoC GCEE <onboarding@resend.dev>';
+  return 'GDGoC GCEE <gdgocgcee@gmail.com>';
 }
 
 // Helper to fetch all registered students for an event
@@ -109,7 +109,7 @@ export async function sendEventRegistrationPDFToAll(req: any, res: Response) {
     await connectDB();
 
     if (!emailIsConfigured()) {
-      res.status(400).json({ success: false, message: 'Email service is not configured. Please configure RESEND_API_KEY.' });
+      res.status(400).json({ success: false, message: 'Email service is not configured. Configure GMAIL_USER and GMAIL_APP_PASSWORD.' });
       return;
     }
 
@@ -202,7 +202,7 @@ export async function sendEventEmails(req: any, res: Response) {
     await connectDB();
 
     if (!emailIsConfigured()) {
-      res.status(400).json({ success: false, message: 'Email service is not configured. Add a Resend API key.' });
+      res.status(400).json({ success: false, message: 'Email service is not configured. Configure GMAIL_USER and GMAIL_APP_PASSWORD.' });
       return;
     }
 
@@ -243,8 +243,7 @@ export async function sendEventEmails(req: any, res: Response) {
     }
 
     // Send emails individually (never to admin)
-    const Resend = (await import('resend')).Resend;
-    const resend = new Resend(env.resend.apiKey);
+    const gmailMailer = getResendCompatibleMailer();
     const fromAddress = getFromAddress();
 
     let sent = 0;
@@ -271,7 +270,7 @@ export async function sendEventEmails(req: any, res: Response) {
       </div>`;
 
       try {
-        const { data, error } = await resend.emails.send({
+        const { data, error } = await gmailMailer.emails.send({
           from: fromAddress,
           to: student.email,
           subject: `[GDGoC GCEE] ${subject}`,
@@ -346,15 +345,18 @@ export async function getEventSendingHistory(req: any, res: Response) {
       return;
     }
 
+    const eventTypeFilter: { eventId: any; eventType?: string } = { eventId: event._id };
+    if (req.query.eventType) eventTypeFilter.eventType = String(req.query.eventType);
+
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
     const skip = (page - 1) * limit;
 
     const [items, total, stats] = await Promise.all([
-      SendingHistory.find({ eventId: event._id }).sort({ sentAt: -1 }).skip(skip).limit(limit).lean(),
-      SendingHistory.countDocuments({ eventId: event._id }),
+      SendingHistory.find(eventTypeFilter).sort({ sentAt: -1 }).skip(skip).limit(limit).lean(),
+      SendingHistory.countDocuments(eventTypeFilter),
       SendingHistory.aggregate([
-        { $match: { eventId: event._id } },
+        { $match: eventTypeFilter },
         { $group: { _id: '$status', count: { $sum: 1 } } },
       ]),
     ]);

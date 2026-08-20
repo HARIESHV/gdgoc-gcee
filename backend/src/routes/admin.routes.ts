@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { adminProtect } from '../middleware/adminAuth';
 import { uploadMemory } from '../middleware/upload';
+import rateLimit from 'express-rate-limit';
 
 import {
   adminListEvents,
@@ -9,6 +10,7 @@ import {
   adminUpdateEvent,
   adminDeleteEvent,
   sendEventToAllStudents,
+  getVerifiedStudentCount,
 } from '../controllers/event.controller';
 import {
   listCampaigns,
@@ -105,8 +107,17 @@ router.post('/events', adminCreateEvent);
 router.put('/events/:eventId', adminUpdateEvent);
 router.delete('/events/:eventId', adminDeleteEvent);
 
-// Send event email to all verified students
-router.post('/events/:eventId/send-to-all', sendEventToAllStudents);
+// Send event email to all or selected verified students (rate-limited to prevent accidental mass resends)
+const sendEventEmailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many event-email send requests. Please wait and try again.' },
+});
+router.post('/events/:eventId/send-to-all', sendEventEmailLimiter, sendEventToAllStudents);
+router.post('/events/:eventId/send-registration-email', sendEventEmailLimiter, sendEventToAllStudents);
+router.get('/events/:eventId/verified-count', getVerifiedStudentCount);
 
 // Event registrations (Google Form webhook submissions per event)
 router.get('/registration-stats', getRegistrationStats);

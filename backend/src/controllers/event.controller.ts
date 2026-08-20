@@ -1,11 +1,12 @@
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { EventModel, Registration, GoogleFormRegistration, Student } from '../models';
+import { EventModel, Registration, GoogleFormRegistration, Student, SendingHistory, EventRegistration } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { nextEventId } from '../utils/ids';
 import { todayIST, isDateBefore } from '../utils/dates';
 import { connectDB } from '../config/db';
-import { sendBulkEventAnnouncement } from '../services/email.service';
+import { env } from '../config/env';
+import { sendEventEmail, sendBulkEventRegistrationEmails, emailIsConfigured } from '../lib/mailer';
 
 export function eventQuery(identifier: string) {
   if (mongoose.Types.ObjectId.isValid(identifier)) {
@@ -147,7 +148,93 @@ export async function getEvent(req: AuthRequest, res: Response) {
   }
 }
 
-// POST /api/events/:eventId/register-public  (student registration form)
+// POST /api/events/:eventId/check-membership  (check if student is verified community member)
+export async function checkMemberEligibility(req: Request, res: Response) {
+  try {
+    await connectDB();
+    const event = await EventModel.findOne(eventQuery(req.params.eventId)).lean();
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    const { email } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      res.status(400).json({ success: false, message: 'Student email is required.' });
+      return;
+    }
+
+    const student = await Student.findOne({ email: cleanEmail, isActive: true }).lean();
+    if (!student) {
+      res.json({
+        success: false,
+        isMember: false,
+        message: 'Please join GDGoC GCEE before registering for this event.',
+        joinUrl: `/join?redirect=/events/${event.eventId}/register`,
+      });
+      return;
+    }
+
+    if (!student.isVerified) {
+      res.json({
+        success: false,
+        isMember: false,
+        notVerified: true,
+        message: 'Please verify your GDGoC GCEE account email before registering for this event.',
+        verifyUrl: '/join',
+      });
+      return;
+    }
+
+    // Check if already registered
+    const alreadyRegistered =
+      (await Registration.countDocuments({
+        eventId: event._id,
+        studentId: student._id,
+        status: 'REGISTERED',
+      })) > 0 ||
+      (await GoogleFormRegistration.countDocuments({
+        eventId: event._id,
+        email: cleanEmail,
+      })) > 0 ||
+      (await EventRegistration.countDocuments({
+        eventId: event._id,
+        email: cleanEmail,
+        status: 'REGISTERED',
+      })) > 0;
+
+    res.json({
+      success: true,
+      isMember: true,
+      isAlreadyRegistered: alreadyRegistered,
+      student: {
+        id: student._id,
+        name: student.name,
+        email: student.email,
+        phone: student.phone || '',
+        college: student.college || 'Government College of Engineering, Erode',
+        department: student.department || '',
+        year: student.year || '',
+        rollNumber: student.rollNumber || '',
+      },
+      event: {
+        eventId: event.eventId,
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        venue: event.venue,
+        banner: event.banner || '',
+        googleFormUrl: event.googleFormUrl || '',
+        registrationEnabled: event.registrationEnabled,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// POST /api/events/:eventId/register-public  (student registration flow with membership verification)
 export async function registerPublicEvent(req: any, res: Response) {
   try {
     await connectDB();
@@ -163,13 +250,7 @@ export async function registerPublicEvent(req: any, res: Response) {
       return;
     }
 
-    const { name, email, phone, college, department, year, rollNumber } = req.body;
-
-    if (!name || typeof name !== 'string' || name.trim().length < 2) {
-      res.status(400).json({ success: false, message: 'Full name is required.' });
-      return;
-    }
-
+    const { email } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!cleanEmail || !emailRegex.test(cleanEmail)) {
@@ -177,20 +258,36 @@ export async function registerPublicEvent(req: any, res: Response) {
       return;
     }
 
-    if (!phone || typeof phone !== 'string' || phone.trim().length < 7) {
-      res.status(400).json({ success: false, message: 'A valid contact phone number is required.' });
+    // Strict Rule: Website signup != Event registration.
+    // Must be an active, verified GDGoC GCEE member.
+    const student = await Student.findOne({ email: cleanEmail, isActive: true });
+    if (!student) {
+      res.status(403).json({
+        success: false,
+        isMember: false,
+        message: 'Please join GDGoC GCEE before registering for this event.',
+        joinUrl: `/join?redirect=/events/${event.eventId}/register`,
+      });
       return;
     }
 
-    if (!department || typeof department !== 'string' || !department.trim()) {
-      res.status(400).json({ success: false, message: 'Department is required.' });
+    if (!student.isVerified) {
+      res.status(403).json({
+        success: false,
+        isMember: false,
+        notVerified: true,
+        message: 'Please verify your GDGoC GCEE account email before registering for this event.',
+        verifyUrl: '/join',
+      });
       return;
     }
 
-    if (!year || typeof year !== 'string' || !year.trim()) {
-      res.status(400).json({ success: false, message: 'Year of study is required.' });
-      return;
-    }
+    const name = req.body.name || student.name;
+    const phone = req.body.phone || student.phone || '';
+    const college = req.body.college || student.college || 'Government College of Engineering, Erode';
+    const department = req.body.department || student.department || '';
+    const year = req.body.year || student.year || '';
+    const rollNumber = req.body.rollNumber || student.rollNumber || '';
 
     // Duplicate check
     const existing = await GoogleFormRegistration.findOne({
@@ -201,8 +298,9 @@ export async function registerPublicEvent(req: any, res: Response) {
     if (existing) {
       res.status(400).json({
         success: false,
-        message: 'This email is already registered for this event.',
+        message: 'You are already registered for this event.',
         registrationId: existing.responseId,
+        googleFormUrl: event.googleFormUrl || '',
       });
       return;
     }
@@ -217,32 +315,56 @@ export async function registerPublicEvent(req: any, res: Response) {
 
     const registrationId = `REG-${event.eventId.toUpperCase()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-    const reg = await GoogleFormRegistration.create({
+    // Record in GoogleFormRegistration
+    await GoogleFormRegistration.create({
       responseId: registrationId,
       eventId: event._id,
       formData: {
         'Full Name': name.trim(),
         'Email Address': cleanEmail,
         'Phone Number': phone.trim(),
-        'College / Institution': (college || 'Government College of Engineering, Erode').trim(),
+        'College / Institution': college.trim(),
         'Department': department.trim(),
         'Year of Study': year.trim(),
-        'Roll Number / Student ID': (rollNumber || '').trim(),
+        'Roll Number / Student ID': rollNumber.trim(),
         'Event ID': event.eventId,
         'Event Name': event.title,
       },
       name: name.trim(),
       email: cleanEmail,
       phone: phone.trim(),
-      rollNumber: (rollNumber || '').trim(),
+      rollNumber: rollNumber.trim(),
       department: department.trim(),
       year: year.trim(),
-      college: (college || 'Government College of Engineering, Erode').trim(),
+      college: college.trim(),
       source: 'manual',
       submittedAt: new Date(),
     });
 
-    // Send confirmation email ONLY to the student's email address (never to admin)
+    // Record in Registration
+    await Registration.findOneAndUpdate(
+      { studentId: student._id, eventId: event._id },
+      { $set: { status: 'REGISTERED', registeredAt: new Date() } },
+      { upsert: true }
+    );
+
+    // Record in EventRegistration
+    await EventRegistration.findOneAndUpdate(
+      { eventId: event._id, email: cleanEmail },
+      {
+        $set: {
+          studentId: student._id,
+          studentName: name.trim(),
+          email: cleanEmail,
+          googleFormResponseId: registrationId,
+          registeredAt: new Date(),
+          status: 'REGISTERED',
+        },
+      },
+      { upsert: true }
+    );
+
+    // Send confirmation email ONLY to student's email address
     try {
       const { sendEventRegistrationConfirmationEmail } = await import('../utils/email.js');
       await sendEventRegistrationConfirmationEmail({
@@ -263,6 +385,7 @@ export async function registerPublicEvent(req: any, res: Response) {
       success: true,
       message: 'Registration successful! Confirmation email sent to your email address.',
       registrationId,
+      googleFormUrl: event.googleFormUrl || '',
       event: {
         eventId: event.eventId,
         title: event.title,
@@ -550,71 +673,137 @@ export async function adminDeleteEvent(req: any, res: Response) {
   }
 }
 
-// POST /api/admin/events/:eventId/send-to-all
-export async function sendEventToAllStudents(req: any, res: Response) {
+// GET /api/admin/events/:eventId/verified-count
+// Number of verified students who would receive the event email.
+export async function getVerifiedStudentCount(req: any, res: Response) {
+  try {
+    await connectDB();
+    const count = await Student.countDocuments({ isActive: true, isVerified: true });
+    res.json({ success: true, count });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// POST /api/admin/events/:eventId/send-to-all & /api/admin/events/:eventId/send-registration-email
+export async function sendEventRegistrationEmailToStudents(req: any, res: Response) {
   try {
     await connectDB();
     const { eventId } = req.params;
 
-    const event = await EventModel.findOne({ eventId });
+    if (!emailIsConfigured()) {
+      res.status(400).json({ success: false, message: 'Email service is not configured.' });
+      return;
+    }
+
+    const event = await EventModel.findOne(eventQuery(eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
     }
 
-    if (event.emailSent && !req.body.force) {
+    if (event.emailSent && !req.body.force && !req.body.studentIds && !req.body.emails) {
       res.json({
         success: true,
         alreadySent: true,
-        message: `This event email was already sent to ${event.emailSentCount} student(s) on ${event.emailSentAt ? new Date(event.emailSentAt).toLocaleDateString('en-IN') : 'unknown date'}. Pass {"force": true} to resend.`,
+        message: `This event email was already sent to ${event.emailSentCount} student(s) on ${event.emailSentAt ? new Date(event.emailSentAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'unknown date'}. Pass {"force": true} to resend.`,
         emailSentAt: event.emailSentAt,
         emailSentCount: event.emailSentCount,
       });
       return;
     }
 
-    const allStudents = await Student.find({ isActive: true, isVerified: true }).lean();
-    const recipients = allStudents
+    // Support sending to specific selected student IDs, emails, or all verified students
+    let filter: Record<string, any> = { isActive: true, isVerified: true };
+    if (Array.isArray(req.body.studentIds) && req.body.studentIds.length > 0) {
+      filter._id = { $in: req.body.studentIds.filter((id: string) => mongoose.Types.ObjectId.isValid(id)) };
+    } else if (Array.isArray(req.body.emails) && req.body.emails.length > 0) {
+      const cleanList = req.body.emails.map((e: string) => String(e).trim().toLowerCase()).filter(Boolean);
+      filter.email = { $in: cleanList };
+    }
+
+    const targetStudents = await Student.find(filter).lean();
+    const recipients = targetStudents
       .filter((s) => s.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email))
-      .map((s) => ({ email: s.email, name: s.name }));
+      .map((s) => ({ email: s.email.toLowerCase(), name: s.name || 'Student' }));
 
     if (recipients.length === 0) {
-      res.status(400).json({ success: false, message: 'No verified students found to send emails to.' });
+      res.status(400).json({ success: false, message: 'No verified students found for the selected criteria.' });
       return;
     }
 
-    const regUrl = event.registrationLink || event.googleFormUrl || `https://gdgoc-gcee.vercel.app/events/${event.eventId}`;
+    const regUrl =
+      event.registrationLink ||
+      `${env.clientUrl || env.appUrl || 'https://gdgoc-gcee.vercel.app'}/events/${event.eventId}/register`;
 
-    const result = await sendBulkEventAnnouncement({
-      eventId: String(event._id),
-      eventTitle: event.title,
-      recipients,
-      subject: `You're Invited! – ${event.title}`,
-      message: event.description ? event.description.slice(0, 500) : '',
-      eventDate: event.date,
-      eventTime: event.startTime ? `${event.startTime} - ${event.endTime || ''}` : 'TBA',
-      eventLocation: event.venue || 'Government College of Engineering, Erode',
-      eventType: event.category || 'Workshop',
-      registrationDeadline: event.registrationDeadline || 'Until Event Date',
-      eventRegistrationLink: regUrl,
-    });
+    const subject = `You're Invited! ${event.title} – GDGoC GCEE`;
+
+    let sentCount = 0;
+    let failedCount = 0;
+    const failedEmails: string[] = [];
+
+    // Send one email per student (privacy-safe — no To/CC/BCC with other addresses)
+    for (const student of recipients) {
+      const result = await sendEventEmail({
+        to: student.email,
+        studentName: student.name,
+        event: {
+          title: event.title,
+          description: event.description,
+          date: event.date,
+          time: event.startTime ? `${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}` : 'TBA',
+          venue: event.venue || 'Government College of Engineering, Erode',
+          poster: event.banner || '',
+          registrationLink: regUrl,
+        },
+      });
+
+      if (result.success) {
+        sentCount++;
+        await SendingHistory.create({
+          eventId: event._id,
+          eventType: 'event-invite',
+          recipientEmail: student.email,
+          recipientName: student.name,
+          subject,
+          status: 'sent',
+          resendId: result.id || '',
+          sentAt: new Date(),
+        });
+      } else {
+        failedCount++;
+        failedEmails.push(student.email);
+        await SendingHistory.create({
+          eventId: event._id,
+          eventType: 'event-invite',
+          recipientEmail: student.email,
+          recipientName: student.name,
+          subject,
+          status: 'failed',
+          errorMessage: result.error || 'Send failed',
+          sentAt: new Date(),
+        });
+      }
+    }
 
     event.emailSent = true;
     event.emailSentAt = new Date();
-    event.emailSentCount = result.sentCount;
-    event.emailFailedCount = result.failedCount;
+    event.emailSentCount = (event.emailSentCount || 0) + sentCount;
+    event.emailFailedCount = (event.emailFailedCount || 0) + failedCount;
     await event.save();
 
     res.json({
       success: true,
-      message: `Event email sent. Successfully sent: ${result.sentCount}, Failed: ${result.failedCount}.`,
-      sentCount: result.sentCount,
-      failedCount: result.failedCount,
+      message: `Event email sent. Successfully sent: ${sentCount}, Failed: ${failedCount}.`,
+      sentCount,
+      failedCount,
       totalRecipients: recipients.length,
-      status: result.status,
-      failedEmails: result.failedEmails,
+      status: failedCount === 0 ? 'Success' : sentCount > 0 ? 'Partial' : 'Failure',
+      failedEmails: failedEmails.slice(0, 50),
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
+export const sendEventToAllStudents = sendEventRegistrationEmailToStudents;

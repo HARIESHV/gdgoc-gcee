@@ -5,7 +5,7 @@ import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import type { AuthRequest } from '../middleware/auth';
 import { connectDB } from '../config/db';
-import { sendStudentConfirmationEmail, sendOtpEmail } from '../utils/email';
+import { sendOtpEmail, sendThankYouEmail } from '../utils/email';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -82,6 +82,7 @@ export async function register(req: AuthRequest, res: Response) {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const otp = generateOtp();
+    if (env.nodeEnv !== 'production') console.log(`[auth] OTP for ${email}: ${otp} (dev only)`);
     const otpHash = hashOtp(otp);
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
@@ -146,6 +147,7 @@ export async function sendOtp(req: AuthRequest, res: Response) {
     }
 
     const otp = generateOtp();
+    if (env.nodeEnv !== 'production') console.log(`[auth] OTP for ${email}: ${otp} (dev only)`);
     const otpHash = hashOtp(otp);
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -203,16 +205,25 @@ export async function verifyOtp(req: AuthRequest, res: Response) {
       return;
     }
 
-    student.isVerified = true;
-    student.otp = null;
-    student.otpExpiresAt = null;
-    await student.save();
+    // Atomic verify — prevents duplicate "Thank You" emails if the same request hits twice.
+    // findOneAndUpdate only succeeds when the student is not yet verified.
+    const updated = await Student.findOneAndUpdate(
+      { _id: student._id, isVerified: false },
+      { $set: { isVerified: true }, $unset: { otp: 1, otpExpiresAt: 1 } },
+      { new: true }
+    );
 
-    // Send Thank You / Welcome email after successful verification
-    if (student.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(student.email)) {
-      sendStudentConfirmationEmail({ to: student.email, studentName: student.name }).catch((err) => {
-        console.error('[auth] Thank you email failed for', student.email, ':', err.message);
-      });
+    if (!updated) {
+      res.json({ success: true, message: 'Email is already verified.' });
+      return;
+    }
+
+    // Send Thank You / Welcome email ONLY after successful verification.
+    if (updated.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updated.email)) {
+      const result = await sendThankYouEmail({ to: updated.email, studentName: updated.name });
+      if (!result.success) {
+        console.error('[auth] Thank you email failed for', updated.email, ':', result.error);
+      }
     }
 
     res.json({ success: true, message: 'Email verified successfully! Welcome to GDGoC GCEE.' });

@@ -1,5 +1,5 @@
-﻿import { useEffect, useState, useCallback } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
@@ -27,10 +28,20 @@ type Tab = 'details' | 'registrations' | 'email';
 
 export default function AdminEventDetail() {
   const { eventId } = useParams();
+  const [params] = useSearchParams();
+  const tabParam = params.get('tab');
   const [event, setEvent] = useState<GEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
-  const [tab, setTab] = useState<Tab>('details');
+  const [tab, setTab] = useState<Tab>(
+    tabParam === 'email' ? 'email' : tabParam === 'registrations' ? 'registrations' : 'details'
+  );
+
+  useEffect(() => {
+    if (tabParam === 'email' || tabParam === 'registrations' || tabParam === 'details') {
+      setTab(tabParam as Tab);
+    }
+  }, [tabParam]);
 
   useEffect(() => {
     let mounted = true;
@@ -113,19 +124,68 @@ function EventEmailSection({ event, onSent }: { event: GEvent; onSent: () => voi
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [confirmResend, setConfirmResend] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
 
   const handleSend = async (force = false) => {
     setSending(true);
     setResult(null);
+    setProgress(null);
+    let baseDone = 0;
+    let total = 0;
+
+    // Baseline + verified count so we can show "sent / total" progress while the batch runs.
+    try {
+      const [baseRes, countRes] = await Promise.all([
+        api.get(`/admin/events/${event.eventId}/sending-history`, { params: { eventType: 'event-invite', limit: 1 } }),
+        api.get(`/admin/events/${event.eventId}/verified-count`),
+      ]);
+      baseDone = (baseRes.data.stats?.sent || 0) + (baseRes.data.stats?.failed || 0);
+      total = countRes.data.count || 0;
+      setProgress({ done: 0, total });
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const cur = await api.get(`/admin/events/${event.eventId}/sending-history`, {
+            params: { eventType: 'event-invite', limit: 1 },
+          });
+          const done = (cur.data.stats?.sent || 0) + (cur.data.stats?.failed || 0) - baseDone;
+          setProgress({ done: Math.max(done, 0), total });
+        } catch {
+          /* ignore transient polling errors */
+        }
+      }, 1500);
+    } catch (err) {
+      console.warn('[sendEvent] progress polling setup failed', err);
+      setProgress({ done: 0, total: 0 });
+    }
+
     try {
       const res = await api.post(`/admin/events/${event.eventId}/send-to-all`, force ? { force: true } : {});
+      stopPolling();
+      setProgress(null);
       setResult(res.data);
       if (res.data.alreadySent && !force) {
         return;
       }
       toast.success(`Event email sent to ${res.data.sentCount} student(s)!`);
+      if (res.data.failedCount > 0) {
+        toast(`${res.data.failedCount} email(s) failed.`, {
+          icon: '⚠️',
+          style: { background: '#0b1b33', color: '#fde047' },
+        });
+      }
       onSent();
     } catch (err) {
+      stopPolling();
+      setProgress(null);
       toast.error(getErrorMessage(err));
     } finally {
       setSending(false);
@@ -229,6 +289,30 @@ function EventEmailSection({ event, onSent }: { event: GEvent; onSent: () => voi
           </div>
         )}
       </div>
+
+      {/* Sending Progress */}
+      {progress && (
+        <div className="card p-6">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-g-blue" />
+            <div>
+              <p className="font-display text-sm font-bold text-navy-900">Sending event email…</p>
+              <p className="text-xs text-ink-muted">
+                Progress: {progress.done} / {progress.total || '…'}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-navy-100">
+            <div
+              className="h-full rounded-full bg-g-blue transition-all duration-500"
+              style={{ width: progress.total ? `${Math.min((progress.done / progress.total) * 100, 100)}%` : '5%' }}
+            />
+          </div>
+          <p className="mt-2 text-[11px] text-ink-faint">
+            Sending individually to each verified student. Please keep this tab open.
+          </p>
+        </div>
+      )}
 
       {/* Sending Result */}
       {result && !result.alreadySent && (

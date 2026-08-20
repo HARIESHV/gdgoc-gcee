@@ -1,29 +1,44 @@
-import { Resend } from 'resend';
 import { env } from '../config/env';
+import {
+  emailIsConfigured as gmailConfigured,
+  getEmailConfigStatus as gmailConfigStatus,
+  getResendCompatibleMailer,
+  type ResendCompatibleMailer,
+} from '../lib/mailer';
 
-let resendClient: Resend | null = null;
+let resendClient: ResendCompatibleMailer | null = null;
 
-function getResend(): Resend | null {
+function getResend(): ResendCompatibleMailer | null {
   if (resendClient) return resendClient;
-  if (!env.resend.apiKey) return null;
-  resendClient = new Resend(env.resend.apiKey);
+  if (!emailIsConfigured()) return null;
+  resendClient = getResendCompatibleMailer();
   return resendClient;
 }
 
 export const emailIsConfigured = (): boolean => {
-  return Boolean(env.resend.apiKey);
+  return gmailConfigured();
 };
 
 export function getEmailConfigStatus() {
+  const status = gmailConfigStatus();
   return {
-    hasApiKey: Boolean(env.resend.apiKey),
-    hasFromEmail: Boolean(env.resend.fromEmail),
+    hasApiKey: status.configured,
+    hasFromEmail: status.hasFromEmail,
     hasAdminEmail: Boolean(env.adminEmail),
-    configured: emailIsConfigured(),
-    adminEmail: env.adminEmail || 'gdgocgcee@gmail.com',
-    fromEmail: env.resend.fromEmail || 'onboarding@resend.dev',
+    configured: status.configured,
+    adminEmail: status.adminEmail,
+    fromEmail: status.fromEmail,
   };
 }
+
+export {
+  sendOtpEmail,
+  sendThankYouEmail,
+  sendEventEmail,
+  sendWelcomeEmail,
+  sendEventRegistrationEmail,
+  sendBulkEventRegistrationEmails,
+} from '../lib/mailer';
 
 function escapeHtml(str: string): string {
   return str
@@ -35,9 +50,9 @@ function escapeHtml(str: string): string {
 }
 
 function getFromAddress(): string {
-  const configured = env.resend.fromEmail;
+  const configured = env.gmail.user;
   if (configured) return `GDGoC GCEE <${configured}>`;
-  return 'GDGoC GCEE <onboarding@resend.dev>';
+  return 'GDGoC GCEE <gdgocgcee@gmail.com>';
 }
 
 export async function sendContactEmail(opts: {
@@ -48,7 +63,7 @@ export async function sendContactEmail(opts: {
 }): Promise<{ id: string }> {
   const resend = getResend();
   if (!resend) {
-    console.error('[email] Resend API key not configured.');
+    console.error('[email] Gmail SMTP not configured.');
     throw new Error('Email service is not configured.');
   }
 
@@ -88,16 +103,16 @@ export async function sendContactEmail(opts: {
   });
 
   if (error) {
-    console.error('[email] Resend API error:', JSON.stringify(error));
+    console.error('[email] Email sending error:', JSON.stringify(error));
     throw new Error(error.message || 'Resend rejected the email request.');
   }
 
   if (!data || !data.id) {
-    console.error('[email] Resend returned no error but no email ID either.');
+    console.error('[email] No error returned but no message ID either.');
     throw new Error('Email was not accepted by the mail service.');
   }
 
-  console.log(`[email] Contact email sent successfully. Resend ID: ${data.id} to ${adminEmail}`);
+  console.log(`[email] Contact email sent successfully. Message ID: ${data.id} to ${adminEmail}`);
   return { id: data.id };
 }
 
@@ -110,7 +125,7 @@ export async function sendCertificateEmail(opts: {
 }): Promise<void> {
   const resend = getResend();
   if (!resend) {
-    console.log('[email] Resend not configured — skipping certificate email for', opts.to);
+    console.log('[email] Email not configured — skipping certificate email for', opts.to);
     return;
   }
 
@@ -146,7 +161,7 @@ export async function sendCertificateEmail(opts: {
     return;
   }
 
-  console.log('[email] Certificate email sent to', opts.to, 'Resend ID:', data?.id);
+  console.log('[email] Certificate email sent to', opts.to, 'Message ID:', data?.id);
 }
 
 export async function sendEventRegistrationConfirmationEmail(opts: {
@@ -161,7 +176,7 @@ export async function sendEventRegistrationConfirmationEmail(opts: {
 }): Promise<void> {
   const resend = getResend();
   if (!resend) {
-    console.log('[email] Resend not configured — skipping event confirmation email for', opts.to);
+    console.log('[email] Email not configured — skipping event confirmation email for', opts.to);
     return;
   }
 
@@ -287,7 +302,7 @@ export async function sendEventRegistrationConfirmationEmail(opts: {
     return;
   }
 
-  console.log('[email] Student registration confirmation sent to', opts.to, 'Resend ID:', data?.id);
+  console.log('[email] Student registration confirmation sent to', opts.to, 'Message ID:', data?.id);
 }
 
 export async function sendEventRegistrationPDFEmail(opts: {
@@ -392,7 +407,7 @@ export async function sendStudentConfirmationEmail(opts: {
 }): Promise<void> {
   const resend = getResend();
   if (!resend) {
-    console.log('[email] Resend not configured — skipping student confirmation email for', opts.to);
+    console.log('[email] Email not configured — skipping student confirmation email for', opts.to);
     return;
   }
 
@@ -432,95 +447,7 @@ export async function sendStudentConfirmationEmail(opts: {
     return;
   }
 
-  console.log('[email] Student confirmation email sent to', opts.to, 'Resend ID:', data?.id);
-}
-
-export async function sendOtpEmail(opts: {
-  to: string;
-  studentName: string;
-  otp: string;
-}): Promise<{ success: boolean; error?: string }> {
-  const resend = getResend();
-  if (!resend) {
-    console.log('[email] Resend not configured — skipping OTP email for', opts.to);
-    return { success: false, error: 'Email service is not configured.' };
-  }
-
-  const safeName = escapeHtml(opts.studentName);
-  const safeOtp = escapeHtml(opts.otp);
-
-  const html = `
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Verify Your Email – GDGoC GCEE</title>
-  </head>
-  <body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding: 24px 0;">
-      <tr>
-        <td align="center">
-          <table width="100%" style="max-width: 580px; background-color:#ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="background-color:#0b1b33; padding: 28px 32px; text-align: left;">
-                <h1 style="margin:0; color:#ffffff; font-size: 20px; font-weight: 700;">GDGoC GCEE</h1>
-                <p style="margin: 4px 0 0 0; color:#94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Google Developer Groups on Campus</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 32px;">
-                <p style="margin-top:0; color:#1e293b; font-size: 15px; line-height: 1.5;">Hi <strong>${safeName}</strong>,</p>
-                <p style="color:#475569; font-size: 14px; line-height: 1.6;">Please use the following OTP to verify your email address and complete your registration:</p>
-                
-                <div style="background-color:#f8fafc; border: 2px dashed #4285F4; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
-                  <p style="margin:0; color:#64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Your One-Time Password</p>
-                  <p style="margin:0; color:#0b1b33; font-size: 32px; font-weight: 900; letter-spacing: 8px; font-family: monospace;">${safeOtp}</p>
-                </div>
-
-                <p style="color:#475569; font-size: 13px; line-height: 1.6;">This OTP will expire in 10 minutes. If you did not request this, please ignore this email.</p>
-
-                <hr style="border:none; border-top:1px solid #e2e8f0; margin: 24px 0;" />
-                <p style="margin:0; color:#64748b; font-size: 12px; line-height: 1.5;">
-                  Regards,<br/>
-                  <strong>GDGoC GCEE Team</strong><br/>
-                  Government College of Engineering, Erode
-                </p>
-              </td>
-            </tr>
-            <tr>
-              <td style="background-color:#f8fafc; padding: 16px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
-                <p style="margin:0; color:#94a3b8; font-size: 11px;">
-                  This OTP was sent to ${escapeHtml(opts.to)}.
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-  </html>
-  `;
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: getFromAddress(),
-      to: opts.to,
-      subject: 'Verify Your Email – GDGoC GCEE',
-      html,
-    });
-
-    if (error) {
-      console.error('[email] OTP email error:', JSON.stringify(error));
-      return { success: false, error: error.message };
-    }
-
-    console.log('[email] OTP email sent to', opts.to, 'Resend ID:', data?.id);
-    return { success: true };
-  } catch (err: any) {
-    console.error('[email] OTP email exception:', err.message);
-    return { success: false, error: err.message };
-  }
+  console.log('[email] Student confirmation email sent to', opts.to, 'Message ID:', data?.id);
 }
 
 export async function sendBulkEmail(opts: {

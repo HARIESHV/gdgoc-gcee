@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, CalendarX2, ExternalLink, Users, MailCheck, MailX } from 'lucide-react';
+import { Plus, Pencil, Trash2, CalendarX2, ExternalLink, Users, MailCheck, MailX, Eye, Send } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -40,19 +40,53 @@ export default function AdminEvents() {
     }
   };
 
-  const filtered = filter === 'ALL' ? events : events.filter((e) => e.status === filter);
+  const handleExportCsv = async (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await api.get(`/admin/events/${eventId}/registrations/export`, { responseType: 'blob' });
+      downloadBlob(res.data as Blob, `${eventId}-registrations.csv`);
+      toast.success('CSV downloaded!');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const totalUpcoming = events.filter((e) => e.status === 'UPCOMING' || e.status === 'ONGOING').length;
+  const totalRegistrations = events.reduce((acc, e) => acc + (e.registeredCount || 0) + (e.manualRegistrationCount || 0), 0);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Events"
-        subtitle={`${events.length} total events`}
+        subtitle={`${events.length} total events · ${totalUpcoming} active · ${totalRegistrations} total registrations`}
         actions={
           <Link to="/admin/events/create" className="border border-black bg-black px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black">
             <Plus className="mr-1 inline h-4 w-4" /> Create event
           </Link>
         }
       />
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-xl border border-navy-100 bg-white p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">Total Events</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-navy-900">{events.length}</p>
+        </div>
+        <div className="rounded-xl border border-g-blue/20 bg-g-blue/5 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-g-blue">Upcoming / Active</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-g-blue">{totalUpcoming}</p>
+        </div>
+        <div className="rounded-xl border border-g-green/20 bg-g-green/5 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-g-green">Total Registrations</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-g-green">{totalRegistrations}</p>
+        </div>
+        <div className="rounded-xl border border-navy-100 bg-white p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">With Google Form</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-navy-900">
+            {events.filter((e) => Boolean(e.googleFormUrl)).length}
+          </p>
+        </div>
+      </div>
 
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
@@ -87,7 +121,7 @@ export default function AdminEvents() {
         />
       ) : (
         <div className="overflow-x-auto rounded border border-black/10 bg-white">
-          <table className="w-full min-w-[820px] text-left text-sm">
+          <table className="w-full min-w-[960px] text-left text-sm">
             <thead>
               <tr className="border-b border-black/5 bg-gray-50">
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Event</th>
@@ -103,7 +137,7 @@ export default function AdminEvents() {
             <tbody className="divide-y divide-black/5">
               {filtered.map((ev) => (
                 <tr key={ev._id} className="transition hover:bg-gray-50">
-                  <td className="max-w-[240px] p-4">
+                  <td className="max-w-[220px] p-4">
                     <p className="truncate font-semibold text-black">{ev.title}</p>
                     <p className="font-mono text-[11px] text-black/30">{ev.eventId}</p>
                   </td>
@@ -125,7 +159,7 @@ export default function AdminEvents() {
                   <td className="p-4">
                     {ev.googleFormUrl ? (
                       <a href={ev.googleFormUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-mono text-xs text-black/50 hover:text-black">
-                        <ExternalLink className="h-3 w-3" /> View form
+                        <ExternalLink className="h-3 w-3" /> Form
                       </a>
                     ) : (
                       <span className="font-mono text-xs text-black/20">—</span>
@@ -135,7 +169,7 @@ export default function AdminEvents() {
                     {ev.emailSent ? (
                       <div className="flex items-center gap-1.5 text-green-700">
                         <MailCheck className="h-3.5 w-3.5" />
-                        <span className="font-mono text-xs">Sent to {ev.emailSentCount || 0}</span>
+                        <span className="font-mono text-xs">Sent ({ev.emailSentCount || 0})</span>
                       </div>
                     ) : (
                       <span className="flex items-center gap-1.5 text-black/20">
@@ -146,12 +180,41 @@ export default function AdminEvents() {
                   </td>
                   <td className="p-4"><StatusBadge status={ev.status} /></td>
                   <td className="p-4">
-                    <div className="flex items-center gap-1.5">
-                      <Link to={`/admin/events/${ev.eventId}`} className="rounded p-2 text-black/30 transition hover:bg-black/5 hover:text-black" title="Manage">
-                        <Pencil className="h-4 w-4" />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Link
+                        to={`/admin/events/${ev.eventId}?tab=email`}
+                        className="rounded border border-g-blue/30 bg-g-blue/5 px-2 py-1 font-mono text-[11px] font-semibold text-g-blue transition hover:bg-g-blue hover:text-white"
+                        title="Send Registration Link to Members"
+                      >
+                        <Send className="mr-1 inline h-3 w-3" /> Send Link
                       </Link>
-                      <button onClick={() => remove(ev.eventId, ev.title)} className="rounded p-2 text-black/30 transition hover:bg-red-50 hover:text-red-600" title="Delete">
-                        <Trash2 className="h-4 w-4" />
+                      <Link
+                        to={`/admin/events/${ev.eventId}?tab=registrations`}
+                        className="rounded border border-black/10 bg-white px-2 py-1 font-mono text-[11px] font-semibold text-black/70 transition hover:bg-black/5 hover:text-black"
+                        title="View Registrations"
+                      >
+                        <Users className="mr-1 inline h-3 w-3" /> Registrations
+                      </Link>
+                      <button
+                        onClick={(e) => handleExportCsv(ev.eventId, e)}
+                        className="rounded border border-black/10 bg-white px-2 py-1 font-mono text-[11px] font-semibold text-black/70 transition hover:bg-black/5 hover:text-black"
+                        title="Export CSV"
+                      >
+                        CSV
+                      </button>
+                      <Link
+                        to={`/admin/events/${ev.eventId}?tab=details`}
+                        className="rounded p-1.5 text-black/40 transition hover:bg-black/5 hover:text-black"
+                        title="Edit event"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Link>
+                      <button
+                        onClick={() => remove(ev.eventId, ev.title)}
+                        className="rounded p-1.5 text-black/40 transition hover:bg-red-50 hover:text-red-600"
+                        title="Delete event"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </td>

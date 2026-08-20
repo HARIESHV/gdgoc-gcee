@@ -319,8 +319,8 @@ export async function generateEventCertificates(req: any, res: Response) {
 
     for (const studentId of studentIds) {
       const result = await assertEligibleForCertificate(studentId, event);
-      if (!result.ok) {
-        skipped.push({ studentId, reason: (result as { ok: false; reason: string }).reason });
+      if (result.ok === false) {
+        skipped.push({ studentId, reason: result.reason });
         continue;
       }
       const existing = await Certificate.findOne({ studentId, eventId: event._id }).lean();
@@ -373,8 +373,8 @@ export async function previewEventCertificate(req: any, res: Response) {
     }
 
     const result = await assertEligibleForCertificate(String(studentId), event);
-    if (!result.ok) {
-      res.status(400).json({ success: false, message: (result as { ok: false; reason: string }).reason });
+    if (result.ok === false) {
+      res.status(400).json({ success: false, message: result.reason });
       return;
     }
 

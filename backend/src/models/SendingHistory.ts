@@ -3,7 +3,7 @@ import { Schema, model, models, type Document, type InferSchemaType, type Model 
 const sendingHistorySchema = new Schema(
   {
     eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
-    eventType: { type: String, enum: ['registration-list-pdf', 'event-email'], required: true },
+    eventType: { type: String, enum: ['registration-list-pdf', 'event-email', 'event-invite'], required: true },
     recipientEmail: { type: String, required: true },
     recipientName: { type: String, default: '' },
     subject: { type: String, required: true },

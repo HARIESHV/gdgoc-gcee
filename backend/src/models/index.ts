@@ -14,3 +14,4 @@ export { SendingHistory } from './SendingHistory';
 export { Feedback } from './Feedback';
 export { BulkEmailLog } from './BulkEmailLog';
 export { EmailLog } from './EmailLog';
+export { EventRegistration } from './EventRegistration';

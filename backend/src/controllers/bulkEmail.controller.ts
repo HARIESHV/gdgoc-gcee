@@ -38,7 +38,7 @@ export async function sendBulkEmailToAll(req: Request, res: Response) {
     await connectDB();
 
     if (!emailIsConfigured()) {
-      res.status(400).json({ success: false, message: 'Email service is not configured. Please set RESEND_API_KEY.' });
+      res.status(400).json({ success: false, message: 'Email service is not configured. Please set GMAIL_USER and GMAIL_APP_PASSWORD in the server environment.' });
       return;
     }
 
