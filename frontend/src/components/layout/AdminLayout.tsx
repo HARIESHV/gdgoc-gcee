@@ -23,7 +23,6 @@ export function AdminLayout() {
     { label: 'Students', to: '/admin/students', icon: Users },
     { label: 'Form Registrations', to: '/admin/form-registrations', icon: ClipboardList },
     { label: 'Members', to: '/admin/members', icon: UsersRound },
-    { label: 'Certificate Campaigns', to: '/admin/certificate-campaigns', icon: Megaphone },
     { label: 'Certificates', to: '/admin/certificates', icon: Award },
     { label: 'Gallery', to: '/admin/gallery', icon: ImageIcon },
     { label: 'Resources', to: '/admin/resources', icon: BookOpen },

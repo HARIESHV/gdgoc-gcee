@@ -34,8 +34,6 @@ import AdminEventDetail from './pages/admin/AdminEventDetail';
 import AdminStudents from './pages/admin/AdminStudents';
 import AdminMembers from './pages/admin/AdminMembers';
 import AdminCertificates from './pages/admin/AdminCertificates';
-import AdminCampaigns from './pages/admin/AdminCampaigns';
-import AdminCampaignDetail from './pages/admin/AdminCampaignDetail';
 import AdminGallery from './pages/admin/AdminGallery';
 import AdminResources from './pages/admin/AdminResources';
 import AdminFormRegistrations from './pages/admin/AdminFormRegistrations';
@@ -124,8 +122,7 @@ export default function App() {
         <Route path="students" element={<AdminStudents />} />
         <Route path="members" element={<AdminMembers />} />
         <Route path="certificates" element={<AdminCertificates />} />
-        <Route path="certificate-campaigns" element={<AdminCampaigns />} />
-        <Route path="certificate-campaigns/:id" element={<AdminCampaignDetail />} />
+        <Route path="certificate-campaigns" element={<Navigate to="/admin/certificates" replace />} />
         <Route path="gallery" element={<AdminGallery />} />
         <Route path="resources" element={<AdminResources />} />
         <Route path="form-registrations" element={<AdminFormRegistrations />} />
