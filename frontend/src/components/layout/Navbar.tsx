@@ -9,9 +9,8 @@ const NAV = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
   { label: 'Events', to: '/events' },
-  { label: 'Team Members', to: '/team-members' },
-  { label: 'Gallery', to: '/gallery' },
-  { label: 'Resources', to: '/resources' },
+  { label: 'Team', to: '/team' },
+  { label: 'Join Us', to: '/join' },
   { label: 'Contact', to: '/contact' },
 ];
 
@@ -146,8 +145,8 @@ export function Navbar() {
                 <Link to="/login" className="font-mono text-xs font-bold uppercase tracking-wider text-black/40 transition hover:text-black">
                   Login
                 </Link>
-                <Link to="/register" className="border border-black bg-black px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black">
-                  Join
+                <Link to="/join" className="rounded-lg bg-g-blue px-5 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-blue-600">
+                  Join Community
                 </Link>
               </>
             )}
@@ -228,11 +227,11 @@ export function Navbar() {
                   Login
                 </Link>
                 <Link
-                  to="/register"
+                  to="/join"
                   onClick={close}
-                  className="mt-2 flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black active:bg-white active:text-black"
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-g-blue px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-blue-600 active:bg-blue-700"
                 >
-                  Join GDGoC
+                  Join Community
                 </Link>
               </>
             )}

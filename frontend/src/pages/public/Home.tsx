@@ -351,7 +351,7 @@ export default function Home() {
           </div>
           <Reveal>
             <div className="mt-10 text-center">
-              <Link to="/team-members" className="btn-outline">
+              <Link to="/team" className="btn-outline">
                 Meet everyone
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -422,7 +422,7 @@ export default function Home() {
               Join GDGoC GCEE and be part of a community that learns, builds and innovates together.
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link to="/register" className="btn-primary !px-6 !py-3 text-base">
+              <Link to="/join" className="btn-primary !px-6 !py-3 text-base">
                 Join Community
                 <ArrowRight className="h-4 w-4" />
               </Link>

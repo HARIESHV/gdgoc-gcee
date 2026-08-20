@@ -98,8 +98,28 @@ export interface Certificate {
   issueDateLabel: string;
   status: 'VALID' | 'REVOKED';
   campaignName?: string;
+  participationStatus?: 'PARTICIPATED' | 'NOT_PARTICIPATED';
+  issuedBy?: string;
   revokedAt?: string;
   qrCode?: string;
+}
+
+export interface EventParticipant {
+  registrationId: string;
+  studentId: string;
+  name: string;
+  email: string;
+  rollNumber: string;
+  department: string;
+  year: string;
+  college: string;
+  registered: boolean;
+  participation: 'PARTICIPATED' | 'NOT_PARTICIPATED';
+  certificate: {
+    certificateId: string;
+    status: 'VALID' | 'REVOKED';
+    eventDateLabel: string;
+  } | null;
 }
 
 export interface Campaign {

@@ -85,7 +85,7 @@ export default function Login() {
           </div>
 
           <div className="mt-6 space-y-3 text-center">
-            <Link to="/register" className="inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white transition-colors hover:opacity-90" style={{ backgroundColor: '#0D6EFD' }}>
+            <Link to="/join" className="inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white transition-colors hover:opacity-90" style={{ backgroundColor: '#0D6EFD' }}>
               Join Community
             </Link>
             <p className="flex items-center justify-center gap-1 text-xs text-ink-faint">

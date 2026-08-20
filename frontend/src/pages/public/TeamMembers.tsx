@@ -91,7 +91,7 @@ export default function TeamMembers() {
               Join the community and contribute to events, projects and the club's growth.
             </p>
             <Link
-              to="/register"
+              to="/join"
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#111] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#333]"
             >
               Join Community

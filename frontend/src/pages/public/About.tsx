@@ -99,7 +99,7 @@ export default function About() {
               Whether you are a beginner writing your first line of code or a builder shipping your latest project,
               there is a place for you here.
             </p>
-            <Link to="/team-members" className="btn-primary mt-8">
+            <Link to="/team" className="btn-primary mt-8">
               Meet our team
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -208,7 +208,7 @@ export default function About() {
                 Registration is open to all GCEE students. Pick your area, join the community and start building.
               </p>
               <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-                <Link to="/register" className="btn-primary !px-6 !py-3">
+                <Link to="/join" className="btn-primary !px-6 !py-3">
                   Join Community
                   <ArrowRight className="h-4 w-4" />
                 </Link>

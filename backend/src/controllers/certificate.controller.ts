@@ -20,6 +20,8 @@ function publicView(cert: any) {
     eventDateLabel: formatDotDate(cert.eventDate || ''),
     issueDate: cert.issueDate,
     issueDateLabel: formatDotDate(cert.issueDate),
+    participationStatus: cert.participationStatus || 'PARTICIPATED',
+    issuedBy: cert.issuedBy || 'admin',
     status: cert.status,
     revokedAt: cert.revokedAt,
     campaignName: cert.campaignName || '',

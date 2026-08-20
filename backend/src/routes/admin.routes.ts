@@ -26,6 +26,14 @@ import {
   adminCertificateStats,
 } from '../controllers/certificate.controller';
 import {
+  listEventParticipants,
+  markEventParticipation,
+  generateEventCertificates,
+  previewEventCertificate,
+  listEventCertificates,
+  deleteEventCertificate,
+} from '../controllers/eventCertificate.controller';
+import {
   adminListStudents,
   adminGetStudent,
   adminToggleStudentStatus,
@@ -112,6 +120,14 @@ router.get('/events/:eventId/sending-history', getEventSendingHistory);
 
 // Delete a single event registration
 router.delete('/events/:eventId/registrations/:registrationId', deleteEventRegistration);
+
+// Event certificate management (register → participate → certificate)
+router.get('/events/:eventId/participants', listEventParticipants);
+router.post('/events/:eventId/participation', markEventParticipation);
+router.get('/events/:eventId/certificates', listEventCertificates);
+router.post('/events/:eventId/certificates/generate', generateEventCertificates);
+router.post('/events/:eventId/certificates/preview', previewEventCertificate);
+router.delete('/events/:eventId/certificates/:certificateId', deleteEventCertificate);
 
 // Registrations & Attendance (per event)
 router.get('/registrations', adminListRegistrations);

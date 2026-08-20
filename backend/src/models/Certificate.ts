@@ -5,12 +5,18 @@ export const CERTIFICATE_STATUSES = ['VALID', 'REVOKED'] as const;
 const certificateSchema = new Schema(
   {
     certificateId: { type: String, required: true, unique: true, trim: true },
-    campaignId: { type: Schema.Types.ObjectId, ref: 'CertificateCampaign', required: true },
+    campaignId: { type: Schema.Types.ObjectId, ref: 'CertificateCampaign', default: null },
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
     studentName: { type: String, required: true },
     studentEmail: { type: String, default: '' },
     organization: { type: String, default: 'GDGoC GCEE' },
     institution: { type: String, default: 'Government College of Engineering, Erode' },
+
+    // Event-based certificates (single event linked via the student's registration + participation)
+    eventId: { type: Schema.Types.ObjectId, ref: 'Event', default: null },
+    eventRegistrationId: { type: Schema.Types.ObjectId, ref: 'Registration', default: null },
+    participationStatus: { type: String, enum: ['PARTICIPATED', 'NOT_PARTICIPATED'], default: 'PARTICIPATED' },
+    issuedBy: { type: String, default: 'admin' },
 
     eventDate: { type: String, default: '' },
     eventName: { type: String, default: '' },
@@ -29,8 +35,11 @@ const certificateSchema = new Schema(
 );
 
 certificateSchema.index({ certificateId: 1 }, { unique: true });
-certificateSchema.index({ studentId: 1, campaignId: 1 }, { unique: true });
-certificateSchema.index({ campaignId: 1 });
+// Campaign certificates: one per student per campaign.
+certificateSchema.index({ studentId: 1, campaignId: 1 }, { unique: true, sparse: true });
+// Event certificates: one per student per event (prevents duplicate issuance).
+certificateSchema.index({ studentId: 1, eventId: 1 }, { unique: true, sparse: true });
+certificateSchema.index({ eventId: 1 });
 certificateSchema.index({ status: 1 });
 
 export type CertificateDoc = Document & InferSchemaType<typeof certificateSchema>;

@@ -72,9 +72,9 @@ export function Hero() {
             Explore Events
             <ArrowRight className="h-4 w-4" />
           </Link>
-          <Link to="/register" className="btn !px-6 !py-3 border border-white/20 bg-white/5 text-base text-white hover:bg-white/10">
+          <Link to="/join" className="btn !px-6 !py-3 border border-white/20 bg-white/5 text-base text-white hover:bg-white/10">
             <CalendarPlus className="h-4 w-4" />
-            Join GDGoC
+            Join Community
           </Link>
         </div>
 

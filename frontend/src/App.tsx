@@ -39,6 +39,7 @@ import AdminGallery from './pages/admin/AdminGallery';
 import AdminResources from './pages/admin/AdminResources';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminFormRegistrations from './pages/admin/AdminFormRegistrations';
+import AdminMessages from './pages/admin/AdminMessages';
 
 function RequireStudent({ children }: { children: React.ReactNode }) {
   const { student, loading } = useAuth();
@@ -74,7 +75,10 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:eventId" element={<EventDetail />} />
+        <Route path="/team" element={<TeamMembers />} />
         <Route path="/team-members" element={<TeamMembers />} />
+        <Route path="/join" element={<Register />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/contact" element={<Contact />} />
@@ -82,7 +86,6 @@ export default function App() {
         <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
         <Route path="/certificate/:certificateId" element={<VerifyCertificate />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
       </Route>
 
       {/* Student dashboard */}
@@ -126,6 +129,7 @@ export default function App() {
         <Route path="gallery" element={<AdminGallery />} />
         <Route path="resources" element={<AdminResources />} />
         <Route path="form-registrations" element={<AdminFormRegistrations />} />
+        <Route path="messages" element={<AdminMessages />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 

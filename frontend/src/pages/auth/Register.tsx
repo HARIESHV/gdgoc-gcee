@@ -1,11 +1,36 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { UserPlus, Eye, EyeOff } from 'lucide-react';
+import {
+  UserPlus,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Code2,
+  Cpu,
+  Cloud,
+  GitBranch,
+  Smartphone,
+  ShieldCheck,
+  Globe,
+  Terminal,
+  CheckCircle2,
+} from 'lucide-react';
 import { Logo } from '../../components/ui/Logo';
 import { ButtonSpinner } from '../../components/ui/Spinner';
 import { useAuth, getErrorMessage } from '../../context/AuthContext';
 import { DEPARTMENTS, YEARS } from '../../lib/utils';
+
+const SKILLS = [
+  { icon: Code2, label: 'Web Development', color: 'text-g-blue border-g-blue/30 bg-g-blue/5' },
+  { icon: Cpu, label: 'AI / ML', color: 'text-g-green border-g-green/30 bg-g-green/5' },
+  { icon: Cloud, label: 'Cloud Computing', color: 'text-g-yellow border-g-yellow/30 bg-g-yellow/5' },
+  { icon: GitBranch, label: 'Git & GitHub', color: 'text-g-red border-g-red/30 bg-g-red/5' },
+  { icon: Smartphone, label: 'Android', color: 'text-g-green border-g-green/30 bg-g-green/5' },
+  { icon: ShieldCheck, label: 'Cybersecurity', color: 'text-g-blue border-g-blue/30 bg-g-blue/5' },
+  { icon: Terminal, label: 'Dev Tools', color: 'text-g-red border-g-red/30 bg-g-red/5' },
+  { icon: Globe, label: 'Open Source', color: 'text-g-yellow border-g-yellow/30 bg-g-yellow/5' },
+];
 
 export default function Register() {
   const { registerStudent } = useAuth();
@@ -15,18 +40,27 @@ export default function Register() {
     name: '',
     email: '',
     phone: '',
+    college: 'Government College of Engineering, Erode',
     rollNumber: '',
     department: '',
     year: '',
     password: '',
     confirmPassword: '',
   });
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
 
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
-  const submit = async (e: React.FormEvent) => {
+  const toggleSkill = (skill: string) => {
+    setSelectedSkills((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+    );
+  };
+
+  const goToStep2 = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password) {
       toast.error('Please fill in the required fields.');
@@ -40,10 +74,18 @@ export default function Register() {
       toast.error('Passwords do not match.');
       return;
     }
+    setStep(2);
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setBusy(true);
     try {
-      await registerStudent(form);
-      toast.success('Registration successful! A confirmation email has been sent to your registered Gmail address.');
+      await registerStudent({
+        ...form,
+        skills: selectedSkills.join(', '),
+      });
+      toast.success('Welcome to GDGoC GCEE! A confirmation email has been sent.');
       navigate('/dashboard');
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -53,95 +95,276 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 pt-24 pb-16">
-      <div className="mx-auto w-full max-w-lg">
-        <div className="mb-8 flex justify-center">
-          <Logo />
+    <div className="min-h-screen bg-slate-50">
+      {/* Hero top bar */}
+      <div className="relative overflow-hidden bg-navy-950 pb-16 pt-24 text-center">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-20 left-1/4 h-72 w-72 rounded-full bg-g-blue/20 blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-g-green/15 blur-3xl" />
         </div>
-        <div className="card p-7 sm:p-9">
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-g-green text-white">
-              <UserPlus className="h-6 w-6" />
-            </div>
-            <h1 className="font-display text-2xl font-bold text-navy-900">Join the Community</h1>
-            <p className="mt-1 text-sm text-ink-muted">Create your student account to register for events.</p>
+        <div className="container-x relative z-10">
+          <div className="mb-6 flex justify-center">
+            <Logo light />
           </div>
+          <span className="chip border border-white/15 bg-white/5 text-white/80">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-g-green" />
+            Community Registration
+          </span>
+          <h1 className="mt-4 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Join GDGoC{' '}
+            <span className="bg-gradient-to-r from-g-blue via-g-green to-g-yellow bg-clip-text text-transparent">
+              GCEE
+            </span>
+          </h1>
+          <p className="mx-auto mt-3 max-w-md text-sm text-white/60">
+            Become part of the Google Developer Groups on Campus community at Government College of Engineering, Erode.
+          </p>
+        </div>
+        <div className="relative z-10 mt-10 flex h-1">
+          <div className="flex-1 bg-g-blue" />
+          <div className="flex-1 bg-g-green" />
+          <div className="flex-1 bg-g-yellow" />
+          <div className="flex-1 bg-g-red" />
+        </div>
+      </div>
 
-          <form onSubmit={submit} className="space-y-5">
-            <div>
-              <label className="label" htmlFor="name">Full name <span className="text-g-red">*</span></label>
-              <input id="name" className="input" value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Your full name" autoComplete="name" />
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
+      {/* Step indicators */}
+      <div className="container-x -mt-6 flex max-w-xl justify-center gap-3">
+        {[
+          { num: 1, label: 'Your info' },
+          { num: 2, label: 'Interests' },
+        ].map(({ num, label }) => (
+          <div
+            key={num}
+            className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold transition-all ${
+              step >= num
+                ? 'border-g-blue bg-g-blue text-white shadow-md'
+                : 'border-navy-200 bg-white text-ink-muted'
+            }`}
+          >
+            {step > num ? (
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            ) : (
+              <span className="font-mono font-bold">{num}</span>
+            )}
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* Form card */}
+      <div className="container-x mx-auto mb-20 mt-6 max-w-xl">
+        <div className="card p-7 sm:p-9">
+          {step === 1 ? (
+            <form onSubmit={goToStep2} className="space-y-5">
               <div>
-                <label className="label" htmlFor="email">Email <span className="text-g-red">*</span></label>
-                <input id="email" type="email" className="input" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="you@example.com" autoComplete="email" />
+                <h2 className="font-display text-xl font-bold text-navy-900">Basic information</h2>
+                <p className="mt-1 text-sm text-ink-muted">Tell us a little about yourself.</p>
               </div>
+
               <div>
-                <label className="label" htmlFor="phone">Phone</label>
-                <input id="phone" type="tel" className="input" value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="+91 98765 43210" autoComplete="tel" />
+                <label className="label" htmlFor="name">
+                  Full name <span className="text-g-red">*</span>
+                </label>
+                <input
+                  id="name"
+                  className="input"
+                  value={form.name}
+                  onChange={(e) => update('name', e.target.value)}
+                  placeholder="Your full name"
+                  autoComplete="name"
+                />
               </div>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <label className="label" htmlFor="rollNumber">Roll number</label>
-                <input id="rollNumber" className="input" value={form.rollNumber} onChange={(e) => update('rollNumber', e.target.value)} placeholder="e.g. 21CSE001" />
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="label" htmlFor="email">
+                    Email <span className="text-g-red">*</span>
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    className="input"
+                    value={form.email}
+                    onChange={(e) => update('email', e.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="phone">
+                    Phone number
+                  </label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    className="input"
+                    value={form.phone}
+                    onChange={(e) => update('phone', e.target.value)}
+                    placeholder="+91 98765 43210"
+                    autoComplete="tel"
+                  />
+                </div>
               </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="label" htmlFor="rollNumber">
+                    Register number
+                  </label>
+                  <input
+                    id="rollNumber"
+                    className="input"
+                    value={form.rollNumber}
+                    onChange={(e) => update('rollNumber', e.target.value)}
+                    placeholder="e.g. 21CSE001"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="year">
+                    Year
+                  </label>
+                  <select
+                    id="year"
+                    className="input"
+                    value={form.year}
+                    onChange={(e) => update('year', e.target.value)}
+                  >
+                    <option value="">Select year</option>
+                    {YEARS.map((y) => (
+                      <option key={y} value={y}>
+                        Year {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="label" htmlFor="year">Year</label>
-                <select id="year" className="input" value={form.year} onChange={(e) => update('year', e.target.value)}>
-                  <option value="">Select year</option>
-                  {YEARS.map((y) => (
-                    <option key={y} value={y}>{y}</option>
+                <label className="label" htmlFor="department">
+                  Department
+                </label>
+                <select
+                  id="department"
+                  className="input"
+                  value={form.department}
+                  onChange={(e) => update('department', e.target.value)}
+                >
+                  <option value="">Select department</option>
+                  {DEPARTMENTS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
                   ))}
                 </select>
               </div>
-            </div>
-            <div>
-              <label className="label" htmlFor="department">Department</label>
-              <select id="department" className="input" value={form.department} onChange={(e) => update('department', e.target.value)}>
-                <option value="">Select department</option>
-                {DEPARTMENTS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <label className="label" htmlFor="password">Password <span className="text-g-red">*</span></label>
-                <div className="relative">
+
+              <div className="h-px bg-navy-100" />
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="label" htmlFor="password">
+                    Password <span className="text-g-red">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={show ? 'text' : 'password'}
+                      className="input pr-11"
+                      value={form.password}
+                      onChange={(e) => update('password', e.target.value)}
+                      placeholder="Min 6 characters"
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShow((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-navy-900"
+                      aria-label="Toggle password visibility"
+                    >
+                      {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="label" htmlFor="confirmPassword">
+                    Confirm password <span className="text-g-red">*</span>
+                  </label>
                   <input
-                    id="password"
+                    id="confirmPassword"
                     type={show ? 'text' : 'password'}
-                    className="input pr-11"
-                    value={form.password}
-                    onChange={(e) => update('password', e.target.value)}
-                    placeholder="Min 6 characters"
+                    className="input"
+                    value={form.confirmPassword}
+                    onChange={(e) => update('confirmPassword', e.target.value)}
+                    placeholder="Repeat password"
                     autoComplete="new-password"
                   />
-                  <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-navy-900" aria-label="Toggle password visibility">
-                    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
                 </div>
               </div>
+
+              <button type="submit" className="btn-primary w-full !py-3">
+                Continue
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={submit} className="space-y-6">
               <div>
-                <label className="label" htmlFor="confirmPassword">Confirm password <span className="text-g-red">*</span></label>
-                <input
-                  id="confirmPassword"
-                  type={show ? 'text' : 'password'}
-                  className="input"
-                  value={form.confirmPassword}
-                  onChange={(e) => update('confirmPassword', e.target.value)}
-                  placeholder="Repeat password"
-                  autoComplete="new-password"
-                />
+                <h2 className="font-display text-xl font-bold text-navy-900">Your interests</h2>
+                <p className="mt-1 text-sm text-ink-muted">
+                  Select the technologies and areas you want to explore. We'll use this to tailor events for you.
+                </p>
               </div>
-            </div>
-            <button type="submit" disabled={busy} className="btn-primary w-full !py-3">
-              {busy ? <ButtonSpinner /> : <UserPlus className="h-4 w-4" />}
-              {busy ? 'Creating account…' : 'Create account'}
-            </button>
-          </form>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {SKILLS.map(({ icon: Icon, label, color }) => {
+                  const selected = selectedSkills.includes(label);
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => toggleSkill(label)}
+                      className={`group flex flex-col items-center gap-2 rounded-xl border p-4 text-center text-xs font-semibold transition-all duration-200 hover:shadow-md ${
+                        selected
+                          ? `${color} ring-2 ring-offset-1 ${color.split(' ')[0].replace('text-', 'ring-')}`
+                          : 'border-navy-100 bg-white text-ink-muted hover:border-navy-200'
+                      }`}
+                    >
+                      <Icon className={`h-5 w-5 ${selected ? color.split(' ')[0] : 'text-ink-faint group-hover:text-ink-soft'}`} />
+                      {label}
+                      {selected && <CheckCircle2 className="h-3.5 w-3.5 text-g-green" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedSkills.length > 0 && (
+                <div className="rounded-xl bg-g-blue/5 p-4">
+                  <p className="text-xs font-semibold text-g-blue">
+                    Selected: {selectedSkills.join(', ')}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="btn-outline flex-1"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="btn-primary flex-1 !py-3"
+                >
+                  {busy ? <ButtonSpinner /> : <UserPlus className="h-4 w-4" />}
+                  {busy ? 'Creating account…' : 'Join Community'}
+                </button>
+              </div>
+            </form>
+          )}
 
           <p className="mt-6 text-center text-sm text-ink-soft">
             Already have an account?{' '}
@@ -149,6 +372,20 @@ export default function Register() {
               Sign in
             </Link>
           </p>
+        </div>
+
+        {/* Benefits strip */}
+        <div className="mt-6 grid grid-cols-3 gap-3 text-center text-xs">
+          {[
+            { emoji: '🎓', label: 'Free workshops & events' },
+            { emoji: '🏆', label: 'Hackathons & certificates' },
+            { emoji: '🤝', label: 'Developer community' },
+          ].map(({ emoji, label }) => (
+            <div key={label} className="rounded-xl border border-navy-100 bg-white p-3 text-ink-muted shadow-card">
+              <span className="text-xl">{emoji}</span>
+              <p className="mt-1">{label}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
