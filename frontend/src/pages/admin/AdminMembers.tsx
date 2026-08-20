@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, UsersRound, Shield } from 'lucide-react';
+import { Plus, Pencil, Trash2, UsersRound } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -8,23 +8,17 @@ import { Modal } from '../../components/ui/Modal';
 import { ButtonSpinner } from '../../components/ui/Spinner';
 import { api, getErrorMessage } from '../../lib/api';
 import { TEAMS, DEPARTMENTS, YEARS } from '../../lib/utils';
-import type { Member, CoordinatorRole } from '../../types';
+import type { Member } from '../../types';
 
-const emptyForm = { name: '', team: 'Community Members', role: 'Member', coordinatorRole: '', department: '', year: '', photo: '', github: '', linkedin: '', instagram: '', twitter: '' };
+const emptyForm = { name: '', team: 'Community Members', role: 'Member', department: '', year: '', photo: '', github: '', linkedin: '', instagram: '', twitter: '' };
 
 export default function AdminMembers() {
   const [members, setMembers] = useState<Member[]>([]);
-  const [coordRoles, setCoordRoles] = useState<CoordinatorRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
-
-  const [roleModal, setRoleModal] = useState(false);
-  const [editingRole, setEditingRole] = useState<CoordinatorRole | null>(null);
-  const [roleForm, setRoleForm] = useState({ name: '' });
-  const [roleBusy, setRoleBusy] = useState(false);
 
   const loadMembers = async () => {
     setLoading(true);
@@ -38,18 +32,8 @@ export default function AdminMembers() {
     }
   };
 
-  const loadRoles = async () => {
-    try {
-      const res = await api.get('/admin/coordinator-roles');
-      setCoordRoles(res.data.roles || []);
-    } catch {
-      // silent — roles are optional
-    }
-  };
-
   useEffect(() => {
     loadMembers();
-    loadRoles();
   }, []);
 
   const openCreate = () => {
@@ -64,7 +48,6 @@ export default function AdminMembers() {
       name: m.name,
       team: m.team,
       role: m.role,
-      coordinatorRole: m.coordinatorRole || '',
       department: m.department,
       year: m.year,
       photo: m.photo,
@@ -94,7 +77,6 @@ export default function AdminMembers() {
       name: form.name,
       team: form.team,
       role: form.role,
-      coordinatorRole: form.coordinatorRole,
       department: form.department,
       year: form.year,
       photo: form.photo,
@@ -120,50 +102,6 @@ export default function AdminMembers() {
       const res = await api.delete(`/admin/members/${id}`);
       toast.success(res.data.message);
       loadMembers();
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    }
-  };
-
-  const openRoleCreate = () => {
-    setEditingRole(null);
-    setRoleForm({ name: '' });
-    setRoleModal(true);
-  };
-
-  const openRoleEdit = (r: CoordinatorRole) => {
-    setEditingRole(r);
-    setRoleForm({ name: r.name });
-    setRoleModal(true);
-  };
-
-  const submitRole = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!roleForm.name.trim()) {
-      toast.error('Role name is required.');
-      return;
-    }
-    setRoleBusy(true);
-    try {
-      const res = editingRole
-        ? await api.put(`/admin/coordinator-roles/${editingRole._id}`, { name: roleForm.name.trim() })
-        : await api.post('/admin/coordinator-roles', { name: roleForm.name.trim() });
-      toast.success(res.data.message);
-      setRoleModal(false);
-      loadRoles();
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setRoleBusy(false);
-    }
-  };
-
-  const removeRole = async (id: string, name: string) => {
-    if (!window.confirm(`Delete coordinator role "${name}"? This will not remove it from members already assigned.`)) return;
-    try {
-      const res = await api.delete(`/admin/coordinator-roles/${id}`);
-      toast.success(res.data.message);
-      loadRoles();
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -210,9 +148,6 @@ export default function AdminMembers() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-navy-900">{m.name}</p>
-                      {m.coordinatorRole && (
-                        <p className="truncate text-xs font-medium text-g-blue">{m.coordinatorRole}</p>
-                      )}
                       <p className="truncate text-xs text-ink-muted">{m.role}</p>
                       <p className="truncate text-[11px] text-ink-faint">{m.department || '—'}</p>
                     </div>
@@ -227,36 +162,6 @@ export default function AdminMembers() {
           ))}
         </div>
       )}
-
-      {/* Coordinator Roles Management */}
-      <div className="mt-8 border-t border-black/5 pt-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-lg font-bold text-navy-900 flex items-center gap-2">
-              <Shield className="h-5 w-5 text-g-blue" /> Coordinator Roles
-            </h2>
-            <p className="text-sm text-ink-muted">Manage the coordinator roles available for assignment.</p>
-          </div>
-          <button onClick={openRoleCreate} className="btn-primary">
-            <Plus className="h-4 w-4" /> Add role
-          </button>
-        </div>
-        {coordRoles.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-muted">No coordinator roles defined yet. Create one to assign to members.</p>
-        ) : (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {coordRoles.map((r) => (
-              <div key={r._id} className="card flex items-center justify-between p-4">
-                <span className="text-sm font-semibold text-navy-900">{r.name}</span>
-                <div className="flex gap-1">
-                  <button onClick={() => openRoleEdit(r)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-blue/10 hover:text-g-blue"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => removeRole(r._id, r.name)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-red/10 hover:text-g-red"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* Member Create/Edit Modal */}
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit member' : 'Add member'}>
@@ -275,13 +180,6 @@ export default function AdminMembers() {
             <div>
               <label className="label">Role</label>
               <input className="input" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} placeholder="e.g. Head, Coordinator" />
-            </div>
-            <div>
-              <label className="label">Coordinator Role</label>
-              <select className="input" value={form.coordinatorRole} onChange={(e) => setForm((f) => ({ ...f, coordinatorRole: e.target.value }))}>
-                <option value="">None</option>
-                {coordRoles.map((r) => <option key={r._id} value={r.name}>{r.name}</option>)}
-              </select>
             </div>
             <div>
               <label className="label">Department</label>
@@ -328,23 +226,6 @@ export default function AdminMembers() {
             <button type="submit" disabled={busy} className="btn-primary">
               {busy ? <ButtonSpinner /> : null}
               {busy ? 'Saving…' : editing ? 'Update' : 'Add member'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Coordinator Role Create/Edit Modal */}
-      <Modal open={roleModal} onClose={() => setRoleModal(false)} title={editingRole ? 'Edit coordinator role' : 'Add coordinator role'}>
-        <form onSubmit={submitRole} className="space-y-4">
-          <div>
-            <label className="label">Role Name</label>
-            <input className="input" value={roleForm.name} onChange={(e) => setRoleForm({ name: e.target.value })} placeholder="e.g. Lead Coordinator" />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setRoleModal(false)} className="btn-outline">Cancel</button>
-            <button type="submit" disabled={roleBusy} className="btn-primary">
-              {roleBusy ? <ButtonSpinner /> : null}
-              {roleBusy ? 'Saving…' : editingRole ? 'Update' : 'Create'}
             </button>
           </div>
         </form>
