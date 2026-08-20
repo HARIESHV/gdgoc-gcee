@@ -350,3 +350,33 @@ export async function adminCertificateStats(_: any, res: Response) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
+// DELETE /api/admin/certificates/clear-all
+export async function clearAllCertificates(_: any, res: Response) {
+  try {
+    await connectDB();
+    const result = await Certificate.deleteMany({});
+    res.json({
+      success: true,
+      message: `Successfully cleared ${result.deletedCount} certificate record(s).`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// DELETE /api/admin/certificates/:certificateId
+export async function deleteCertificate(req: any, res: Response) {
+  try {
+    await connectDB();
+    const result = await Certificate.deleteOne({ certificateId: req.params.certificateId });
+    if (result.deletedCount === 0) {
+      res.status(404).json({ success: false, message: 'Certificate not found.' });
+      return;
+    }
+    res.json({ success: true, message: 'Certificate deleted.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}

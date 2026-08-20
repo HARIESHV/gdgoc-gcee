@@ -25,6 +25,8 @@ import {
   restoreCertificate,
   adminCertificateStats,
   generateEventCertificates,
+  clearAllCertificates,
+  deleteCertificate,
 } from '../controllers/certificate.controller';
 import {
   adminListStudents,
@@ -151,6 +153,8 @@ router.get('/certificates/stats', adminCertificateStats);
 router.post('/certificates/generate', generateEventCertificates);
 router.post('/certificates/:certificateId/revoke', revokeCertificate);
 router.post('/certificates/:certificateId/restore', restoreCertificate);
+router.delete('/certificates/clear-all', clearAllCertificates);
+router.delete('/certificates/:certificateId', deleteCertificate);
 
 // Gallery
 router.post('/gallery', uploadMemory.single('image'), createGalleryItem);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Award, ShieldX, ShieldCheck, Download, Link2, Plus } from 'lucide-react';
+import { Award, ShieldX, ShieldCheck, Download, Link2, Plus, Trash2 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -113,6 +113,28 @@ export default function AdminCertificates() {
     }
   };
 
+  const handleClearAll = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL certificates from the database? This action cannot be undone.')) return;
+    try {
+      const res = await api.delete('/admin/certificates/clear-all');
+      toast.success(res.data.message);
+      load();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const handleDeleteSingle = async (id: string) => {
+    if (!window.confirm(`Permanently delete certificate ${id}?`)) return;
+    try {
+      const res = await api.delete(`/admin/certificates/${id}`);
+      toast.success(res.data.message);
+      load();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   const valid = rows.filter((r) => r.status === 'VALID').length;
 
   return (
@@ -121,9 +143,16 @@ export default function AdminCertificates() {
         title="Certificates Dashboard"
         subtitle={`${rows.length} total issued · ${valid} valid`}
         actions={
-          <button onClick={() => setModal(true)} className="btn-primary">
-            <Plus className="h-4 w-4" /> Generate Certificate
-          </button>
+          <div className="flex items-center gap-2">
+            {rows.length > 0 && (
+              <button onClick={handleClearAll} className="btn-outline text-g-red border-g-red/30 hover:bg-g-red/10">
+                <Trash2 className="h-4 w-4" /> Clear All Data
+              </button>
+            )}
+            <button onClick={() => setModal(true)} className="btn-primary">
+              <Plus className="h-4 w-4" /> Generate Certificate
+            </button>
+          </div>
         }
       />
 
@@ -210,6 +239,9 @@ export default function AdminCertificates() {
                           <ShieldCheck className="h-4 w-4" />
                         </button>
                       )}
+                      <button onClick={() => handleDeleteSingle(c.certificateId)} className="rounded-lg p-2 text-ink-soft transition hover:bg-g-red/10 hover:text-g-red" title="Permanently Delete">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
