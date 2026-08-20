@@ -4,6 +4,9 @@ const campaignSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     description: { type: String, default: '' },
+    eventId: { type: Schema.Types.ObjectId, ref: 'Event', default: null },
+    eventName: { type: String, default: '' },
+    eventDate: { type: String, default: '' },
     startDate: { type: String, required: true },
     endDate: { type: String, required: true },
     minimumAttendancePercentage: { type: Number, default: 75, min: 0, max: 100 },
@@ -17,6 +20,7 @@ const campaignSchema = new Schema(
 );
 
 campaignSchema.index({ startDate: 1, endDate: 1 });
+campaignSchema.index({ eventId: 1 });
 
 export type CertificateCampaignDoc = Document & InferSchemaType<typeof campaignSchema>;
 
