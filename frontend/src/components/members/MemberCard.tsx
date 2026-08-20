@@ -11,7 +11,7 @@ export function MemberCard({ member }: { member: Member }) {
           <img
             src={member.photo}
             alt={member.name}
-            className="h-full w-full object-cover grayscale transition-all duration-500 hover:grayscale-0"
+            className="h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gray-100">
