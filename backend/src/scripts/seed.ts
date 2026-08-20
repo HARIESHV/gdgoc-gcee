@@ -15,7 +15,6 @@ import {
   Member,
   GalleryItem,
   Resource,
-  SiteSettings,
 } from '../models';
 
 function shiftDate(base: string, days: number): string {
@@ -283,13 +282,6 @@ async function seed() {
     );
   }
   console.log('[seed] members seeded');
-
-  // ---- Site Settings / Members Image ----
-  await SiteSettings.findOneAndUpdate(
-    { key: 'main' },
-    { $set: { membersImage: '' } },
-    { upsert: true }
-  );
 
   // ---- Gallery ----
   const gallerySpec: Array<[string, string, string]> = [

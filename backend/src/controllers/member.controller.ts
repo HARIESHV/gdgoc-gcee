@@ -1,10 +1,6 @@
 import type { Response } from 'express';
-import { Member, TEAMS, SiteSettings } from '../models';
+import { Member, TEAMS } from '../models';
 import { connectDB } from '../config/db';
-
-export function getDefaultMembersImage(): string {
-  return '';
-}
 
 function serialize(m: any) {
   return {
@@ -19,66 +15,18 @@ function serialize(m: any) {
   };
 }
 
-// GET /api/members/image  (public)
-export async function getMembersImage(_: any, res: Response) {
-  try {
-    await connectDB();
-    const settings = await SiteSettings.findOne({ key: 'main' }).lean();
-    const membersImage = settings?.membersImage || '';
-    res.json({ success: true, membersImage });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-}
-
-// PUT /api/admin/members-image  (admin)
-export async function updateMembersImage(req: any, res: Response) {
-  try {
-    await connectDB();
-    let membersImage = req.body.membersImage;
-    
-    // If sent as file upload
-    if (req.file) {
-      const mime = req.file.mimetype || 'image/png';
-      membersImage = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
-    }
-
-    if (membersImage === undefined) {
-      res.status(400).json({ success: false, message: 'membersImage is required.' });
-      return;
-    }
-
-    const settings = await SiteSettings.findOneAndUpdate(
-      { key: 'main' },
-      { $set: { membersImage } },
-      { upsert: true, new: true }
-    );
-
-    res.json({
-      success: true,
-      message: membersImage ? 'Full members image updated successfully.' : 'Full members image removed.',
-      membersImage: settings.membersImage,
-    });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-}
-
 // GET /api/members  (public)
 export async function listMembers(_: any, res: Response) {
   try {
     await connectDB();
     const members = await Member.find({ isActive: true }).sort({ team: 1, order: 1, name: 1 }).lean();
-    const settings = await SiteSettings.findOne({ key: 'main' }).lean();
-    const membersImage = settings?.membersImage || '';
-
     const grouped: Record<string, any[]> = {};
     for (const t of TEAMS) grouped[t] = [];
     for (const m of members) {
       if (!grouped[m.team]) grouped[m.team] = [];
       grouped[m.team].push(serialize(m));
     }
-    res.json({ success: true, grouped, teams: TEAMS, members: members.map(serialize), membersImage });
+    res.json({ success: true, grouped, teams: TEAMS, members: members.map(serialize) });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -89,9 +37,7 @@ export async function adminListMembers(_: any, res: Response) {
   try {
     await connectDB();
     const members = await Member.find().sort({ team: 1, order: 1, name: 1 }).lean();
-    const settings = await SiteSettings.findOne({ key: 'main' }).lean();
-    const membersImage = settings?.membersImage || '';
-    res.json({ success: true, members: members.map(serialize), membersImage });
+    res.json({ success: true, members: members.map(serialize) });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

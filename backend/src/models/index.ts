@@ -10,8 +10,4 @@ export { GalleryItem, GALLERY_CATEGORIES } from './GalleryItem';
 export { Resource, RESOURCE_CATEGORIES } from './Resource';
 export { GoogleFormRegistration } from './GoogleFormRegistration';
 export { SendingHistory } from './SendingHistory';
-export { BulkEmailLog } from './BulkEmailLog';
 export { Feedback } from './Feedback';
-export { SiteSettings } from './SiteSettings';
-export { EmailLog } from './EmailLog';
-

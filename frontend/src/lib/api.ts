@@ -8,16 +8,6 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-api.interceptors.request.use((config) => {
-  const adminToken = localStorage.getItem('gdgoc_admin_token');
-  const studentToken = localStorage.getItem('gdgoc_student_token');
-  const token = adminToken || studentToken;
-  if (token && !config.headers.Authorization) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
 export interface ApiError {
   success: boolean;
   message: string;

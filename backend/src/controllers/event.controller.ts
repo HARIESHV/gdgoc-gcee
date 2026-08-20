@@ -1,14 +1,10 @@
 import type { Response } from 'express';
 import mongoose from 'mongoose';
-import { EventModel, Registration, GoogleFormRegistration, Student, Certificate } from '../models';
+import { EventModel, Registration, GoogleFormRegistration } from '../models';
 import type { AuthRequest } from '../middleware/auth';
-import { nextEventId, nextCertificateId } from '../utils/ids';
+import { nextEventId } from '../utils/ids';
 import { todayIST, isDateBefore } from '../utils/dates';
 import { connectDB } from '../config/db';
-import { sendEventRegistrationConfirmationEmail } from '../utils/email';
-import { generateCertificatePDF } from '../utils/pdf';
-import { generateQRCodeDataURL } from '../utils/qr';
-import { env } from '../config/env';
 
 export function eventQuery(identifier: string) {
   if (mongoose.Types.ObjectId.isValid(identifier)) {
@@ -42,8 +38,9 @@ export function serializeEvent(event: any) {
     technologies: event.technologies,
     registrationEnabled: event.registrationEnabled,
     registrationDeadline: event.registrationDeadline,
+    capacity: event.capacity,
     googleFormUrl: event.googleFormUrl || '',
-    handledBy: event.handledBy || 'GDGoC GCEE Team',
+    manualRegistrationCount: event.manualRegistrationCount || 0,
     isCertificateEligible: event.isCertificateEligible,
     isInauguration: event.isInauguration,
     status: event.status,
@@ -54,85 +51,7 @@ export function serializeEvent(event: any) {
   };
 }
 
-async function getRegistrationCountMap(eventIds: mongoose.Types.ObjectId[]): Promise<Map<string, number>> {
-  const [formCounts, appCounts] = await Promise.all([
-    GoogleFormRegistration.aggregate([
-      { $match: { eventId: { $in: eventIds } } },
-      { $group: { _id: '$eventId', count: { $sum: 1 } } },
-    ]),
-    Registration.aggregate([
-      { $match: { eventId: { $in: eventIds }, status: 'REGISTERED' } },
-      { $group: { _id: '$eventId', count: { $sum: 1 } } },
-    ]),
-  ]);
-
-  const map = new Map<string, number>();
-  for (const c of formCounts) map.set(String(c._id), c.count);
-  for (const c of appCounts) {
-    const key = String(c._id);
-    const existing = map.get(key) || 0;
-    if (c.count > existing) map.set(key, c.count);
-  }
-  return map;
-}
-
-async function getEventRegCount(eventId: mongoose.Types.ObjectId): Promise<number> {
-  const [formCount, appCount] = await Promise.all([
-    GoogleFormRegistration.countDocuments({ eventId }),
-    Registration.countDocuments({ eventId, status: 'REGISTERED' }),
-  ]);
-  return Math.max(formCount, appCount);
-}
-
-/** Automatically issue event certificate for registered student */
-async function issueEventCertificateForStudent(student: { _id: any; name: string; email: string }, event: any) {
-  try {
-    const existing = await Certificate.findOne({
-      studentId: student._id,
-      eventId: event._id,
-      status: 'VALID',
-    });
-    if (existing) return existing;
-
-    const certificateId = await nextCertificateId();
-    const verificationUrl = `${env.appUrl}/certificate/${certificateId}`;
-    const qrCode = await generateQRCodeDataURL(verificationUrl);
-    const issueDate = todayIST();
-
-    const pdfBuffer = await generateCertificatePDF({
-      certificateId,
-      studentName: student.name,
-      eventName: event.title,
-      eventDate: event.date,
-      issueDate,
-      qrCodeDataURL: qrCode,
-      verificationUrl,
-    });
-
-    const cert = await Certificate.create({
-      certificateId,
-      studentId: student._id,
-      studentName: student.name,
-      studentEmail: student.email,
-      organization: 'GDGoC GCEE',
-      institution: 'Government College of Engineering, Erode',
-      eventId: event._id,
-      eventName: event.title,
-      eventDate: event.date,
-      issueDate,
-      verificationUrl,
-      qrCode,
-      pdfBuffer,
-      status: 'VALID',
-    });
-    return cert;
-  } catch (err: any) {
-    console.error('[issueEventCertificateForStudent error]:', err.message);
-    return null;
-  }
-}
-
-// GET /api/events (public)
+// GET /api/events  (public)
 export async function listEvents(req: AuthRequest, res: Response) {
   try {
     await connectDB();
@@ -164,8 +83,12 @@ export async function listEvents(req: AuthRequest, res: Response) {
       .limit(Number(limit) || 100)
       .lean();
 
-    const ids = events.map((e) => e._id as mongoose.Types.ObjectId);
-    const countMap = await getRegistrationCountMap(ids);
+    const ids = events.map((e) => e._id);
+    const regCounts = await Registration.aggregate([
+      { $match: { eventId: { $in: ids }, status: 'REGISTERED' } },
+      { $group: { _id: '$eventId', count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(regCounts.map((r) => [String(r._id), r.count]));
 
     res.json({
       success: true,
@@ -176,246 +99,285 @@ export async function listEvents(req: AuthRequest, res: Response) {
   }
 }
 
-// GET /api/events/:eventId (public/student)
+// GET /api/events/:eventId  (public)
 export async function getEvent(req: AuthRequest, res: Response) {
   try {
     await connectDB();
 
     const event = await EventModel.findOne(eventQuery(req.params.eventId)).lean();
+
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
     }
 
-    const registeredCount = await getEventRegCount(event._id as mongoose.Types.ObjectId);
+    const registeredCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
 
     let isRegistered = false;
-    let certificate: any = null;
-
     if (req.studentId) {
       isRegistered = (await Registration.countDocuments({ eventId: event._id, studentId: req.studentId, status: 'REGISTERED' })) > 0;
-      if (isRegistered) {
-        certificate = await Certificate.findOne({ eventId: event._id, studentId: req.studentId, status: 'VALID' }).select('certificateId issueDate eventName eventDate').lean();
-      }
     }
 
     res.json({
       success: true,
       event: serializeEvent({ ...event, registeredCount }),
       isRegistered,
-      certificate,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
 
-// POST /api/events/:eventId/register-public
+// POST /api/events/:eventId/register-public  (student registration form)
 export async function registerPublicEvent(req: any, res: Response) {
   try {
     await connectDB();
+
     const event = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
     }
+
+    if (!event.registrationEnabled) {
+      res.status(400).json({ success: false, message: 'Registration for this event is currently closed.' });
+      return;
+    }
+
     const { name, email, phone, college, department, year, rollNumber } = req.body;
-    if (!name || !email) {
-      res.status(400).json({ success: false, message: 'Name and email are required.' });
-      return;
-    }
-    const normalizedEmail = email.toLowerCase().trim();
 
-    // Prevent duplicate registrations
-    const existing = await GoogleFormRegistration.findOne({ eventId: event._id, email: normalizedEmail });
-    if (existing) {
-      existing.name = name;
-      existing.phone = phone || existing.phone;
-      existing.department = department || existing.department;
-      existing.year = year || existing.year;
-      existing.college = college || existing.college;
-      await existing.save();
-
-      // Find or create student stub to issue certificate for event registration
-      let student = await Student.findOne({ email: normalizedEmail });
-      if (!student) {
-        student = await Student.create({
-          name,
-          email: normalizedEmail,
-          phone: phone || '',
-          department: department || '',
-          year: year || '',
-          college: college || 'Government College of Engineering, Erode',
-          passwordHash: 'GENERATED_REGISTRANT_STUB',
-        });
-      }
-      const cert = await issueEventCertificateForStudent(student, event);
-
-      res.json({ success: true, message: 'Registration updated.', updated: true, certificateId: cert?.certificateId });
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      res.status(400).json({ success: false, message: 'Full name is required.' });
       return;
     }
 
-    await GoogleFormRegistration.create({
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      res.status(400).json({ success: false, message: 'A valid student email address is required.' });
+      return;
+    }
+
+    if (!phone || typeof phone !== 'string' || phone.trim().length < 7) {
+      res.status(400).json({ success: false, message: 'A valid contact phone number is required.' });
+      return;
+    }
+
+    if (!department || typeof department !== 'string' || !department.trim()) {
+      res.status(400).json({ success: false, message: 'Department is required.' });
+      return;
+    }
+
+    if (!year || typeof year !== 'string' || !year.trim()) {
+      res.status(400).json({ success: false, message: 'Year of study is required.' });
+      return;
+    }
+
+    // Duplicate check
+    const existing = await GoogleFormRegistration.findOne({
       eventId: event._id,
-      name,
-      email: normalizedEmail,
-      phone: phone || '',
-      rollNumber: rollNumber || '',
-      department: department || '',
-      year: year || '',
-      college: college || 'GCEE',
-      source: 'webhook',
-      formData: req.body,
+      email: cleanEmail,
+    }).lean();
+
+    if (existing) {
+      res.status(400).json({
+        success: false,
+        message: 'This email is already registered for this event.',
+        registrationId: existing.responseId,
+      });
+      return;
+    }
+
+    if (event.capacity > 0) {
+      const currentCount = await GoogleFormRegistration.countDocuments({ eventId: event._id });
+      if (currentCount >= event.capacity) {
+        res.status(400).json({ success: false, message: 'This event has reached maximum capacity.' });
+        return;
+      }
+    }
+
+    const registrationId = `REG-${event.eventId.toUpperCase()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+    const reg = await GoogleFormRegistration.create({
+      responseId: registrationId,
+      eventId: event._id,
+      formData: {
+        'Full Name': name.trim(),
+        'Email Address': cleanEmail,
+        'Phone Number': phone.trim(),
+        'College / Institution': (college || 'Government College of Engineering, Erode').trim(),
+        'Department': department.trim(),
+        'Year of Study': year.trim(),
+        'Roll Number / Student ID': (rollNumber || '').trim(),
+        'Event ID': event.eventId,
+        'Event Name': event.title,
+      },
+      name: name.trim(),
+      email: cleanEmail,
+      phone: phone.trim(),
+      rollNumber: (rollNumber || '').trim(),
+      department: department.trim(),
+      year: year.trim(),
+      college: (college || 'Government College of Engineering, Erode').trim(),
+      source: 'manual',
       submittedAt: new Date(),
     });
 
-    // Find or create student stub and issue certificate strictly for this event registration
-    let student = await Student.findOne({ email: normalizedEmail });
-    if (!student) {
-      student = await Student.create({
-        name,
-        email: normalizedEmail,
-        phone: phone || '',
-        department: department || '',
-        year: year || '',
-        college: college || 'Government College of Engineering, Erode',
-        passwordHash: 'GENERATED_REGISTRANT_STUB',
-      });
-    }
-    const cert = await issueEventCertificateForStudent(student, event);
-
+    // Send confirmation email ONLY to the student's email address (never to admin)
     try {
+      const { sendEventRegistrationConfirmationEmail } = await import('../utils/email');
       await sendEventRegistrationConfirmationEmail({
-        to: normalizedEmail,
-        studentName: name,
+        to: cleanEmail,
+        studentName: name.trim(),
         eventName: event.title,
         eventDate: event.date,
-        venue: event.venue || 'GCEE',
-        registrationId: 'REG-CONFIRMED',
+        eventTime: event.startTime ? `${event.startTime} - ${event.endTime || 'TBA'}` : undefined,
+        venue: event.venue,
+        registrationId,
+        instructions: event.description ? event.description.slice(0, 300) : undefined,
       });
-    } catch (e: any) {
-      console.error('[email] Error sending registration email:', e.message);
+    } catch (emailErr) {
+      console.error('[registerPublicEvent] Confirmation email delivery failed:', emailErr);
     }
 
-    res.json({
+    res.status(201).json({
       success: true,
-      message: 'Registration successful! Your event certificate is now available.',
-      certificateId: cert?.certificateId,
+      message: 'Registration successful! Confirmation email sent to your email address.',
+      registrationId,
+      event: {
+        eventId: event.eventId,
+        title: event.title,
+        date: event.date,
+        venue: event.venue,
+      },
     });
   } catch (err: any) {
+    console.error('[registerPublicEvent] Error:', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 }
 
-// POST /api/events/:eventId/register (student)
+// POST /api/events/:eventId/register  (logged-in student)
 export async function registerForEvent(req: AuthRequest, res: Response) {
   try {
     await connectDB();
-    const studentId = req.studentId;
-    if (!studentId) {
-      res.status(401).json({ success: false, message: 'Authentication required.' });
-      return;
-    }
+
     const event = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
     }
-    const student = await Student.findById(studentId);
-    if (!student) {
-      res.status(404).json({ success: false, message: 'Student profile not found.' });
+
+    if (!event.registrationEnabled) {
+      res.status(400).json({ success: false, message: 'Registration for this event is closed.' });
       return;
     }
 
-    const existing = await Registration.findOne({ eventId: event._id, studentId });
-    if (existing && existing.status === 'REGISTERED') {
+    const today = todayIST();
+    if (event.registrationDeadline && event.registrationDeadline < today) {
+      res.status(400).json({ success: false, message: 'The registration deadline has passed.' });
+      return;
+    }
+
+    if (event.capacity > 0) {
+      const count = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
+      if (count >= event.capacity) {
+        res.status(400).json({ success: false, message: 'This event has reached its maximum capacity.' });
+        return;
+      }
+    }
+
+    const existing = await Registration.findOne({ studentId: req.studentId, eventId: event._id });
+    if (existing) {
+      if (existing.status === 'CANCELLED') {
+        existing.status = 'REGISTERED';
+        existing.registeredAt = new Date();
+        await existing.save();
+        res.json({ success: true, message: 'Registration restored. You are registered again!' });
+        return;
+      }
       res.status(400).json({ success: false, message: 'You are already registered for this event.' });
       return;
     }
 
-    if (existing) {
-      existing.status = 'REGISTERED';
-      await existing.save();
-    } else {
-      await Registration.create({
-        eventId: event._id,
-        studentId,
-        status: 'REGISTERED',
-        registeredAt: new Date(),
-      });
+    const reg = await Registration.create({ studentId: req.studentId, eventId: event._id, status: 'REGISTERED' });
+    const regId = `REG-${event.eventId.toUpperCase()}-${String(reg._id).slice(-6).toUpperCase()}`;
+
+    // Get student info to send confirmation email to student ONLY
+    const { Student } = await import('../models');
+    const student = await Student.findById(req.studentId).lean();
+    if (student && student.email) {
+      try {
+        const { sendEventRegistrationConfirmationEmail } = await import('../utils/email');
+        await sendEventRegistrationConfirmationEmail({
+          to: student.email,
+          studentName: student.name,
+          eventName: event.title,
+          eventDate: event.date,
+          eventTime: event.startTime ? `${event.startTime} - ${event.endTime || 'TBA'}` : undefined,
+          venue: event.venue,
+          registrationId: regId,
+          instructions: event.description ? event.description.slice(0, 300) : undefined,
+        });
+      } catch (e) {
+        console.error('[registerForEvent] Email confirmation error:', e);
+      }
     }
 
-    // Mirror to GoogleFormRegistration to keep counts unified
-    const normalizedEmail = student.email.toLowerCase().trim();
-    const dupe = await GoogleFormRegistration.findOne({ eventId: event._id, email: normalizedEmail });
-    if (!dupe) {
-      await GoogleFormRegistration.create({
-        eventId: event._id,
-        name: student.name,
-        email: normalizedEmail,
-        phone: student.phone || '',
-        department: student.department || '',
-        year: student.year || '',
-        college: student.college || 'GCEE',
-        source: 'webhook',
-        formData: { name: student.name, email: normalizedEmail },
-        submittedAt: new Date(),
-      });
-    }
-
-    // Issue certificate strictly linked to this event registration
-    const cert = await issueEventCertificateForStudent(student, event);
-
-    try {
-      await sendEventRegistrationConfirmationEmail({
-        to: student.email,
-        studentName: student.name,
-        eventName: event.title,
-        eventDate: event.date,
-        venue: event.venue || 'GCEE',
-        registrationId: 'REG-CONFIRMED',
-      });
-    } catch (e: any) {
-      console.error('[email] Error sending registration confirmation:', e.message);
-    }
-
-    res.json({
+    res.status(201).json({
       success: true,
-      message: 'Successfully registered for event! Your participation certificate is ready.',
-      certificateId: cert?.certificateId,
+      message: 'You are registered for this event. Confirmation email has been sent!',
+      registrationId: regId,
     });
   } catch (err: any) {
+    if (err.code === 11000) {
+      res.status(400).json({ success: false, message: 'You are already registered for this event.' });
+      return;
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 }
 
-// DELETE /api/events/:eventId/register (student)
+
+// DELETE /api/events/:eventId/register  (student)
 export async function unregisterFromEvent(req: AuthRequest, res: Response) {
   try {
     await connectDB();
-    const studentId = req.studentId;
+
     const event = await EventModel.findOne(eventQuery(req.params.eventId));
     if (!event) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
     }
-    await Registration.deleteOne({ eventId: event._id, studentId });
-    // Revoke/remove certificate linked to this registration
-    await Certificate.deleteMany({ eventId: event._id, studentId });
+    const today = todayIST();
+    if (event.date < today) {
+      res.status(400).json({ success: false, message: 'Cannot cancel registration after the event date.' });
+      return;
+    }
 
-    res.json({ success: true, message: 'Event registration cancelled and associated certificate removed.' });
+    const updated = await Registration.findOneAndUpdate(
+      { studentId: req.studentId, eventId: event._id },
+      { status: 'CANCELLED' },
+      { new: true }
+    );
+    if (!updated) {
+      res.status(400).json({ success: false, message: 'You are not registered for this event.' });
+      return;
+    }
+    res.json({ success: true, message: 'Registration cancelled.' });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
 
-// GET /api/events/my/registered (student)
+// GET /api/events/my/registered  (student)
 export async function myEvents(req: AuthRequest, res: Response) {
   try {
     await connectDB();
-    const studentId = req.studentId;
-    const registrations = await Registration.find({ studentId, status: 'REGISTERED' })
+
+    const registrations = await Registration.find({ studentId: req.studentId, status: 'REGISTERED' })
       .populate('eventId')
+      .sort({ registeredAt: -1 })
       .lean();
 
     const events = registrations
@@ -436,9 +398,12 @@ export async function adminListEvents(_: any, res: Response) {
     await connectDB();
 
     const events = await EventModel.find().sort({ date: -1 }).lean();
-    const ids = events.map((e) => e._id as mongoose.Types.ObjectId);
-    const countMap = await getRegistrationCountMap(ids);
-
+    const ids = events.map((e) => e._id);
+    const regCounts = await Registration.aggregate([
+      { $match: { eventId: { $in: ids }, status: 'REGISTERED' } },
+      { $group: { _id: '$eventId', count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(regCounts.map((r) => [String(r._id), r.count]));
     res.json({
       success: true,
       events: events.map((e) => serializeEvent({ ...e, registeredCount: countMap.get(String(e._id)) || 0 })),
@@ -458,7 +423,7 @@ export async function adminGetEvent(req: any, res: Response) {
       res.status(404).json({ success: false, message: 'Event not found.' });
       return;
     }
-    const registeredCount = await getEventRegCount(event._id as mongoose.Types.ObjectId);
+    const registeredCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
     res.json({ success: true, event: serializeEvent({ ...event, registeredCount }) });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -493,8 +458,9 @@ export async function adminCreateEvent(req: any, res: Response) {
       technologies: req.body.technologies || [],
       registrationEnabled: req.body.registrationEnabled ?? true,
       registrationDeadline: req.body.registrationDeadline || '',
+      capacity: Number(req.body.capacity) || 0,
       googleFormUrl: req.body.googleFormUrl || '',
-      handledBy: req.body.handledBy || 'GDGoC GCEE Team',
+      manualRegistrationCount: Number(req.body.manualRegistrationCount) || 0,
       isCertificateEligible: Boolean(req.body.isCertificateEligible),
       isInauguration: Boolean(req.body.isInauguration),
       status: req.body.status || 'UPCOMING',
@@ -520,16 +486,16 @@ export async function adminUpdateEvent(req: any, res: Response) {
     const allowed = [
       'title', 'description', 'shortDescription', 'banner', 'date', 'startTime', 'endTime', 'venue',
       'speaker', 'speakerBio', 'category', 'technologies', 'registrationEnabled', 'registrationDeadline',
-      'googleFormUrl', 'handledBy', 'isCertificateEligible', 'isInauguration', 'status',
+      'capacity', 'googleFormUrl', 'manualRegistrationCount', 'isCertificateEligible', 'isInauguration', 'status',
     ];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
-        (existing as any)[key] = req.body[key];
+        (existing as any)[key] = (key === 'capacity' || key === 'manualRegistrationCount') ? Number(req.body[key]) || 0 : req.body[key];
       }
     }
     await existing.save();
 
-    const registeredCount = await getEventRegCount(existing._id as mongoose.Types.ObjectId);
+    const registeredCount = await Registration.countDocuments({ eventId: existing._id, status: 'REGISTERED' });
     res.json({ success: true, message: 'Event updated successfully.', event: serializeEvent({ ...existing.toObject(), registeredCount }) });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -547,10 +513,8 @@ export async function adminDeleteEvent(req: any, res: Response) {
       return;
     }
     await Registration.deleteMany({ eventId: event._id });
-    await GoogleFormRegistration.deleteMany({ eventId: event._id });
-    await Certificate.deleteMany({ eventId: event._id });
     await EventModel.deleteOne({ _id: event._id });
-    res.json({ success: true, message: 'Event deleted and associated registrations/certificates removed.' });
+    res.json({ success: true, message: 'Event deleted.' });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

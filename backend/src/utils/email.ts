@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { env, CLUB } from '../config/env';
+import { env } from '../config/env';
 
 let resendClient: Resend | null = null;
 
@@ -389,146 +389,49 @@ export async function sendEventRegistrationPDFEmail(opts: {
 export async function sendStudentConfirmationEmail(opts: {
   to: string;
   studentName: string;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<void> {
   const resend = getResend();
   if (!resend) {
-    const msg = 'Email service not configured. Set RESEND_API_KEY.';
-    console.error('[email]', msg);
-    return { success: false, error: msg };
+    console.log('[email] Resend not configured — skipping student confirmation email for', opts.to);
+    return;
   }
 
   const safeName = escapeHtml(opts.studentName);
-  const orgName = escapeHtml(CLUB.organization);
 
   const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#f4f6f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:24px 0;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:580px;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);" cellpadding="0" cellspacing="0">
-        <tr>
-          <td style="background-color:#0b1b33;padding:28px 32px;text-align:left;">
-            <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">${orgName}</h1>
-            <p style="margin:4px 0 0 0;color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Google Developer Groups on Campus</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background-color:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:14px 32px;">
-            <p style="margin:0;color:#166534;font-size:14px;font-weight:600;">&#10003; Registration Confirmed</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px;">
-            <p style="margin-top:0;color:#1e293b;font-size:15px;line-height:1.5;">Dear <strong>${safeName}</strong>,</p>
-            <p style="color:#475569;font-size:14px;line-height:1.6;">Thank you for registering with us!</p>
-            <p style="color:#475569;font-size:14px;line-height:1.6;">We have successfully received your registration details. Our admin team will review your submission and contact you if any further information is required.</p>
-            <div style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;margin:20px 0;">
-              <p style="margin:0;color:#166534;font-size:14px;font-weight:600;">Your registration has been successfully submitted.</p>
-            </div>
-            <p style="color:#475569;font-size:14px;line-height:1.6;">We appreciate your interest and look forward to having you with us.</p>
-            <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
-            <p style="margin:0;color:#64748b;font-size:13px;line-height:1.5;">Best regards,<br/><strong>Admin Team</strong><br/>${orgName}</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background-color:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;">
-            <p style="margin:0;color:#94a3b8;font-size:11px;">This is an automated confirmation sent to ${escapeHtml(opts.to)}.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-
-  const text = [
-    `Dear ${opts.studentName},`,
-    '',
-    'Thank you for registering with us!',
-    '',
-    'We have successfully received your registration details. Our admin team will review your submission and contact you if any further information is required.',
-    '',
-    'Your registration has been successfully submitted.',
-    '',
-    'We appreciate your interest and look forward to having you with us.',
-    '',
-    'Best regards,',
-    'Admin Team',
-    CLUB.organization,
-  ].join('\n');
-
-  const fromAddress = getFromAddress();
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: fromAddress,
-      to: opts.to,
-      subject: 'Thank You for Registering!',
-      html,
-      text,
-    });
-
-    if (error) {
-      console.error('[email] Student confirmation email error:', JSON.stringify(error));
-      return { success: false, error: error.message || 'Resend API error.' };
-    }
-
-    console.log('[email] Student confirmation email sent to', opts.to, 'Resend ID:', data?.id);
-    return { success: true };
-  } catch (err: any) {
-    console.error('[email] Student confirmation email exception:', err.message);
-    return { success: false, error: err.message };
-  }
-}
-
-export async function sendBulkEmail(opts: {
-  to: string;
-  studentName: string;
-  subject: string;
-  message: string;
-  htmlContent?: string;
-}): Promise<{ id?: string; error?: string }> {
-  const resend = getResend();
-  if (!resend) {
-    return { error: 'Email service not configured.' };
-  }
-
-  const safeName = escapeHtml(opts.studentName);
-  const safeSubject = escapeHtml(opts.subject);
-
-  const html = opts.htmlContent || `
   <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
     <div style="background:#0b1b33; padding: 18px 24px; color:#fff;">
-      <h2 style="margin:0; font-size:18px;">GDGoC GCEE</h2>
-      <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px;">Google Developer Groups on Campus</p>
+      <h2 style="margin:0; font-size:18px;">Thank You for Registering!</h2>
     </div>
     <div style="padding: 24px;">
       <p style="margin-top:0; color:#374151;">Dear <strong>${safeName}</strong>,</p>
-      <p style="color:#374151;">${escapeHtml(opts.message).replace(/\n/g, '<br/>')}</p>
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />
-      <p style="color:#9aa5b1;font-size:12px;">GDGoC GCEE · Government College of Engineering, Erode</p>
+      <p style="color:#374151;">Thank you for registering with us!</p>
+      <p style="color:#374151;">We have successfully received your registration details. Our team will review your submission and contact you if any further information is required.</p>
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 16px; margin:16px 0;">
+        <p style="margin:0; color:#166534; font-weight:bold;">Your registration has been successfully submitted.</p>
+      </div>
+      <p style="color:#374151;">We appreciate your interest and look forward to having you with us.</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
+      <p style="color:#374151;">Best regards,<br/><strong>GDGoC GCEE Team</strong></p>
+      <p style="color:#9aa5b1;font-size:12px; margin-top:16px;">Google Developer Groups on Campus — Government College of Engineering, Erode</p>
     </div>
-  </div>`;
+  </div>
+  `;
 
   const fromAddress = getFromAddress();
 
-  try {
-    const { data, error } = await resend.emails.send({
-      from: fromAddress,
-      to: opts.to,
-      subject: `[GDGoC GCEE] ${opts.subject}`,
-      html,
-    });
+  const { data, error } = await resend.emails.send({
+    from: fromAddress,
+    to: opts.to,
+    subject: 'Thank You for Registering – GDGoC GCEE',
+    html,
+  });
 
-    if (error) {
-      return { error: error.message };
-    }
-
-    return { id: data?.id };
-  } catch (err: any) {
-    return { error: err.message };
+  if (error) {
+    console.error('[email] Student confirmation email error:', JSON.stringify(error));
+    return;
   }
+
+  console.log('[email] Student confirmation email sent to', opts.to, 'Resend ID:', data?.id);
 }
 

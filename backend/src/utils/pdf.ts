@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import PDFDocument from 'pdfkit';
 import { formatFullDate } from './dates';
 
@@ -13,40 +11,35 @@ export interface CertificatePdfData {
   verificationUrl: string;
 }
 
-const NAVY   = '#0b2559';   // deep navy blue
-const GOLD   = '#c8902a';   // warm gold
-const LGOLD  = '#e8c96b';   // light gold for accents
-const BLUE   = '#1a3a7c';   // medium blue for headings
-const GRAY   = '#6b7280';   // soft gray
-const LGRAY  = '#d1d5db';   // light gray lines
-const WHITE  = '#ffffff';
+const NAVY = '#0b1b33';
+const GOLD = '#c5a53a';
+const GRAY = '#5f6b7a';
 
 function drawCorner(doc: PDFKit.PDFDocument, cx: number, cy: number, dirX: number, dirY: number) {
-  const len = 36;
-  doc.save();
-  doc.lineWidth(2.5).moveTo(cx, cy).lineTo(cx + dirX * len, cy).stroke(GOLD);
-  doc.lineWidth(2.5).moveTo(cx, cy).lineTo(cx, cy + dirY * len).stroke(GOLD);
-  doc.lineWidth(1).moveTo(cx + dirX * 7, cy + dirY * 7).lineTo(cx + dirX * (len - 4), cy + dirY * 7).stroke(NAVY);
-  doc.lineWidth(1).moveTo(cx + dirX * 7, cy + dirY * 7).lineTo(cx + dirX * 7, cy + dirY * (len - 4)).stroke(NAVY);
-  doc.restore();
-}
+  const len = 40;
+  const goldW = 3;
+  const navyW = 2;
 
-function drawDiamond(doc: PDFKit.PDFDocument, x: number, y: number, size: number = 4) {
-  doc.save();
-  doc.moveTo(x, y - size).lineTo(x + size, y).lineTo(x, y + size).lineTo(x - size, y).closePath().fill(GOLD);
-  doc.restore();
-}
+  const x2 = cx + dirX * len;
+  const y3 = cy + dirY * len;
 
-function drawOrnamentalRule(doc: PDFKit.PDFDocument, cx: number, y: number, halfW: number) {
   doc.save();
-  doc.lineWidth(0.8).moveTo(cx - halfW, y).lineTo(cx - 10, y).stroke(GOLD);
-  doc.lineWidth(0.8).moveTo(cx + 10, y).lineTo(cx + halfW, y).stroke(GOLD);
-  drawDiamond(doc, cx, y, 4);
+
+  doc.lineWidth(goldW).moveTo(cx, cy).lineTo(x2, cy).stroke(GOLD);
+  doc.lineWidth(goldW).moveTo(cx, cy).lineTo(cx, y3).stroke(GOLD);
+
+  doc.lineWidth(navyW).moveTo(cx + dirX * 6, cy + dirY * 6).lineTo(x2 - dirX * 4, cy + dirY * 6).stroke(NAVY);
+  doc.lineWidth(navyW).moveTo(cx + dirX * 6, cy + dirY * 6).lineTo(cx + dirX * 6, y3 - dirY * 4).stroke(NAVY);
+
   doc.restore();
 }
 
 /**
- * Professional A4 landscape certificate PDF using official GDGoC GCEE certificate design.
+ * Build a premium A4 landscape certificate PDF and resolve with a Buffer.
+ *
+ * Design: navy/gold color scheme, thin gold border, geometric corner decorations,
+ * GDGoC GCEE branding, CERTIFICATE OF PARTICIPATION heading, gold badge, QR code.
+ * No signatures, no website URL, no email, no social icons.
  */
 export async function generateCertificatePDF(data: CertificatePdfData): Promise<Buffer> {
   const doc = new PDFDocument({
@@ -64,129 +57,133 @@ export async function generateCertificatePDF(data: CertificatePdfData): Promise<
     doc.on('error', reject);
   });
 
-  const W = doc.page.width;   // 841.89
-  const H = doc.page.height;  // 595.28
-  const cx = W / 2;
+  const W = doc.page.width; // 841.89
+  const H = doc.page.height; // 595.28
+  const center = W / 2;
 
-  // Search for background image
-  const samplePaths = [
-    path.join(__dirname, '../assets/certificate-sample.jpg'),
-    path.join(process.cwd(), 'backend/src/assets/certificate-sample.jpg'),
-    path.join(process.cwd(), 'src/assets/certificate-sample.jpg'),
-    path.join(process.cwd(), 'frontend/public/certificate-sample.jpg'),
-    path.join(process.cwd(), 'public/certificate-sample.jpg'),
-  ];
-  const bgImagePath = samplePaths.find((p) => fs.existsSync(p));
+  // White background
+  doc.rect(0, 0, W, H).fill('#ffffff');
 
-  if (bgImagePath) {
-    // ── Template Image Background ─────────────────────────────────
-    doc.image(bgImagePath, 0, 0, { width: W, height: H });
+  // Outer thin gold border
+  doc.rect(20, 20, W - 40, H - 40).lineWidth(2).stroke(GOLD);
+  // Inner thin navy border
+  doc.rect(26, 26, W - 52, H - 52).lineWidth(1).stroke(NAVY);
 
-    // ── Overlay Dynamic Text ──────────────────────────────────────
-    // 1. Student Name
-    const nameSize = data.studentName.length > 22 ? 32 : data.studentName.length > 16 ? 36 : 42;
-    doc.font('Helvetica-BoldOblique').fontSize(nameSize).fillColor('#0b2559');
-    doc.text(data.studentName, 120, 270, { align: 'center', width: W - 240 });
+  // Geometric corner decorations
+  drawCorner(doc, 20, 20, 1, 1);
+  drawCorner(doc, W - 20, 20, -1, 1);
+  drawCorner(doc, 20, H - 20, 1, -1);
+  drawCorner(doc, W - 20, H - 20, -1, -1);
 
-    // 2. Event Name
-    const evSize = data.eventName.length > 40 ? 14 : data.eventName.length > 28 ? 16 : 18;
-    doc.font('Helvetica-Bold').fontSize(evSize).fillColor('#0b2559');
-    doc.text(data.eventName, 120, 366, { align: 'center', width: W - 240 });
+  // GDGoC GCEE header
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(24)
+    .fillColor(NAVY)
+    .text('GDGoC GCEE', center, 70, { align: 'center' });
 
-    // 3. Date
-    const formattedDate = formatFullDate(data.eventDate);
-    doc.font('Helvetica-Bold').fontSize(12).fillColor('#0b2559');
-    doc.text(formattedDate, 0, 436, { align: 'center', width: W });
+  // Institution subheader
+  doc
+    .font('Helvetica')
+    .fontSize(11)
+    .fillColor(GRAY)
+    .text('Government College of Engineering, Erode', center, 96, { align: 'center' });
 
-    // 4. QR Code inside Gold Circle (bottom right)
-    if (data.qrCodeDataURL) {
-      doc.image(data.qrCodeDataURL, 696, 432, { width: 66, height: 66 });
-    }
+  // Main heading
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(28)
+    .fillColor(NAVY)
+    .text('CERTIFICATE OF PARTICIPATION', center, 135, { align: 'center' });
 
-    // 5. Certificate ID
-    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0b2559');
-    doc.text(data.certificateId.toUpperCase(), 355, 562, { width: 300, align: 'left', characterSpacing: 0.5 });
+  // Gold decorative line under heading
+  doc
+    .moveTo(center - 130, 170)
+    .lineTo(center + 130, 170)
+    .lineWidth(2)
+    .stroke(GOLD);
 
-  } else {
-    // ── Clean & Elegant Minimalist PDF Generator ──────────────────
-    doc.rect(0, 0, W, H).fill(WHITE);
+  // Presentation line
+  doc
+    .font('Helvetica')
+    .fontSize(11.5)
+    .fillColor(GRAY)
+    .text('This certificate is proudly presented to', center, 190, { align: 'center' });
 
-    // Perimeter Thin Navy & Gold Borders
-    doc.rect(20, 20, W - 40, H - 40).lineWidth(1.5).stroke(NAVY);
-    doc.rect(25, 25, W - 50, H - 50).lineWidth(0.8).stroke(GOLD);
+  // Student name
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(30)
+    .fillColor(NAVY)
+    .text(data.studentName.toUpperCase(), center, 215, { align: 'center', width: W - 200, ellipsis: true });
 
-    drawCorner(doc, 20, 20, 1, 1);
-    drawCorner(doc, W - 20, 20, -1, 1);
-    drawCorner(doc, 20, H - 20, 1, -1);
-    drawCorner(doc, W - 20, H - 20, -1, -1);
+  // Participation line
+  doc
+    .font('Helvetica')
+    .fontSize(11)
+    .fillColor(GRAY)
+    .text('for outstanding participation in', center, 260, { align: 'center' });
 
-    // Header Top Line
-    doc.moveTo(40, 75).lineTo(W - 40, 75).lineWidth(0.8).stroke(LGRAY);
+  // Event name
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(16)
+    .fillColor(NAVY)
+    .text(data.eventName, center, 282, { align: 'center', width: W - 240, ellipsis: true });
 
-    // Top Left Logo Text: GDGoC GCEE
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('Google Developer Groups', 45, 36);
-    doc.font('Helvetica').fontSize(9.5).fillColor(BLUE).text('on Campus', 45, 49);
-    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(GOLD).text('GDGoC GCEE', 45, 61);
+  // Single event date
+  const formattedDate = formatFullDate(data.eventDate);
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(14)
+    .fillColor(NAVY)
+    .text(formattedDate, center, 310, { align: 'center' });
 
-    // Top Right Logo Text: Government College of Engineering, Erode
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('GOVERNMENT COLLEGE', W - 245, 36, { width: 200, align: 'right' });
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('OF ENGINEERING, ERODE', W - 245, 49, { width: 200, align: 'right' });
-    doc.font('Helvetica').fontSize(7.5).fillColor(GOLD).text('LEARN  •  BUILD  •  IMPACT', W - 245, 62, { width: 200, align: 'right' });
+  // Gold badge/seal at bottom left
+  const badgeX = 130;
+  const badgeY = 440;
+  const badgeR = 42;
 
-    // Center Headings
-    doc.font('Helvetica-Bold').fontSize(46).fillColor(NAVY).text('CERTIFICATE', 0, 105, { align: 'center', width: W, characterSpacing: 2 });
-    doc.font('Helvetica-Bold').fontSize(14).fillColor(GOLD).text('OF  PARTICIPATION', 0, 158, { align: 'center', width: W, characterSpacing: 4 });
+  doc.save();
+  doc.circle(badgeX, badgeY, badgeR).lineWidth(2.5).stroke(GOLD);
+  doc.circle(badgeX, badgeY, badgeR - 6).lineWidth(1).stroke(GOLD);
 
-    drawOrnamentalRule(doc, cx, 185, 140);
-
-    // Presenter line
-    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(GRAY);
-    doc.text('THIS IS PROUDLY PRESENTED TO', 0, 198, { align: 'center', width: W, characterSpacing: 2 });
-
-    // Student Name (Prominent & Elegant Script / Oblique)
-    const nameSize = data.studentName.length > 22 ? 34 : data.studentName.length > 16 ? 38 : 44;
-    doc.font('Helvetica-BoldOblique').fontSize(nameSize).fillColor(NAVY);
-    doc.text(data.studentName, 100, 222, { align: 'center', width: W - 200 });
-
-    const nameBottom = 222 + nameSize + 6;
-    doc.moveTo(cx - 120, nameBottom).lineTo(cx + 120, nameBottom).lineWidth(1).stroke(GOLD);
-
-    // Event Info
-    doc.font('Helvetica').fontSize(10.5).fillColor(GRAY);
-    doc.text('for actively participating in the event', 0, nameBottom + 12, { align: 'center', width: W });
-
-    const evSize = data.eventName.length > 40 ? 14 : data.eventName.length > 28 ? 16 : 18;
-    doc.font('Helvetica-Bold').fontSize(evSize).fillColor(NAVY);
-    doc.text(data.eventName, 100, nameBottom + 28, { align: 'center', width: W - 200 });
-
-    doc.font('Helvetica').fontSize(10).fillColor(GRAY);
-    doc.text('organized by GDGoC GCEE', 0, nameBottom + 48, { align: 'center', width: W });
-
-    const formattedDate = formatFullDate(data.eventDate);
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY);
-    doc.text(`📅  ${formattedDate}`, 0, nameBottom + 66, { align: 'center', width: W });
-
-    // Bottom Coordinator Signature Area
-    const sigY = H - 85;
-    doc.moveTo(70, sigY).lineTo(210, sigY).lineWidth(1).stroke(NAVY);
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(NAVY).text('Faculty / Lead Coordinator', 70, sigY + 5, { width: 140, align: 'center' });
-    doc.font('Helvetica').fontSize(8).fillColor(GRAY).text('GDGoC GCEE', 70, sigY + 17, { width: 140, align: 'center' });
-
-    // QR Code & Verification (Bottom Right)
-    const qrX = W - 110;
-    const qrY = H - 98;
-    if (data.qrCodeDataURL) {
-      doc.rect(qrX, qrY, 56, 56).lineWidth(1).stroke(GOLD);
-      doc.image(data.qrCodeDataURL, qrX + 3, qrY + 3, { width: 50, height: 50 });
-      doc.font('Helvetica-Bold').fontSize(5.5).fillColor(NAVY);
-      doc.text('SCAN TO VERIFY', qrX - 10, qrY + 58, { width: 76, align: 'center' });
-    }
-
-    // Bottom Footer Line & Certificate ID
-    doc.moveTo(40, H - 36).lineTo(W - 40, H - 36).lineWidth(0.5).stroke(LGRAY);
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(NAVY);
-    doc.text(`CERTIFICATE ID:  ${data.certificateId.toUpperCase()}`, 45, H - 30, { width: W - 90, characterSpacing: 0.5 });
+  // Star inside badge
+  const starPoints = 5;
+  const outerR = 22;
+  const innerR = 10;
+  doc.moveTo(badgeX, badgeY - outerR);
+  for (let i = 0; i < starPoints * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = (Math.PI * i) / starPoints - Math.PI / 2;
+    doc.lineTo(badgeX + r * Math.cos(angle), badgeY + r * Math.sin(angle));
   }
+  doc.closePath().lineWidth(1.5).fillAndStroke(GOLD, GOLD);
+
+  // Text around badge
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(7)
+    .fillColor(NAVY)
+    .text('GDGoC GCEE', badgeX, badgeY + badgeR + 8, { align: 'center', width: badgeR * 2 });
+  doc
+    .font('Helvetica')
+    .fontSize(6)
+    .fillColor(GRAY)
+    .text('Certificate of Participation', badgeX, badgeY + badgeR + 18, { align: 'center', width: badgeR * 2 });
+  doc.restore();
+
+  // QR code at bottom right
+  if (data.qrCodeDataURL) {
+    doc.image(data.qrCodeDataURL, W - 130, 420, { width: 80, height: 80 });
+  }
+
+  // Certificate ID at bottom center
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .fillColor(NAVY)
+    .text(`Certificate ID: ${data.certificateId}`, center, 530, { align: 'center' });
 
   doc.end();
   return done;
@@ -223,15 +220,18 @@ export async function generateRegistrationListPDFBuffer(opts: {
     doc.on('error', reject);
   });
 
-  const W = doc.page.width - 72;
+  const W = doc.page.width - 72; // 595.28 - 72 = 523.28
   const generatedTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
+  // Header band
   doc.rect(0, 0, doc.page.width, 88).fill(NAVY);
+
   doc.font('Helvetica-Bold').fontSize(16).fillColor('#ffffff').text('GDGoC GCEE', 36, 18, { width: W });
   doc.font('Helvetica').fontSize(9.5).fillColor('#94a3b8').text('Google Developer Groups on Campus — Government College of Engineering, Erode', 36, 38, { width: W });
   doc.font('Helvetica-Bold').fontSize(11).fillColor('#38bdf8').text('STUDENT REGISTRATION REPORT', 36, 56, { width: W });
   doc.font('Helvetica').fontSize(8).fillColor('#cbd5e1').text(`Generated: ${generatedTime} IST`, 36, 70, { width: W, align: 'right' });
 
+  // Event info box
   let y = 104;
   doc.font('Helvetica-Bold').fontSize(13).fillColor(NAVY).text(opts.eventName, 36, y, { width: W });
   y += 18;
@@ -242,6 +242,7 @@ export async function generateRegistrationListPDFBuffer(opts: {
   doc.moveTo(36, y).lineTo(36 + W, y).lineWidth(1).stroke(NAVY);
   y += 10;
 
+  // Table columns
   const cols = [
     { label: '# / Reg ID', x: 36, w: 72 },
     { label: 'Student Name', x: 112, w: 105 },
@@ -262,8 +263,10 @@ export async function generateRegistrationListPDFBuffer(opts: {
 
   y = drawTableHeader(y);
 
+  // Table rows
   for (let i = 0; i < opts.students.length; i++) {
     const s = opts.students[i];
+
     if (y > 750) {
       doc.addPage();
       y = 36;
@@ -289,6 +292,7 @@ export async function generateRegistrationListPDFBuffer(opts: {
     y += 16;
   }
 
+  // Footer on each page
   const pageRange = doc.bufferedPageRange();
   for (let i = pageRange.start; i < pageRange.start + pageRange.count; i++) {
     doc.switchToPage(i);
@@ -301,3 +305,4 @@ export async function generateRegistrationListPDFBuffer(opts: {
   doc.end();
   return done;
 }
+

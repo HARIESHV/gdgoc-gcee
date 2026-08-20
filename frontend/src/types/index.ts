@@ -47,10 +47,10 @@ export interface GEvent {
   registrationDeadline: string;
   capacity: number;
   googleFormUrl: string;
-  handledBy?: string;
   responseSheetId?: string;
   responseSheetName?: string;
   lastSyncedAt?: string;
+  manualRegistrationCount: number;
   isCertificateEligible: boolean;
   isInauguration: boolean;
   status: EventStatus;
@@ -149,17 +149,6 @@ export interface ResourceItem {
   type?: string;
   uploadedBy?: string;
   createdAt?: string;
-}
-
-export interface LeaderboardEntry {
-  rank: number;
-  studentId: string;
-  name: string;
-  department: string;
-  year: string;
-  profileImage: string;
-  points: number;
-  eventsAttended: number;
 }
 
 export interface EligibilityStudent {

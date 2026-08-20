@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Users, Calendar } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { MemberCard } from '../../components/members/MemberCard';
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -13,16 +13,13 @@ import type { Member } from '../../types';
 export default function Members() {
   const [grouped, setGrouped] = useState<Record<string, Member[]>>({});
   const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState('2026–27');
 
   useEffect(() => {
     let mounted = true;
     api
       .get('/members')
       .then((res) => {
-        if (mounted) {
-          setGrouped(res.data.grouped || {});
-        }
+        if (mounted) setGrouped(res.data.grouped || {});
       })
       .catch((err) => toast.error(getErrorMessage(err)))
       .finally(() => mounted && setLoading(false));
@@ -33,17 +30,16 @@ export default function Members() {
 
   return (
     <>
-      {/* Top Banner Hero */}
       <section className="relative overflow-hidden bg-navy-950 pt-32 pb-16 text-center">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-16 left-1/4 h-64 w-64 rounded-full bg-g-green/20 blur-3xl" />
           <div className="absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-g-red/15 blur-3xl" />
         </div>
         <div className="container-x relative z-10">
-          <span className="chip border border-white/15 bg-white/5 text-white/80">GDGoC GCEE Team</span>
-          <h1 className="mt-4 font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">Team Members</h1>
+          <span className="chip border border-white/15 bg-white/5 text-white/80">Our People</span>
+          <h1 className="mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">Our Members</h1>
           <p className="mx-auto mt-4 max-w-xl text-sm text-white/70 sm:text-base">
-            Meet the student leads, coordinators, and community members behind GDGoC GCEE.
+            The students who run and power the GDGoC GCEE community.
           </p>
         </div>
         <div className="relative z-10 mt-10 flex h-1.5">
@@ -54,59 +50,31 @@ export default function Members() {
         </div>
       </section>
 
-      {/* Main Grid Content */}
       <section className="bg-slate-50 py-14">
-        <div className="container-x space-y-12">
+        <div className="container-x space-y-14">
           {loading ? (
-            <PageLoader label="Loading team members…" />
+            <PageLoader label="Loading members…" />
           ) : TEAMS.some((t) => (grouped[t] || []).length > 0) ? (
-            TEAMS.filter((team) => (grouped[team] || []).length > 0).map((team) => {
-              const isBoardTeam = team === 'Core Team' || team === 'Student Coordinators';
-              const teamTitle = isBoardTeam ? 'Board Members' : team;
-
-              return (
-                <div key={team}>
-                  <Reveal>
-                    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-                      <h2 className="flex items-center gap-3 font-display text-2xl font-bold text-navy-900">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-navy-900 text-white">
-                          <Users className="h-4 w-4" />
-                        </span>
-                        {teamTitle}
-                        <span className="text-sm font-normal text-ink-muted">({grouped[team].length})</span>
-                      </h2>
-
-                      {/* Year Selector Badge */}
-                      {isBoardTeam && (
-                        <div className="flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3.5 py-1.5 shadow-xs">
-                          <Calendar className="h-4 w-4 text-g-blue" />
-                          <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(e.target.value)}
-                            className="bg-transparent text-xs font-semibold text-navy-900 outline-none cursor-pointer"
-                          >
-                            <option value="2026–27">2026–27</option>
-                            <option value="2025–26">2025–26</option>
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  </Reveal>
-
-                  {/* Responsive Grid */}
-                  <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
-                    {grouped[team].map((member, i) => (
-                      <Reveal key={member._id} delay={i * 50}>
-                        <MemberCard
-                          member={member}
-                          hideImageOnMobile={isBoardTeam && i === 0}
-                        />
-                      </Reveal>
-                    ))}
-                  </div>
+            TEAMS.filter((team) => (grouped[team] || []).length > 0).map((team, ti) => (
+              <div key={team}>
+                <Reveal>
+                  <h2 className="mb-6 flex items-center gap-3 font-display text-2xl font-bold text-navy-900">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-navy-900 text-white">
+                      <Users className="h-4 w-4" />
+                    </span>
+                    {team}
+                    <span className="text-sm font-normal text-ink-muted">({grouped[team].length})</span>
+                  </h2>
+                </Reveal>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {grouped[team].map((member, i) => (
+                    <Reveal key={member._id} delay={i * 60}>
+                      <MemberCard member={member} />
+                    </Reveal>
+                  ))}
                 </div>
-              );
-            })
+              </div>
+            ))
           ) : (
             <EmptyState title="No members yet" description="The team directory is being built. Check back soon." />
           )}

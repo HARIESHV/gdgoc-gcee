@@ -24,9 +24,6 @@ import {
   revokeCertificate,
   restoreCertificate,
   adminCertificateStats,
-  generateEventCertificates,
-  clearAllCertificates,
-  deleteCertificate,
 } from '../controllers/certificate.controller';
 import {
   adminListStudents,
@@ -39,8 +36,6 @@ import {
   createMember,
   updateMember,
   deleteMember,
-  getMembersImage,
-  updateMembersImage,
 } from '../controllers/member.controller';
 import {
   createGalleryItem,
@@ -79,12 +74,6 @@ import {
 import {
   deleteEventRegistration,
 } from '../controllers/registration.controller';
-import {
-  getBulkEmailRecipients,
-  sendBulkEmailToAll,
-  getBulkEmailLogs,
-} from '../controllers/bulkEmail.controller.js';
-import { sendEventAnnouncement, getEmailHistory } from '../controllers/email.controller';
 
 const router = Router();
 
@@ -110,10 +99,8 @@ router.post('/events/:eventId/registrations/bulk', bulkAddRegistrations);
 // Event distribution — PDF generation + email sending + history
 router.get('/events/:eventId/registration-list', generateRegistrationListPDF);
 router.post('/events/:eventId/send-pdf', sendEventRegistrationPDFToAll);
-router.post('/events/:eventId/send-announcement', sendEventAnnouncement);
-router.get('/events/:eventId/send-emails', sendEventEmails);
+router.post('/events/:eventId/send-emails', sendEventEmails);
 router.get('/events/:eventId/sending-history', getEventSendingHistory);
-router.get('/email-history', getEmailHistory);
 
 // Delete a single event registration
 router.delete('/events/:eventId/registrations/:registrationId', deleteEventRegistration);
@@ -131,8 +118,6 @@ router.delete('/students/:id', adminDeleteStudent);
 
 // Members
 router.get('/members', adminListMembers);
-router.get('/members-image', getMembersImage);
-router.put('/members-image', uploadMemory.single('image'), updateMembersImage);
 router.post('/members', createMember);
 router.put('/members/:id', updateMember);
 router.delete('/members/:id', deleteMember);
@@ -150,11 +135,8 @@ router.post('/certificate-campaigns/:id/generate/:studentId', generateSingleCert
 // Certificates
 router.get('/certificates', adminListCertificates);
 router.get('/certificates/stats', adminCertificateStats);
-router.post('/certificates/generate', generateEventCertificates);
 router.post('/certificates/:certificateId/revoke', revokeCertificate);
 router.post('/certificates/:certificateId/restore', restoreCertificate);
-router.delete('/certificates/clear-all', clearAllCertificates);
-router.delete('/certificates/:certificateId', deleteCertificate);
 
 // Gallery
 router.post('/gallery', uploadMemory.single('image'), createGalleryItem);
@@ -170,10 +152,5 @@ router.delete('/resources/:id', deleteResource);
 router.get('/form-registrations', adminListFormRegistrations);
 router.get('/form-registrations/:id', adminGetFormRegistration);
 router.patch('/form-registrations/:id/read', adminMarkFormRegistrationRead);
-
-// Bulk email to all registered students
-router.get('/bulk-email/recipients', getBulkEmailRecipients);
-router.post('/bulk-email/send', sendBulkEmailToAll);
-router.get('/bulk-email/logs', getBulkEmailLogs);
 
 export default router;

@@ -104,55 +104,27 @@ export default function MyCertificates() {
       <Modal open={!!preview} onClose={() => setPreview(null)} title="Certificate Preview" wide>
         {preview && (
           <div>
-            <div className="overflow-hidden rounded-2xl border-4 border-[#c8902a] bg-white p-6 shadow-xl relative">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div>
-                  <p className="font-display text-xs font-bold text-[#0b2559]">Google Developer Groups <span className="font-normal text-[10px] text-slate-500">on Campus</span></p>
-                  <p className="font-mono text-[11px] font-bold text-[#c8902a]">GDGoC GCEE</p>
+            <div className="overflow-hidden rounded-2xl border border-navy-100">
+              <div className="bg-gradient-to-br from-navy-900 to-navy-700 p-8 text-white">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-display text-xl font-bold">GDGoC GCEE</p>
+                    <p className="text-xs text-white/70">Government College of Engineering, Erode</p>
+                  </div>
+                  {preview.qrCode ? (
+                    <img src={preview.qrCode} alt="QR" className="h-16 w-16 rounded bg-white p-1" />
+                  ) : (
+                    <FileText className="h-10 w-10 text-g-yellow" />
+                  )}
                 </div>
-                <div className="text-right">
-                  <p className="font-display text-[10px] font-bold text-[#0b2559]">GOVERNMENT COLLEGE OF ENGINEERING, ERODE</p>
-                  <p className="font-mono text-[9px] text-[#c8902a]">LEARN • BUILD • IMPACT</p>
+                <div className="mt-8 text-center">
+                  <p className="text-base font-bold tracking-widest" style={{ color: '#c5a53a' }}>CERTIFICATE OF PARTICIPATION</p>
+                  <p className="mt-4 text-sm text-white/60">proudly presented to</p>
+                  <p className="mt-1 font-display text-2xl font-bold">{preview.studentName}</p>
+                  {preview.eventDateLabel && (
+                    <p className="mt-4 font-mono text-sm text-g-green">{preview.eventDateLabel}</p>
+                  )}
                 </div>
-              </div>
-
-              <div className="py-6 text-center space-y-2">
-                <h2 className="font-display text-xl font-extrabold tracking-tight text-[#0b2559]">
-                  CERTIFICATE <span className="text-xs block font-semibold text-[#c8902a] tracking-widest mt-0.5">OF PARTICIPATION</span>
-                </h2>
-
-                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400 pt-1">
-                  THIS IS PROUDLY PRESENTED TO
-                </p>
-
-                <p className="font-serif italic text-2xl font-bold text-[#0b2559]">
-                  {preview.studentName}
-                </p>
-
-                <p className="text-[11px] text-slate-600">
-                  for actively participating in the event
-                </p>
-
-                <p className="font-display text-sm font-bold text-[#0b2559]">
-                  {preview.eventName || preview.campaignName || 'GDGoC GCEE Event'}
-                </p>
-
-                <p className="text-[11px] text-slate-500">
-                  organized by <strong>GDGoC GCEE</strong>
-                </p>
-
-                <div className="pt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-[#0b2559]">
-                  <span>📅</span> {preview.eventDateLabel || preview.issueDate || '2026'}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-mono text-[#0b2559]">
-                <div>
-                  <span className="font-bold">CERTIFICATE ID:</span> {preview.certificateId}
-                </div>
-                {preview.qrCode ? (
-                  <img src={preview.qrCode} alt="QR Code" className="h-10 w-10 rounded border border-[#c8902a] bg-white p-0.5" />
-                ) : null}
               </div>
             </div>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">

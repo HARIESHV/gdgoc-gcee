@@ -5,7 +5,7 @@ import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import type { AuthRequest } from '../middleware/auth';
 import { connectDB } from '../config/db';
-import { sendWelcomeEmail } from '../services/email.service';
+import { sendStudentConfirmationEmail } from '../utils/email';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -83,37 +83,18 @@ export async function register(req: AuthRequest, res: Response) {
       passwordHash,
     });
 
+    // Send confirmation email to student (non-blocking — don't fail registration if email fails)
+    const studentEmail = student.email;
+    if (studentEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
+      sendStudentConfirmationEmail({ to: studentEmail, studentName: student.name }).catch((err) => {
+        console.error('[auth] Confirmation email failed for', studentEmail, ':', err.message);
+      });
+    }
+
     const token = signToken({ id: String(student._id), role: 'student' });
     setAuthCookie(res, token);
 
-    let emailSent = false;
-    let emailError = '';
-
-    const studentEmail = student.email;
-    if (studentEmail && emailRegex.test(studentEmail)) {
-      try {
-        const emailResult = await sendWelcomeEmail({ to: studentEmail, studentName: student.name });
-        emailSent = emailResult.success;
-        if (!emailResult.success) {
-          emailError = emailResult.error || 'Email delivery failed.';
-          console.error('[auth] Confirmation email failed for', studentEmail, ':', emailError);
-        }
-      } catch (emailErr: any) {
-        emailError = emailErr.message || 'Email sending exception.';
-        console.error('[auth] Confirmation email exception for', studentEmail, ':', emailError);
-      }
-    }
-
-    res.status(201).json({
-      success: true,
-      message: emailSent
-        ? 'Account created. Welcome to GDGoC GCEE!'
-        : 'Account created successfully, but we could not send the confirmation email. Please verify your email address or contact the admin team.',
-      emailSent,
-      emailError: emailSent ? undefined : emailError || undefined,
-      token,
-      student: publicStudent(student),
-    });
+    res.status(201).json({ success: true, message: 'Account created. Welcome to GDGoC GCEE!', token, student: publicStudent(student) });
   } catch (err: any) {
     console.error('[auth] register error:', err.message);
     res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });

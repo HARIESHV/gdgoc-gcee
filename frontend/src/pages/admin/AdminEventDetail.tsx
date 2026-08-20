@@ -4,22 +4,25 @@ import toast from 'react-hot-toast';
 import {
   ArrowLeft,
   Download,
+  Mail,
   Users,
   FileText,
-  Send,
-  Mail,
+  Clock,
   CheckCircle2,
-  AlertTriangle,
-  ExternalLink,
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+  Send,
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
+import { StatusBadge } from '../../components/ui/Badge';
 import { EventForm } from '../../components/admin/EventForm';
 import { api, getErrorMessage, downloadPdf } from '../../lib/api';
-import { cn, downloadBlob, formatHumanDate } from '../../lib/utils';
-import type { GEvent } from '../../types';
+import { formatHumanDate, cn, downloadBlob } from '../../lib/utils';
+import type { GEvent, SendingHistoryEntry, SendingHistoryStats } from '../../types';
 
-type Tab = 'details' | 'registrations' | 'announcement';
+type Tab = 'details' | 'registrations' | 'emails' | 'history';
 
 export default function AdminEventDetail() {
   const { eventId } = useParams();
@@ -64,7 +67,7 @@ export default function AdminEventDetail() {
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-black/10">
-        {(['details', 'registrations', 'announcement'] as Tab[]).map((t) => (
+        {(['details', 'registrations', 'emails', 'history'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -77,7 +80,8 @@ export default function AdminEventDetail() {
           >
             {t === 'details' && 'Edit Details'}
             {t === 'registrations' && 'Registrations'}
-            {t === 'announcement' && 'Send Announcement'}
+            {t === 'emails' && 'Send Emails'}
+            {t === 'history' && 'Sending History'}
           </button>
         ))}
       </div>
@@ -91,8 +95,12 @@ export default function AdminEventDetail() {
         <EventRegistrations eventId={event.eventId} event={event} />
       )}
 
-      {tab === 'announcement' && (
-        <EventAnnouncementComposer event={event} />
+      {tab === 'emails' && (
+        <EventEmailSender eventId={event.eventId} event={event} />
+      )}
+
+      {tab === 'history' && (
+        <EventSendingHistory eventId={event.eventId} />
       )}
     </div>
   );
@@ -108,7 +116,8 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
   const [search, setSearch] = useState('');
   const [generating, setGenerating] = useState(false);
   const [sendingPdf, setSendingPdf] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [pdfResult, setPdfResult] = useState<{ sent: number; failed: number; total: number; failedEmails?: string[] } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null); // registrationId
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -152,8 +161,10 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
 
   const handleSendPdf = async () => {
     setSendingPdf(true);
+    setPdfResult(null);
     try {
       const res = await api.post(`/admin/events/${eventId}/send-pdf`);
+      setPdfResult(res.data);
       toast.success(`PDF sent to ${res.data.sent} student(s)!`);
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -179,9 +190,20 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
       <div className="flex flex-wrap items-center gap-4 rounded border border-black/10 bg-white p-4">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-black/40" />
-          <span className="font-mono text-base font-bold text-black">{count}</span>
-          <span className="font-mono text-xs text-black/50">Total Registrations</span>
+          <span className="font-mono text-sm font-bold">{count}</span>
+          <span className="font-mono text-xs text-black/40">registered</span>
         </div>
+        {event.capacity > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-black/40">Capacity: {event.capacity}</span>
+            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-black/5">
+              <div
+                className="h-full bg-black transition-all"
+                style={{ width: `${Math.min((count / event.capacity) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
         <div className="ml-auto flex flex-wrap gap-2">
           <button
             onClick={handleSendPdf}
@@ -209,238 +231,413 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
         </div>
       </div>
 
-      {/* Registrations list table */}
-      <div className="overflow-x-auto rounded border border-black/10 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-black/10 bg-gray-50/80 font-mono text-[11px] font-bold uppercase tracking-wider text-black/50">
-              <th className="p-3">#</th>
-              <th className="p-3">Student Name</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">College</th>
-              <th className="p-3">Dept</th>
-              <th className="p-3">Year</th>
-              <th className="p-3">Certificate</th>
-              <th className="p-3">Registration Date</th>
-              <th className="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-black/5">
-            {loading ? (
-              <tr>
-                <td colSpan={9} className="p-8 text-center text-black/40">Loading registrations...</td>
+      {/* Search */}
+      <div className="flex items-center gap-2 rounded border border-black/10 bg-white px-4 py-2.5">
+        <input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Search by name, email, phone, roll..."
+          className="w-full bg-transparent font-mono text-sm text-black placeholder:text-black/30 focus:outline-none"
+        />
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <PageLoader label="Loading registrations..." />
+      ) : registrations.length === 0 ? (
+        <div className="rounded border border-black/10 bg-white p-8 text-center font-mono text-sm text-black/40">
+          No registrations found.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded border border-black/10 bg-white">
+          {/* Send PDF result */}
+          {pdfResult && (
+            <div className="border-b border-black/5 bg-gray-50 px-4 py-3">
+              <p className="font-mono text-xs">
+                <span className="font-bold text-green-700">{pdfResult.sent} sent</span>
+                {' · '}
+                <span className="font-bold text-red-600">{pdfResult.failed} failed</span>
+                {' · '}
+                <span className="text-black/40">{pdfResult.total} total</span>
+              </p>
+              {pdfResult.failedEmails && pdfResult.failedEmails.length > 0 && (
+                <p className="mt-1 text-[10px] text-red-500">{pdfResult.failedEmails.slice(0, 3).join(', ')}</p>
+              )}
+            </div>
+          )}
+          <table className="w-full min-w-[700px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-black/5 bg-gray-50">
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">#</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Name</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Email</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Phone</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Dept</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Source</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Action</th>
               </tr>
-            ) : registrations.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="p-8 text-center text-black/40">No registrations found.</td>
-              </tr>
-            ) : (
-              registrations.map((r, i) => (
-                <tr key={r._id} className="transition hover:bg-gray-50/50">
+            </thead>
+            <tbody className="divide-y divide-black/5">
+              {registrations.map((r, i) => (
+                <tr key={r._id} className="transition hover:bg-gray-50">
                   <td className="p-3 font-mono text-xs text-black/40">{(page - 1) * 50 + i + 1}</td>
                   <td className="p-3 font-semibold text-black">{r.name}</td>
                   <td className="p-3 font-mono text-xs text-black/60">{r.email}</td>
-                  <td className="p-3 text-xs text-black/70">{r.college || 'GCEE'}</td>
-                  <td className="p-3 text-xs text-black/70">{r.department || '—'}</td>
-                  <td className="p-3 text-xs text-black/70">{r.year || '—'}</td>
+                  <td className="p-3 text-xs text-black/50">{r.phone || '—'}</td>
+                  <td className="p-3 text-xs text-black/50">{r.department || '—'}</td>
                   <td className="p-3">
-                    {r.hasCertificate ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-0.5 font-mono text-[10px] font-bold text-green-800">
-                        ✓ Issued
-                      </span>
+                    <span className="rounded bg-black/5 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-black/40">
+                      {r.source}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    {deleteConfirm === r._id ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleDeleteRegistration(r._id)}
+                          className="rounded bg-red-600 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-white transition hover:bg-red-700"
+                        >Confirm</button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="font-mono text-[10px] text-black/40 hover:text-black"
+                        >Cancel</button>
+                      </div>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-500">
-                        Pending
-                      </span>
+                      <button
+                        onClick={() => setDeleteConfirm(r._id)}
+                        className="rounded border border-red-200 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-red-500 transition hover:bg-red-50"
+                      >Delete</button>
                     )}
                   </td>
-                  <td className="p-3 font-mono text-xs text-black/50">
-                    {r.submittedAt ? new Date(r.submittedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
-                  </td>
-                  <td className="p-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      {r.certificateId && (
-                        <button
-                          onClick={() => downloadPdf(r.certificateId)}
-                          className="font-mono text-xs font-bold text-green-700 hover:underline flex items-center gap-1"
-                          title="Download Certificate PDF"
-                        >
-                          Certificate
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteRegistration(r._id)}
-                        className="font-mono text-xs text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
                 </tr>
-              ))
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {count > 50 && (
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="border border-black/10 px-3 py-1.5 font-mono text-xs font-bold text-black/40 transition hover:text-black disabled:opacity-30"
+          >
+            <ChevronLeft className="inline h-4 w-4" /> Prev
+          </button>
+          <span className="font-mono text-xs text-black/40">Page {page} of {Math.ceil(count / 50)}</span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= Math.ceil(count / 50)}
+            className="border border-black/10 px-3 py-1.5 font-mono text-xs font-bold text-black/40 transition hover:text-black disabled:opacity-30"
+          >
+            Next <ChevronRight className="inline h-4 w-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Send Emails Tab ─────────────────────────────────────────────── */
+
+function EventEmailSender({ eventId, event }: { eventId: string; event: GEvent }) {
+  const [mode, setMode] = useState<'registered' | 'custom'>('registered');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [customEmailsRaw, setCustomEmailsRaw] = useState('');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+
+  // Parse and deduplicate emails from textarea
+  const parsedEmails = customEmailsRaw
+    .split(/[\n,;]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e.includes('@') && e.includes('.'));
+  const uniqueEmails = [...new Set(parsedEmails)];
+
+  const handleSend = async () => {
+    if (!subject.trim() || !message.trim()) {
+      toast.error('Subject and message are required.');
+      return;
+    }
+    if (mode === 'custom' && uniqueEmails.length === 0) {
+      toast.error('Please enter at least one valid email address.');
+      return;
+    }
+    setSending(true);
+    setResult(null);
+    try {
+      const payload: Record<string, any> = {
+        subject: subject.trim(),
+        message: message.trim(),
+        type: 'event-email',
+      };
+      if (mode === 'custom') {
+        payload.customEmails = uniqueEmails;
+      }
+      const res = await api.post(`/admin/events/${eventId}/send-emails`, payload);
+      setResult(res.data);
+      toast.success(`Emails sent: ${res.data.sent} successful, ${res.data.failed} failed`);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      {/* Mode selector */}
+      <div className="flex overflow-hidden rounded border border-black/10">
+        <button
+          onClick={() => setMode('registered')}
+          className={cn(
+            'flex-1 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider transition',
+            mode === 'registered' ? 'bg-black text-white' : 'bg-white text-black/40 hover:text-black'
+          )}
+        >
+          Registered Students
+        </button>
+        <button
+          onClick={() => setMode('custom')}
+          className={cn(
+            'flex-1 border-l border-black/10 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider transition',
+            mode === 'custom' ? 'bg-black text-white' : 'bg-white text-black/40 hover:text-black'
+          )}
+        >
+          Custom Email List
+        </button>
+      </div>
+
+      <div className="rounded border border-black/10 bg-white p-6">
+        <h3 className="mb-2 flex items-center gap-2 font-mono text-sm font-bold uppercase tracking-wider text-black">
+          <Send className="h-4 w-4" />
+          {mode === 'registered' ? 'Send to Registered Students' : 'Send to Custom Email List'}
+        </h3>
+
+        {mode === 'registered' ? (
+          <div className="mb-4 rounded border border-black/5 bg-gray-50 px-4 py-3 text-xs text-black/50">
+            This sends to all students stored in <strong>Form Registrations</strong> for this event.
+            If registrations were collected via Google Form externally (not through this system),
+            use <button onClick={() => setMode('custom')} className="font-bold text-black underline">Custom Email List</button> instead.
+          </div>
+        ) : (
+          <div className="mb-4 space-y-3">
+            <div className="rounded border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800">
+              Paste student email addresses below — one per line, or separated by commas. Duplicates are automatically removed.
+            </div>
+            <div>
+              <label className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-widest text-black/40">
+                Email Addresses
+              </label>
+              <textarea
+                rows={6}
+                value={customEmailsRaw}
+                onChange={(e) => setCustomEmailsRaw(e.target.value)}
+                placeholder={`student1@gmail.com\nstudent2@gmail.com\nstudent3@example.com`}
+                className="w-full resize-y border border-black/10 bg-white px-4 py-2.5 font-mono text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
+              />
+              {uniqueEmails.length > 0 && (
+                <p className="mt-1 font-mono text-xs text-black/40">
+                  {uniqueEmails.length} valid email{uniqueEmails.length !== 1 ? 's' : ''} detected
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-widest text-black/40">
+              Email Subject
+            </label>
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="e.g. Important Update for Web Dev Bootcamp"
+              className="w-full border border-black/10 bg-white px-4 py-2.5 font-mono text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-widest text-black/40">
+              Email Message
+            </label>
+            <textarea
+              rows={7}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Write your message here. It will be sent as an HTML email."
+              className="w-full resize-y border border-black/10 bg-white px-4 py-2.5 font-mono text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
+            />
+          </div>
+
+          <button
+            onClick={handleSend}
+            disabled={sending || !subject.trim() || !message.trim() || (mode === 'custom' && uniqueEmails.length === 0)}
+            className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-40"
+          >
+            {sending ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Mail className="h-4 w-4" />
+                {mode === 'custom'
+                  ? `Send to ${uniqueEmails.length || '—'} Email${uniqueEmails.length !== 1 ? 's' : ''}`
+                  : 'Send to All Registered Students'}
+              </>
             )}
-          </tbody>
-        </table>
+          </button>
+        </div>
+
+        {result && (
+          <div className="mt-4 rounded border border-black/10 bg-gray-50 p-4">
+            <p className="font-mono text-sm">
+              <span className="font-bold text-green-700">{result.sent} sent</span>
+              {' · '}
+              <span className="font-bold text-red-600">{result.failed} failed</span>
+              {' · '}
+              <span className="text-black/40">{result.total} total</span>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ─── Event Announcement Composer ─────────────────────────────────────── */
 
-function EventAnnouncementComposer({ event }: { event: GEvent }) {
-  const [recipientGroup, setRecipientGroup] = useState<'all' | 'registered' | 'unregistered'>('all');
-  const [subject, setSubject] = useState(`Registration Open – ${event.title}`);
-  const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ sentCount: number; failedCount: number; status: string } | null>(null);
+/* ─── Sending History Tab ─────────────────────────────────────────── */
 
-  const regUrl = `https://gdgoc-gcee.vercel.app/events/${event.eventId}/register`;
+function EventSendingHistory({ eventId }: { eventId: string }) {
+  const [history, setHistory] = useState<SendingHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<SendingHistoryStats>({ sent: 0, failed: 0, pending: 0 });
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const handleSendAnnouncement = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!subject) {
-      toast.error('Subject is required.');
-      return;
-    }
-
-    if (!window.confirm(`Send this announcement email to target group "${recipientGroup.toUpperCase()}"?`)) return;
-
-    setBusy(true);
-    setResult(null);
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await api.post(`/admin/events/${event.eventId}/send-announcement`, {
-        recipientGroup,
-        subject,
-        message,
+      const res = await api.get(`/admin/events/${eventId}/sending-history`, {
+        params: { page: String(page), limit: '50' },
       });
-      setResult(res.data);
-      toast.success(res.data.message);
+      setHistory(res.data.history);
+      setTotal(res.data.total);
+      setStats(res.data.stats);
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
-  };
+  }, [eventId, page]);
+
+  useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
-      {/* Composer form */}
-      <form onSubmit={handleSendAnnouncement} className="space-y-6 card p-6">
-        <div>
-          <h3 className="font-display text-base font-bold text-navy-900">Send Event Announcement</h3>
-          <p className="mt-1 text-xs text-ink-muted">
-            Send an official email announcement directly to students' Gmail accounts with the event registration link.
-          </p>
+    <div className="space-y-4">
+      {/* Stats */}
+      <div className="flex flex-wrap gap-4 rounded border border-black/10 bg-white p-4">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <span className="font-mono text-sm font-bold">{stats.sent}</span>
+          <span className="font-mono text-xs text-black/40">sent</span>
         </div>
-
-        <div>
-          <label className="label">Recipients Group</label>
-          <select
-            className="input"
-            value={recipientGroup}
-            onChange={(e) => setRecipientGroup(e.target.value as any)}
-          >
-            <option value="all">All Students (Default)</option>
-            <option value="registered">Registered Students Only</option>
-            <option value="unregistered">Unregistered Students Only</option>
-          </select>
+        <div className="flex items-center gap-2">
+          <XCircle className="h-4 w-4 text-red-500" />
+          <span className="font-mono text-sm font-bold">{stats.failed}</span>
+          <span className="font-mono text-xs text-black/40">failed</span>
         </div>
-
-        <div>
-          <label className="label">Subject</label>
-          <input
-            className="input"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            placeholder="e.g. Registration Open – AI & GenAI Workshop"
-          />
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-black/30" />
+          <span className="font-mono text-sm font-bold">{stats.pending}</span>
+          <span className="font-mono text-xs text-black/40">pending</span>
         </div>
-
-        <div>
-          <label className="label">Additional Message (Optional)</label>
-          <textarea
-            rows={4}
-            className="input resize-y"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Add custom notes or instructions for students..."
-          />
-        </div>
-
-        <div>
-          <label className="label">Website Registration Link</label>
-          <div className="flex items-center gap-2 rounded border border-black/10 bg-gray-50 px-3 py-2 font-mono text-xs text-black/70">
-            <ExternalLink className="h-3.5 w-3.5 text-black/40" />
-            <span className="truncate">{regUrl}</span>
-          </div>
-        </div>
-
-        {result && (
-          <div className={cn(
-            'rounded-xl border p-4 text-sm',
-            result.status === 'Success' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-900'
-          )}>
-            <p className="font-bold">
-              {result.status === 'Success' ? '✓ Announcement Sent Successfully' : '⚠ Announcement Processed with Warnings'}
-            </p>
-            <p className="mt-1 text-xs">
-              Successfully delivered: <strong>{result.sentCount}</strong> | Failed: <strong>{result.failedCount}</strong>
-            </p>
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-50"
-        >
-          <Mail className="h-4 w-4" />
-          {busy ? 'Sending Announcement...' : 'Send Event Announcement'}
-        </button>
-      </form>
-
-      {/* Live Email Preview */}
-      <div className="card p-6 bg-slate-50 space-y-4">
-        <div>
-          <span className="chip bg-navy-900 text-white font-mono text-[10px] uppercase">Email Live Preview</span>
-          <h4 className="mt-2 font-bold text-navy-900">{subject || 'Registration Open – Event'}</h4>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 text-xs text-slate-700">
-          <p>Hi <strong>Student Name</strong>,</p>
-          <p>We are excited to announce an upcoming event organized by GDGoC GCEE.</p>
-
-          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 space-y-2 font-mono">
-            <p><strong>Event:</strong> {event.title}</p>
-            <p><strong>Date:</strong> {formatHumanDate(event.date)}</p>
-            <p><strong>Time:</strong> {event.startTime ? `${event.startTime} - ${event.endTime || ''}` : 'TBA'}</p>
-            <p><strong>Venue:</strong> {event.venue || 'TBA'}</p>
-            <p><strong>Event Type:</strong> {event.category}</p>
-          </div>
-
-          {message && <p className="whitespace-pre-wrap">{message}</p>}
-
-          <p>Registration is now open.</p>
-
-          <div className="text-center py-2">
-            <span className="inline-block rounded-md bg-blue-600 px-6 py-2.5 font-mono font-bold text-white shadow-xs">
-              REGISTER FOR EVENT
-            </span>
-          </div>
-
-          <p className="text-center text-[11px] text-slate-400">
-            Registration Deadline: {event.registrationDeadline || 'Until Event Date'}
-          </p>
-
-          <hr className="border-slate-100" />
-          <p className="text-[11px] text-slate-500">
-            Regards,<br/>
-            <strong>GDGoC GCEE Team</strong><br/>
-            Government College of Engineering, Erode
-          </p>
+        <div className="ml-auto">
+          <span className="font-mono text-xs text-black/30">{total} total entries</span>
         </div>
       </div>
+
+      {/* History table */}
+      {loading ? (
+        <PageLoader label="Loading history..." />
+      ) : history.length === 0 ? (
+        <div className="rounded border border-black/10 bg-white p-8 text-center font-mono text-sm text-black/40">
+          No sending history yet.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded border border-black/10 bg-white">
+          <table className="w-full min-w-[600px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-black/5 bg-gray-50">
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Type</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Recipient</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Subject</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Status</th>
+                <th className="p-3 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Sent At</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/5">
+              {history.map((h) => (
+                <tr key={h._id} className="transition hover:bg-gray-50">
+                  <td className="p-3">
+                    <span className="rounded bg-black/5 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-black/40">
+                      {h.eventType}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    <p className="font-semibold text-black">{h.recipientName}</p>
+                    <p className="font-mono text-[10px] text-black/40">{h.recipientEmail}</p>
+                  </td>
+                  <td className="max-w-[200px] truncate p-3 text-xs text-black/60">{h.subject}</td>
+                  <td className="p-3">
+                    <span className={cn(
+                      'rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase',
+                      h.status === 'sent' ? 'bg-green-100 text-green-700' :
+                      h.status === 'failed' ? 'bg-red-100 text-red-600' :
+                      'bg-gray-100 text-black/40'
+                    )}>
+                      {h.status}
+                    </span>
+                    {h.errorMessage && (
+                      <p className="mt-1 max-w-[200px] truncate text-[10px] text-red-500">{h.errorMessage}</p>
+                    )}
+                  </td>
+                  <td className="p-3 font-mono text-xs text-black/40">
+                    {h.sentAt ? new Date(h.sentAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {total > 50 && (
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="border border-black/10 px-3 py-1.5 font-mono text-xs font-bold text-black/40 transition hover:text-black disabled:opacity-30"
+          >
+            <ChevronLeft className="inline h-4 w-4" /> Prev
+          </button>
+          <span className="font-mono text-xs text-black/40">Page {page} of {Math.ceil(total / 50)}</span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= Math.ceil(total / 50)}
+            className="border border-black/10 px-3 py-1.5 font-mono text-xs font-bold text-black/40 transition hover:text-black disabled:opacity-30"
+          >
+            Next <ChevronRight className="inline h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

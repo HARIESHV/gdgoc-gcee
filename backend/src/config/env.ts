@@ -26,7 +26,7 @@ export const CLUB = {
   name: 'GDGoC GCEE',
   fullName: 'Google Developer Groups on Campus — Government College of Engineering, Erode',
   shortName: 'GDGoC',
-  organization: process.env.ORGANIZATION_NAME || 'GDGoC GCEE',
+  organization: 'GDGoC GCEE',
   institution: 'Government College of Engineering, Erode',
   timezone: 'Asia/Kolkata',
   websiteName: 'GDGoC GCEE',

@@ -86,60 +86,29 @@ export default function Certificates() {
       <section className="bg-slate-50 py-16">
         <div className="container-x grid items-start gap-10 lg:grid-cols-2">
           <Reveal>
-            <div className="overflow-hidden rounded-2xl border-4 border-[#c8902a] bg-white p-6 shadow-2xl relative">
-              {/* Header Logos */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div>
-                  <p className="font-display text-sm font-bold text-[#0b2559]">Google Developer Groups <span className="font-normal text-xs text-slate-500">on Campus</span></p>
-                  <p className="font-mono text-xs font-bold text-[#c8902a]">GDGoC GCEE</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-display text-xs font-bold text-[#0b2559]">GOVERNMENT COLLEGE OF ENGINEERING, ERODE</p>
-                  <p className="font-mono text-[10px] text-[#c8902a]">LEARN • BUILD • IMPACT</p>
-                </div>
-              </div>
-
-              {/* Main Content */}
-              <div className="py-8 text-center space-y-3">
-                <h2 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0b2559]">
-                  CERTIFICATE <span className="text-sm block font-semibold text-[#c8902a] tracking-widest mt-1">OF PARTICIPATION</span>
-                </h2>
-
-                <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-slate-400 pt-2">
-                  THIS IS PROUDLY PRESENTED TO
-                </p>
-
-                <p className="font-serif italic text-2xl sm:text-3xl font-bold text-[#0b2559] py-1">
-                  Student Name
-                </p>
-
-                <p className="text-xs text-slate-600">
-                  for actively participating in the event
-                </p>
-
-                <p className="font-display text-base sm:text-lg font-bold text-[#0b2559]">
-                  AI Prompt Engineering Workshop
-                </p>
-
-                <p className="text-xs text-slate-500">
-                  organized by <strong>GDGoC GCEE</strong>
-                </p>
-
-                <div className="pt-2 flex items-center justify-center gap-2 text-xs font-bold text-[#0b2559]">
-                  <span>📅</span> 18 August 2026
-                </div>
-              </div>
-
-              {/* Footer ID and QR Code */}
-              <div className="flex items-center justify-between border-t border-slate-100 pt-4 text-[11px] font-mono text-[#0b2559]">
-                <div>
-                  <span className="font-bold">CERTIFICATE ID:</span> GDGCEE-20260818-A123
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-bold uppercase text-slate-400 text-right leading-tight">Scan to<br/>verify</span>
-                  <div className="h-9 w-9 rounded border border-[#c8902a] bg-slate-900 flex items-center justify-center text-[8px] font-bold text-white">
-                    QR
+            <div className="overflow-hidden rounded-2xl border border-navy-100 shadow-lift">
+              <div className="bg-gradient-to-br from-navy-900 to-navy-700 p-7 text-white sm:p-10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-display text-xl font-bold">GDGoC GCEE</p>
+                    <p className="text-xs text-white/70">Google Developer Groups on Campus</p>
+                    <p className="text-xs text-white/70">Government College of Engineering, Erode</p>
                   </div>
+                  <Award className="h-10 w-10 text-g-yellow" />
+                </div>
+                <div className="mt-8 text-center">
+                  <p className="text-lg font-bold tracking-wide text-g-blue">CERTIFICATE OF PARTICIPATION</p>
+                  <p className="mt-6 text-sm text-white/60">This certificate is proudly presented to</p>
+                  <p className="mt-2 font-display text-3xl font-bold">STUDENT NAME</p>
+                  <p className="mx-auto mt-3 max-w-sm text-xs leading-relaxed text-white/70">
+                    for active participation and contribution to the GDGoC GCEE community and its eligible technical events.
+                  </p>
+                  <p className="mt-5 font-mono text-sm text-g-green">Participation Period: 10.08.2026 — 10.10.2026</p>
+                  <p className="mt-2 text-xs text-white/70">Events Attended: 4 · Attendance: 80%</p>
+                </div>
+                <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] text-white/50">
+                  <span>Certificate ID: GDG-GCEE-2026-000001</span>
+                  <div className="h-10 w-10 rounded border border-white/20 bg-white p-0.5" />
                 </div>
               </div>
             </div>

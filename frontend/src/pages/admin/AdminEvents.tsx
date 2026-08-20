@@ -115,7 +115,10 @@ export default function AdminEvents() {
                   <td className="p-4">
                     <div className="flex items-center gap-1.5">
                       <Users className="h-3.5 w-3.5 text-black/30" />
-                      <span className="font-mono text-sm font-bold text-black">{ev.registeredCount}</span>
+                      <span className="font-mono text-sm font-bold">{ev.registeredCount}</span>
+                      {ev.capacity > 0 && (
+                        <span className="font-mono text-xs text-black/30">/ {ev.capacity}</span>
+                      )}
                     </div>
                   </td>
                   <td className="p-4">

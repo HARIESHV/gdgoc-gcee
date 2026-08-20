@@ -19,7 +19,7 @@ export async function getLeaderboard(req: any, res: Response) {
       { $match: { status: 'PRESENT' } },
       {
         $lookup: {
-          from: 'events',
+          from: EventModel.collection.name,
           localField: 'eventId',
           foreignField: '_id',
           as: 'event',

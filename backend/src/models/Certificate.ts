@@ -5,8 +5,7 @@ export const CERTIFICATE_STATUSES = ['VALID', 'REVOKED'] as const;
 const certificateSchema = new Schema(
   {
     certificateId: { type: String, required: true, unique: true, trim: true },
-    campaignId: { type: Schema.Types.ObjectId, ref: 'CertificateCampaign', default: null },
-    eventId: { type: Schema.Types.ObjectId, ref: 'Event', default: null },
+    campaignId: { type: Schema.Types.ObjectId, ref: 'CertificateCampaign', required: true },
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
     studentName: { type: String, required: true },
     studentEmail: { type: String, default: '' },
@@ -30,7 +29,8 @@ const certificateSchema = new Schema(
 );
 
 certificateSchema.index({ certificateId: 1 }, { unique: true });
-certificateSchema.index({ studentId: 1 });
+certificateSchema.index({ studentId: 1, campaignId: 1 }, { unique: true });
+certificateSchema.index({ campaignId: 1 });
 certificateSchema.index({ status: 1 });
 
 export type CertificateDoc = Document & InferSchemaType<typeof certificateSchema>;

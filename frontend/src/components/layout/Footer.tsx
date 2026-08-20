@@ -8,7 +8,7 @@ const footerCols = [
     links: [
       { label: 'About', to: '/about' },
       { label: 'Events', to: '/events' },
-      { label: 'Team Members', to: '/members' },
+      { label: 'Members', to: '/members' },
       { label: 'Gallery', to: '/gallery' },
       { label: 'Resources', to: '/resources' },
     ],
@@ -16,8 +16,11 @@ const footerCols = [
   {
     heading: 'Community',
     links: [
+      { label: 'Certificates', to: '/certificates' },
+      { label: 'Team', to: '/team' },
       { label: 'Contact', to: '/contact' },
       { label: 'Join Community', to: '/register' },
+      { label: 'Verify Certificate', to: '/certificates' },
     ],
   },
 ];

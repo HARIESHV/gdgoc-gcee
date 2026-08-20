@@ -9,9 +9,11 @@ const NAV = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
   { label: 'Events', to: '/events' },
-  { label: 'Team Members', to: '/members' },
+  { label: 'Members', to: '/members' },
+  { label: 'Team', to: '/team' },
   { label: 'Gallery', to: '/gallery' },
   { label: 'Resources', to: '/resources' },
+  { label: 'Certificates', to: '/certificates' },
   { label: 'Contact', to: '/contact' },
 ];
 

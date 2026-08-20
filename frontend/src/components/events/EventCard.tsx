@@ -87,10 +87,11 @@ export function EventCard({ event, className }: { event: GEvent; className?: str
         <div className="mt-4 flex items-center justify-between border-t border-navy-50 pt-3">
           <span className="flex items-center gap-1.5 text-xs text-ink-muted">
             <Users className="h-4 w-4" />
-            <span className="font-semibold text-navy-900">{event.registeredCount || 0}</span> registered
+            {event.registeredCount + (event.manualRegistrationCount || 0)}
+            {event.capacity > 0 ? ` / ${event.capacity}` : ''} registered
           </span>
-          <span className="rounded bg-black px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black border border-black">
-            REGISTER VIA EVENT
+          <span className="text-xs font-semibold text-g-blue opacity-0 transition-opacity group-hover:opacity-100">
+            View details →
           </span>
         </div>
       </div>

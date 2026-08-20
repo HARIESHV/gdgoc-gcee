@@ -10,18 +10,7 @@ import { api, getErrorMessage } from '../../lib/api';
 import { TEAMS, DEPARTMENTS, YEARS } from '../../lib/utils';
 import type { Member } from '../../types';
 
-const COORDINATOR_ROLES = [
-  'Lead Coordinator',
-  'Technical Coordinator',
-  'Event Coordinator',
-  'Design Coordinator',
-  'Content Coordinator',
-  'Social Media Coordinator',
-  'Marketing Coordinator',
-  'Other Coordinator',
-];
-
-const emptyForm = { name: '', team: 'Community Members', role: 'Lead Coordinator', customRole: '', department: '', year: '', photo: '', github: '', linkedin: '', instagram: '', twitter: '' };
+const emptyForm = { name: '', team: 'Community Members', role: 'Member', department: '', year: '', photo: '', github: '', linkedin: '', instagram: '', twitter: '' };
 
 export default function AdminMembers() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -55,12 +44,10 @@ export default function AdminMembers() {
 
   const openEdit = (m: Member) => {
     setEditing(m);
-    const isStandardRole = COORDINATOR_ROLES.includes(m.role);
     setForm({
       name: m.name,
       team: m.team,
-      role: isStandardRole ? m.role : 'Other Coordinator',
-      customRole: isStandardRole ? '' : m.role,
+      role: m.role,
       department: m.department,
       year: m.year,
       photo: m.photo,
@@ -85,16 +72,11 @@ export default function AdminMembers() {
       toast.error('Name is required.');
       return;
     }
-
-    const finalRole = form.role === 'Other Coordinator' && form.customRole.trim()
-      ? form.customRole.trim()
-      : form.role;
-
     setBusy(true);
     const payload = {
       name: form.name,
       team: form.team,
-      role: finalRole,
+      role: form.role,
       department: form.department,
       year: form.year,
       photo: form.photo,
@@ -128,10 +110,10 @@ export default function AdminMembers() {
   const grouped = TEAMS.map((t) => ({ team: t, members: members.filter((m) => m.team === t) })).filter((g) => g.members.length > 0);
 
   return (
-    <div className="w-full space-y-8">
+    <div className="space-y-6">
       <PageHeader
-        title="Team Members & Roles"
-        subtitle={`${members.length} team members registered`}
+        title="Members"
+        subtitle={`${members.length} team members`}
         actions={
           <button onClick={openCreate} className="btn-primary">
             <Plus className="h-4 w-4" /> Add member
@@ -148,61 +130,30 @@ export default function AdminMembers() {
           action={<button onClick={openCreate} className="btn-primary"><Plus className="h-4 w-4" /> Add member</button>}
         />
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-8">
           {grouped.map((g) => (
             <div key={g.team}>
-              <h2 className="mb-4 font-display text-base sm:text-lg font-bold text-navy-900">
-                {g.team} <span className="text-sm font-normal text-ink-muted">({g.members.length})</span>
-              </h2>
-
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+              <h2 className="mb-3 font-display text-base font-bold text-navy-900">{g.team} <span className="text-sm font-normal text-ink-muted">({g.members.length})</span></h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {g.members.map((m) => (
-                  <div
-                    key={m._id}
-                    className="card group flex flex-col justify-between overflow-hidden rounded-2xl border border-navy-100 bg-white shadow-sm transition-all duration-300 hover:shadow-lift"
-                  >
-                    <div>
-                      <div className="relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-br from-navy-900 to-navy-950 flex items-center justify-center border-b border-navy-50">
-                        {m.photo ? (
-                          <img
-                            src={m.photo}
-                            alt={m.name}
-                            draggable={false}
-                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105 pointer-events-none select-none"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green">
-                            <span className="font-display text-5xl font-bold text-white/30">{m.name.charAt(0)}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-4 space-y-1">
-                        <p className="truncate text-sm font-bold text-navy-900 sm:text-base">{m.name}</p>
-                        <span className="inline-block rounded-full bg-g-blue/10 px-2 py-0.5 font-mono text-xs font-bold text-g-blue truncate max-w-full">
-                          {m.role || 'Member'}
-                        </span>
-                        <p className="truncate text-[11px] text-ink-faint">
-                          {[m.department, m.year].filter(Boolean).join(' · ') || 'GCEE'}
-                        </p>
-                      </div>
+                  <div key={m._id} className="card group flex items-center gap-3 p-4">
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
+                      {m.photo ? (
+                        <img src={m.photo} alt={m.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green font-bold text-white">
+                          {m.name.charAt(0)}
+                        </div>
+                      )}
                     </div>
-
-                    <div className="px-4 pb-4">
-                      <div className="flex items-center justify-end gap-1 border-t border-slate-100 pt-2.5">
-                        <button
-                          onClick={() => openEdit(m)}
-                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:bg-g-blue/10 hover:text-g-blue transition"
-                        >
-                          <Pencil className="h-3.5 w-3.5" /> Edit
-                        </button>
-                        <button
-                          onClick={() => remove(m._id, m.name)}
-                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:bg-g-red/10 hover:text-g-red transition"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" /> Delete
-                        </button>
-                      </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-navy-900">{m.name}</p>
+                      <p className="truncate text-xs text-ink-muted">{m.role}</p>
+                      <p className="truncate text-[11px] text-ink-faint">{m.department || '—'}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-1 opacity-60 transition-opacity group-hover:opacity-100">
+                      <button onClick={() => openEdit(m)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-blue/10 hover:text-g-blue"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => remove(m._id, m.name)} className="rounded-lg p-1.5 text-ink-soft hover:bg-g-red/10 hover:text-g-red"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   </div>
                 ))}
@@ -215,90 +166,65 @@ export default function AdminMembers() {
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit member' : 'Add member'}>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="label">Name <span className="text-g-red">*</span></label>
-            <input className="input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Student Full Name" />
+            <label className="label">Name</label>
+            <input className="input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           </div>
-
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="label">Team / Category</label>
+              <label className="label">Team</label>
               <select className="input" value={form.team} onChange={(e) => setForm((f) => ({ ...f, team: e.target.value }))}>
                 {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-
             <div>
-              <label className="label">Coordinator Role</label>
-              <select className="input font-semibold" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}>
-                {COORDINATOR_ROLES.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+              <label className="label">Role</label>
+              <input className="input" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} placeholder="e.g. Head, Coordinator" />
             </div>
-          </div>
-
-          {form.role === 'Other Coordinator' && (
-            <div>
-              <label className="label">Custom Role Title</label>
-              <input
-                className="input"
-                value={form.customRole}
-                onChange={(e) => setForm((f) => ({ ...f, customRole: e.target.value }))}
-                placeholder="e.g. Media Lead, Logistics Coordinator"
-              />
-            </div>
-          )}
-
-          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">Department</label>
               <select className="input" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}>
-                <option value="">Select Department</option>
+                <option value="">Select</option>
                 {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-
             <div>
-              <label className="label">Year / Class</label>
+              <label className="label">Year</label>
               <select className="input" value={form.year} onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}>
-                <option value="">Select Year</option>
+                <option value="">Select</option>
                 {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
           </div>
-
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">GitHub URL</label>
-              <input className="input" value={form.github} onChange={(e) => setForm((f) => ({ ...f, github: e.target.value }))} placeholder="https://github.com/username" />
+              <input className="input" value={form.github} onChange={(e) => setForm((f) => ({ ...f, github: e.target.value }))} />
             </div>
             <div>
               <label className="label">LinkedIn URL</label>
-              <input className="input" value={form.linkedin} onChange={(e) => setForm((f) => ({ ...f, linkedin: e.target.value }))} placeholder="https://linkedin.com/in/username" />
+              <input className="input" value={form.linkedin} onChange={(e) => setForm((f) => ({ ...f, linkedin: e.target.value }))} />
             </div>
             <div>
               <label className="label">Instagram URL</label>
-              <input className="input" value={form.instagram} onChange={(e) => setForm((f) => ({ ...f, instagram: e.target.value }))} placeholder="https://instagram.com/username" />
+              <input className="input" value={form.instagram} onChange={(e) => setForm((f) => ({ ...f, instagram: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Twitter / X URL</label>
-              <input className="input" value={form.twitter} onChange={(e) => setForm((f) => ({ ...f, twitter: e.target.value }))} placeholder="https://x.com/username" />
+              <label className="label">Twitter URL</label>
+              <input className="input" value={form.twitter} onChange={(e) => setForm((f) => ({ ...f, twitter: e.target.value }))} />
             </div>
           </div>
-
           <div>
-            <label className="label">Profile Photo</label>
+            <label className="label">Photo</label>
             <div className="flex items-center gap-3">
               <input type="file" accept="image/*" onChange={(e) => handleFile(e.target.files?.[0])} className="text-sm text-ink-muted" />
-              {form.photo && <img src={form.photo} alt="preview" className="h-20 w-20 rounded-xl object-cover border border-navy-100 p-0.5" />}
+              {form.photo && <img src={form.photo} alt="preview" className="h-12 w-12 rounded-lg object-cover" />}
             </div>
           </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => setModal(false)} className="btn-outline">Cancel</button>
             <button type="submit" disabled={busy} className="btn-primary">
               {busy ? <ButtonSpinner /> : null}
-              {busy ? 'Saving…' : editing ? 'Update Member' : 'Add Member'}
+              {busy ? 'Saving…' : editing ? 'Update' : 'Add member'}
             </button>
           </div>
         </form>

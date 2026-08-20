@@ -41,7 +41,7 @@ export default function Contact() {
           <span className="chip border border-white/15 bg-white/5 text-white/80">Contact</span>
           <h1 className="mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">Get in Touch</h1>
           <p className="mx-auto mt-4 max-w-xl text-sm text-white/70 sm:text-base">
-            Questions about events or membership? Reach out to the team.
+            Questions about events, memberships or certificates? Reach out to the team.
           </p>
         </div>
         <div className="relative z-10 mt-10 flex h-1.5">

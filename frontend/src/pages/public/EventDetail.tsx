@@ -6,66 +6,83 @@ import {
   CalendarDays,
   Clock,
   MapPin,
-  Building2,
   Users,
   Award,
+  ExternalLink,
   AlertTriangle,
+  Building2,
   User2,
   MessageSquare,
-  Lock,
-  ExternalLink,
 } from 'lucide-react';
 import { PageLoader } from '../../components/ui/Spinner';
 import { StatusBadge } from '../../components/ui/Badge';
 import { EventRegistrationForm } from '../../components/events/EventRegistrationForm';
-import { useAuth } from '../../context/AuthContext';
-import { api, getErrorMessage, downloadPdf } from '../../lib/api';
+import { api, getErrorMessage } from '../../lib/api';
 import { formatHumanDate, formatHumanDateTime } from '../../lib/utils';
+import { useAuth } from '../../context/AuthContext';
 import type { GEvent } from '../../types';
 
 export default function EventDetail() {
   const { eventId } = useParams();
-  const { student } = useAuth();
   const [event, setEvent] = useState<GEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [registered, setRegistered] = useState(false);
-  const [certificate, setCertificate] = useState<any>(null);
-  const [totalRegistered, setTotalRegistered] = useState(0);
   const [regBusy, setRegBusy] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const { student } = useAuth();
 
   useEffect(() => {
     let mounted = true;
-    api
-      .get(`/events/${eventId}`)
-      .then((res) => {
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await api.get(`/events/${eventId}`);
         if (!mounted) return;
         setEvent(res.data.event);
-        setRegistered(res.data.registered || false);
-        setCertificate(res.data.certificate || null);
-        setTotalRegistered(res.data.event.registeredCount || 0);
-      })
-      .catch((err) => toast.error(getErrorMessage(err)))
-      .finally(() => mounted && setLoading(false));
-    return () => {
-      mounted = false;
-    };
+        if (res.data.isRegistered) setRegistered(true);
+      } catch (err) {
+        toast.error(getErrorMessage(err));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => { mounted = false; };
   }, [eventId]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white pt-24">
+        <PageLoader label="Loading event..." />
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-white px-4 pt-28 pb-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="font-mono text-lg font-bold text-black">Event not found</p>
+          <Link to="/events" className="mt-6 inline-flex items-center gap-2 border border-black/20 px-5 py-2.5 font-mono text-sm font-semibold text-black transition hover:bg-black hover:text-white">
+            <ArrowLeft className="h-4 w-4" /> Back to events
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const isUpcoming = event.effectiveStatus === 'UPCOMING' || event.effectiveStatus === 'ONGOING';
+  const isCompleted = event.effectiveStatus === 'COMPLETED';
+  const hasGoogleForm = Boolean(event.googleFormUrl);
+  const totalRegistered = event.registeredCount + (event.manualRegistrationCount || 0);
+
   const handleStudentRegister = async () => {
-    if (!student) {
-      toast.error('Please sign up or log in to register.');
-      return;
-    }
+    if (!student) { setShowForm(true); return; }
     setRegBusy(true);
     try {
-      const res = await api.post(`/events/${eventId}/register`);
-      toast.success(res.data.message);
+      await api.post(`/events/${event.eventId}/register`);
       setRegistered(true);
-      if (res.data.certificateId) {
-        setCertificate({ certificateId: res.data.certificateId });
-      }
-      setTotalRegistered((c) => c + 1);
+      toast.success('Registration successful!');
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -73,18 +90,11 @@ export default function EventDetail() {
     }
   };
 
-  if (loading) return <PageLoader label="Loading event..." />;
-  if (!event) return <div className="p-12 text-center text-ink-muted">Event not found.</div>;
-
-  const isCompleted = event.effectiveStatus === 'COMPLETED';
-  const isUpcoming = event.effectiveStatus === 'UPCOMING' || event.effectiveStatus === 'ONGOING';
-  const hasGoogleForm = Boolean(event.googleFormUrl);
-
   return (
     <>
-      <section className="bg-white pt-24">
-        {/* Top navigation */}
-        <div className="container-x pb-6">
+      <section className="min-h-screen bg-white">
+        {/* Back navigation */}
+        <div className="container-x pt-24 pb-6 md:pt-28">
           <Link
             to="/events"
             className="inline-flex items-center gap-2 font-mono text-sm font-semibold text-black/50 transition hover:text-black"
@@ -107,7 +117,7 @@ export default function EventDetail() {
           <div className="grid gap-12 lg:grid-cols-[1fr_360px]">
             {/* Left column */}
             <div>
-              {/* Title */}
+              {/* Title — large pixel-block style */}
               <h1 className="font-mono text-3xl font-black leading-tight tracking-tighter text-black md:text-4xl lg:text-5xl">
                 {event.title.toUpperCase()}
               </h1>
@@ -133,7 +143,7 @@ export default function EventDetail() {
               {/* Divider */}
               <div className="my-8 h-px bg-black/10" />
 
-              {/* Description */}
+              {/* Mission Scope */}
               <div>
                 <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-black/40">
                   :: MISSION_SCOPE
@@ -180,8 +190,6 @@ export default function EventDetail() {
                 </div>
               )}
 
-
-
               {/* Divider */}
               <div className="my-8 h-px bg-black/10" />
 
@@ -209,7 +217,7 @@ export default function EventDetail() {
                       EVENT UPCOMING
                     </p>
                     <p className="mt-2 text-sm text-black/40">
-                      Registration details are active. Fill out the registration form to join.
+                      Registration details are available. Register using the button on the right.
                     </p>
                   </div>
                 )}
@@ -233,7 +241,7 @@ export default function EventDetail() {
 
             {/* Right column — sticky sidebar */}
             <div className="lg:sticky lg:top-28 lg:self-start">
-              <div className="border border-black/10 bg-white">
+              <div className="border border-black/10">
                 {/* Info section */}
                 <div className="border-b border-black/5 p-6">
                   <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-black/40">
@@ -243,9 +251,8 @@ export default function EventDetail() {
                     <InfoRow icon={CalendarDays} label="Date" value={formatHumanDate(event.date)} />
                     <InfoRow icon={Clock} label="Time" value={event.startTime ? `${event.startTime} — ${event.endTime || 'TBA'}` : 'TBA'} />
                     <InfoRow icon={MapPin} label="Venue" value={event.venue || 'TBA'} />
-                    <InfoRow icon={User2} label="Handled By" value={(event as any).handledBy || 'GDGoC GCEE Team'} />
                     <InfoRow icon={Building2} label="Organizer" value="GDGoC GCEE" />
-                    <InfoRow icon={Users} label="Registered" value={`${totalRegistered}`} />
+                    <InfoRow icon={Users} label="Registered" value={`${totalRegistered}${event.capacity > 0 ? ` / ${event.capacity}` : ''}`} />
                   </div>
                 </div>
 
@@ -276,50 +283,30 @@ export default function EventDetail() {
                   )}
 
                   <div className="mt-4">
-                    {hasGoogleForm && isUpcoming && (
-                      <div className="mb-4 rounded-lg bg-navy-50/80 p-3 text-center border border-navy-100">
-                        <p className="font-mono text-xs font-bold uppercase tracking-wider text-navy-900">
-                          Ready to Register?
-                        </p>
-                        <p className="mt-1 text-xs text-ink-muted">
-                          Complete the official Google Form to register for this event.
-                        </p>
-                      </div>
-                    )}
                     {event.effectiveStatus === 'CANCELLED' ? (
                       <div className="rounded border border-red-200 bg-red-50 p-3 text-center font-mono text-sm font-bold text-red-600">
                         Event cancelled
                       </div>
                     ) : registered ? (
-                      <div className="space-y-3">
-                        <div className="rounded border border-green-200 bg-green-50 p-3 text-center font-mono text-sm font-bold text-green-700">
-                          ✓ You are registered!
-                        </div>
-                        {certificate && (
-                          <button
-                            onClick={() => downloadPdf(certificate.certificateId)}
-                            className="flex w-full items-center justify-center gap-2 rounded bg-g-green px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-xs hover:bg-green-700 transition"
-                          >
-                            <Award className="h-4 w-4" /> DOWNLOAD EVENT CERTIFICATE
-                          </button>
-                        )}
+                      <div className="rounded border border-green-200 bg-green-50 p-3 text-center font-mono text-sm font-bold text-green-700">
+                        ✓ You are registered!
                       </div>
                     ) : hasGoogleForm && isUpcoming ? (
                       <a
                         href={event.googleFormUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black"
+                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black"
                       >
-                        REGISTER VIA GOOGLE FORM <ExternalLink className="h-4 w-4" />
+                        Register Now <ExternalLink className="h-4 w-4" />
                       </a>
                     ) : isUpcoming && event.registrationEnabled ? (
                       <button
                         onClick={handleStudentRegister}
                         disabled={regBusy}
-                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-50"
+                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black disabled:opacity-50"
                       >
-                        {regBusy ? 'Registering...' : 'REGISTER FOR EVENT'}
+                        {regBusy ? 'Registering...' : 'Register Now'}
                       </button>
                     ) : (
                       <div className="rounded border border-black/10 bg-gray-50 p-3 text-center font-mono text-sm text-black/40">

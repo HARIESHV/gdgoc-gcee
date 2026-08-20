@@ -6,7 +6,6 @@ import {
   ClipboardCheck,
   Award,
   BookOpen,
-  Trophy,
   Settings,
 } from 'lucide-react';
 import { DashboardShell } from './DashboardShell';
@@ -23,7 +22,6 @@ export function StudentLayout() {
     { label: 'My Certificates', to: '/dashboard/certificates', icon: Award },
     { label: 'Available Events', to: '/events', icon: CalendarDays },
     { label: 'Resources', to: '/dashboard/resources', icon: BookOpen },
-    { label: 'Leaderboard', to: '/dashboard/leaderboard', icon: Trophy },
     { label: 'Settings', to: '/dashboard/settings', icon: Settings },
   ];
 

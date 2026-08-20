@@ -14,15 +14,15 @@ import {
   Sparkles,
   Trophy,
   Users,
+  Award,
+  Ticket,
   Zap,
   Globe,
   Terminal,
   CalendarDays,
-  Clock,
   ChevronRight,
   Mail,
   MapPin,
-  UserCheck,
 } from 'lucide-react';
 import { Hero } from '../../components/home/Hero';
 import { EventCard } from '../../components/events/EventCard';
@@ -32,13 +32,14 @@ import { CountUp } from '../../components/ui/CountUp';
 import { PageLoader } from '../../components/ui/Spinner';
 import { api, getErrorMessage } from '../../lib/api';
 import { formatHumanDate, cn } from '../../lib/utils';
-import type { GEvent, GalleryItem, Member, LeaderboardEntry } from '../../types';
+import type { GEvent, GalleryItem, Member } from '../../types';
 
 const whyJoin = [
   { icon: GraduationCap, title: 'Hands-on Learning', desc: 'Workshops and labs where you build real projects, not just theory.' },
   { icon: Trophy, title: 'Hackathons & Contests', desc: 'Compete in build sprints, sharpen problem-solving and win recognition.' },
   { icon: HeartHandshake, title: 'Mentorship', desc: 'Guidance from seniors, faculty and industry developers throughout the year.' },
   { icon: Users, title: 'Community Network', desc: 'Connect with driven students across departments and batches.' },
+  { icon: Award, title: 'Certificates', desc: 'Earn participation certificates for active involvement in eligible events.' },
   { icon: Zap, title: 'Career Readiness', desc: 'Developer skills, tooling and a portfolio that recruiters notice.' },
 ];
 
@@ -56,34 +57,29 @@ const technologies = [
 export default function Home() {
   const [stats, setStats] = useState<any>(null);
   const [upcoming, setUpcoming] = useState<GEvent[]>([]);
-  const [past, setPast] = useState<GEvent[]>([]);
   const [featured, setFeatured] = useState<GEvent | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
-  const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     async function load() {
       try {
-        const [statsRes, eventsRes, membersRes, galleryRes, boardRes] = await Promise.all([
+        const [statsRes, eventsRes, membersRes, galleryRes] = await Promise.all([
           api.get('/stats'),
-          api.get('/events?limit=20'),
+          api.get('/events?limit=9'),
           api.get('/members'),
           api.get('/gallery?limit=8'),
-          api.get('/leaderboard?limit=5'),
         ]);
 
         if (!mounted) return;
         setStats(statsRes.data.stats);
         const events = eventsRes.data.events as GEvent[];
         setUpcoming(events.filter((e) => e.effectiveStatus !== 'COMPLETED' && e.effectiveStatus !== 'CANCELLED').slice(0, 3));
-        setPast(events.filter((e) => e.effectiveStatus === 'COMPLETED').slice(0, 3));
         setFeatured(events.find((e) => e.isInauguration) || events[0] || null);
         setMembers(membersRes.data.members.slice(0, 6));
         setGallery(galleryRes.data.items.slice(0, 6));
-        setLeaders(boardRes.data.leaderboard.slice(0, 5));
       } catch (err) {
         toast.error(getErrorMessage(err));
       } finally {
@@ -196,101 +192,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Past events */}
-      {past.length > 0 && (
-        <section className="bg-white py-20 border-t border-slate-100">
-          <div className="container-x">
-            <Reveal>
-              <SectionHeading
-                eyebrow="Community Highlights"
-                title="Past Events"
-                subtitle="Explore our completed workshops, hackathons, and developer sessions."
-              />
-            </Reveal>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {past.map((event, i) => (
-                <Reveal key={event._id} delay={i * 90}>
-                  <div className="card group overflow-hidden border border-slate-200 bg-white shadow-xs transition-all duration-300 hover:shadow-lift">
-                    {/* Event Banner */}
-                    <div className="relative h-48 w-full overflow-hidden bg-navy-950">
-                      {event.banner ? (
-                        <img
-                          src={event.banner}
-                          alt={event.title}
-                          draggable={false}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 pointer-events-none select-none"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-navy-900 to-navy-800 text-white/30">
-                          <CalendarDays className="h-12 w-12" />
-                        </div>
-                      )}
-                      <span className="absolute left-3 top-3 rounded-full bg-slate-900/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase text-white backdrop-blur-xs">
-                        Past Event
-                      </span>
-                    </div>
-
-                    {/* Card Content */}
-                    <div className="p-5 space-y-3">
-                      <div>
-                        <span className="text-xs font-semibold text-g-blue">{event.category}</span>
-                        <h3 className="mt-1 font-display text-base font-bold text-navy-900 truncate">
-                          {event.title}
-                        </h3>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs text-slate-600 font-medium">
-                        <div className="flex items-center gap-2">
-                          <CalendarDays className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>Date: {formatHumanDate(event.date)}</span>
-                        </div>
-                        {event.startTime && (
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span>Time: {event.startTime}{event.endTime ? ` – ${event.endTime}` : ''}</span>
-                          </div>
-                        )}
-                        {event.venue && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate">Venue: {event.venue}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {(event.shortDescription || event.description) && (
-                        <p className="line-clamp-2 text-xs text-slate-500">
-                          {event.shortDescription || event.description}
-                        </p>
-                      )}
-
-                      <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
-                        <div className="flex items-center justify-between text-slate-600">
-                          <span className="text-slate-400 font-medium">Handled By:</span>
-                          <span className="font-semibold text-navy-900">{(event as any).handledBy || 'GDGoC GCEE Team'}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-600">
-                          <span className="text-slate-400 font-medium">Students Registered:</span>
-                          <span className="font-bold text-g-blue">{event.registeredCount || 0}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-            <Reveal>
-              <div className="mt-10 text-center">
-                <Link to="/events" className="btn-outline">
-                  Browse all past events
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </Reveal>
-          </div>
-        </section>
-      )}
-
       {/* Featured event */}
       {featured && (
         <section className="bg-white py-20">
@@ -300,7 +201,7 @@ export default function Home() {
                 <div className="grid lg:grid-cols-5">
                   <div className="relative min-h-[260px] lg:col-span-2">
                     {featured.banner ? (
-                      <img src={featured.banner} alt={featured.title} draggable={false} className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none" />
+                      <img src={featured.banner} alt={featured.title} className="absolute inset-0 h-full w-full object-cover" />
                     ) : (
                       <div className="absolute inset-0 bg-gradient-to-br from-g-blue to-navy-900" />
                     )}
@@ -350,11 +251,12 @@ export default function Home() {
               className="[&_h2]:text-white [&_.mx-auto]:text-white/60"
             />
           </Reveal>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-6">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:gap-6">
             {[
               { label: 'Community Members', value: stats?.members ?? stats?.totalStudents ?? 0, icon: Users },
               { label: 'Events Hosted', value: stats?.totalEvents ?? 0, icon: CalendarDays },
               { label: 'Hackathons & Workshops', value: (stats?.workshops ?? 0) + (stats?.hackathons ?? 0), icon: Trophy },
+              { label: 'Certificates Issued', value: stats?.certificates ?? 0, icon: Award },
             ].map(({ label, value, icon: Icon }, i) => (
               <Reveal key={label} delay={i * 80}>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
@@ -429,14 +331,13 @@ export default function Home() {
               subtitle="A few of the passionate developers behind GDGoC GCEE."
             />
           </Reveal>
-
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {members.map((member, i) => (
               <Reveal key={member._id} delay={i * 80}>
                 <div className="card group flex items-center gap-4 p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lift">
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-navy-950 flex items-center justify-center">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl">
                     {member.photo ? (
-                      <img src={member.photo} alt={member.name} draggable={false} className="h-full w-full object-contain p-0.5 pointer-events-none select-none" />
+                      <img src={member.photo} alt={member.name} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-g-blue to-g-green text-xl font-bold text-white">
                         {member.name.charAt(0)}
@@ -463,35 +364,40 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Recent activities / leaderboard */}
+      {/* Certificates */}
       <section className="bg-slate-50 py-20">
         <div className="container-x max-w-4xl">
           <Reveal>
-            <SectionHeading align="left" eyebrow="Community activity" title="Leaderboard leaders" subtitle="Top contributors this year by community participation points." />
-            <div className="card divide-y divide-navy-50">
-              {leaders.map((entry, i) => (
-                <div key={entry.studentId} className="flex items-center gap-4 p-4">
-                  <span
-                    className={cn(
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold',
-                      i === 0 ? 'bg-g-yellow/20 text-yellow-700' : i === 1 ? 'bg-slate-200 text-slate-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-navy-50 text-ink-muted'
-                    )}
-                  >
-                    {entry.rank}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-navy-900">{entry.name}</p>
-                    <p className="truncate text-xs text-ink-muted">{entry.department || 'GCEE'} · {entry.eventsAttended} events</p>
-                  </div>
-                  <p className="flex items-center gap-1 font-mono text-sm font-bold text-g-blue">
-                    <Zap className="h-4 w-4" /> {entry.points}
-                  </p>
+            <SectionHeading align="center" eyebrow="Certificates" title="Get recognized for participating" subtitle="Active members receive consolidated participation certificates for eligible events." />
+            <div className="card overflow-hidden">
+              <div className="bg-gradient-to-br from-navy-900 to-navy-700 p-6 text-white sm:p-8">
+                <div className="flex items-center gap-2">
+                  <Award className="h-6 w-6 text-g-yellow" />
+                  <p className="font-display text-lg font-bold">Certificate of Participation</p>
                 </div>
-              ))}
+                <p className="mt-2 text-sm text-white/70">GDGoC GCEE · Government College of Engineering, Erode</p>
+                <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/80">
+                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Issued by</span><span>GDGoC GCEE</span></p>
+                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Verification</span><span className="text-g-green">QR-scannable & online</span></p>
+                  <p className="flex items-center justify-between py-1"><span className="text-white/50">Download</span><span>Instant PDF download</span></p>
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="font-mono text-[10px] text-white/60">GDGCEE-YYYYMMDD-XXXX</p>
+                  <div className="flex gap-1.5">
+                    <span className="h-10 w-10 rounded border border-white/20 bg-white p-0.5" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 p-6 sm:flex-row">
+                <Link to="/register" className="btn-primary flex-1">
+                  Join to earn yours
+                  <Ticket className="h-4 w-4" />
+                </Link>
+                <Link to="/certificates" className="btn-outline flex-1">
+                  Verify a certificate
+                </Link>
+              </div>
             </div>
-            <Link to="/dashboard/leaderboard" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-g-blue hover:underline">
-              Full leaderboard <ArrowRight className="h-4 w-4" />
-            </Link>
           </Reveal>
         </div>
       </section>
@@ -511,7 +417,7 @@ export default function Home() {
               {gallery.map((item, i) => (
                 <Reveal key={item.id} delay={i * 60} className={cn(i === 0 && 'md:row-span-2')}>
                   <Link to="/gallery" className="group relative block h-44 overflow-hidden rounded-2xl md:h-56">
-                    <img src={item.image} alt={item.title} draggable={false} className="h-full w-full object-cover transition duration-500 group-hover:scale-105 pointer-events-none select-none" />
+                    <img src={item.image} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-navy-950/70 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
                     <span className="absolute bottom-3 left-3 text-sm font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
                       {item.title || item.category}

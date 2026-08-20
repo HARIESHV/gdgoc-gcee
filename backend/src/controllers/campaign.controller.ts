@@ -113,8 +113,8 @@ async function buildCertificateDoc(campaign: any, student: any, eligibility: Eli
   const verificationUrl = `${env.appUrl}/certificate/${certificateId}`;
   const qrCode = await generateQRCodeDataURL(verificationUrl);
 
-  const eventName = campaign.eventName || eligibility.eligibleEvents[0]?.title || campaign.name || 'GDGoC GCEE Event';
-  const eventDate = campaign.eventDate || eligibility.eligibleEvents[0]?.date || campaign.startDate || todayIST();
+  const eventDate = eligibility.eligibleEvents[0]?.date || todayIST();
+  const eventName = eligibility.eligibleEvents[0]?.title || 'GDGoC GCEE Community Participation';
 
   const issueDate = todayIST();
 
@@ -189,7 +189,7 @@ export async function getCampaign(req: any, res: Response) {
 export async function createCampaign(req: any, res: Response) {
   try {
     await connectDB();
-    const { name, startDate, endDate, eventId, eventName, eventDate } = req.body;
+    const { name, startDate, endDate } = req.body;
     if (!name || !startDate || !endDate) {
       res.status(400).json({ success: false, message: 'Name, start date and end date are required.' });
       return;
@@ -199,23 +199,9 @@ export async function createCampaign(req: any, res: Response) {
       return;
     }
 
-    let finalEventName = eventName || '';
-    let finalEventDate = eventDate || '';
-
-    if (eventId && (!finalEventName || !finalEventDate)) {
-      const ev = await EventModel.findById(eventId).lean();
-      if (ev) {
-        if (!finalEventName) finalEventName = ev.title;
-        if (!finalEventDate) finalEventDate = ev.date;
-      }
-    }
-
     const campaign = await CertificateCampaign.create({
       name,
       description: req.body.description || '',
-      eventId: eventId || null,
-      eventName: finalEventName,
-      eventDate: finalEventDate,
       startDate,
       endDate,
       minimumAttendancePercentage: Number(req.body.minimumAttendancePercentage) || 75,
@@ -239,7 +225,7 @@ export async function updateCampaign(req: any, res: Response) {
       res.status(404).json({ success: false, message: 'Campaign not found.' });
       return;
     }
-    const allowed = ['name', 'description', 'eventId', 'eventName', 'eventDate', 'startDate', 'endDate', 'minimumAttendancePercentage', 'minimumEligibleEvents', 'releaseDate', 'certificateTemplate', 'status'];
+    const allowed = ['name', 'description', 'startDate', 'endDate', 'minimumAttendancePercentage', 'minimumEligibleEvents', 'releaseDate', 'certificateTemplate', 'status'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         (campaign as any)[key] = key.startsWith('minimum') ? Number(req.body[key]) : req.body[key];
