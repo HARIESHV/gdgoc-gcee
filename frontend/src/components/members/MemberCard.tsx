@@ -4,10 +4,10 @@ import type { Member } from '../../types';
 export function MemberCard({ member }: { member: Member }) {
   const socials = member.socialLinks || {};
   return (
-    <div className="member-card overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_2px_6px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.05)]">
+    <div className="member-card group overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.05),0_6px_20px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08),0_12px_32px_rgba(0,0,0,0.06)]">
       {/* Member image */}
       <div
-        className="relative aspect-[4/5] overflow-hidden bg-gray-100 select-none"
+        className="relative aspect-[3/4] overflow-hidden bg-[#f3f4f6] select-none"
         onContextMenu={(e) => e.preventDefault()}
       >
         {member.photo ? (
@@ -15,11 +15,11 @@ export function MemberCard({ member }: { member: Member }) {
             src={member.photo}
             alt={member.name}
             draggable="false"
-            className="pointer-events-none h-full w-full object-cover"
+            className="pointer-events-none h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gray-100">
-            <span className="font-display text-5xl font-bold text-black/8 sm:text-6xl">
+          <div className="flex h-full w-full items-center justify-center bg-[#f3f4f6]">
+            <span className="font-display text-5xl font-bold text-black/[0.07] sm:text-6xl">
               {member.name.charAt(0)}
             </span>
           </div>
@@ -28,15 +28,15 @@ export function MemberCard({ member }: { member: Member }) {
 
       {/* Info */}
       <div className="px-3 py-3 text-center sm:px-4 sm:py-3.5">
-        <h3 className="text-sm font-bold leading-tight text-black sm:text-[0.95rem]">
+        <h3 className="text-[0.82rem] font-bold leading-tight text-[#111] sm:text-sm">
           {member.name}
         </h3>
         {member.coordinatorRole ? (
-          <p className="mt-0.5 text-xs font-medium text-black/60 sm:text-[0.8rem]">
+          <p className="mt-0.5 text-[0.72rem] font-medium text-black/55 sm:text-xs">
             {member.coordinatorRole}
           </p>
         ) : null}
-        <p className="mt-0.5 text-[0.7rem] font-medium uppercase tracking-wide text-black/35 sm:text-xs">
+        <p className="mt-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-black/30 sm:text-[0.7rem]">
           {member.role}
         </p>
 
@@ -47,7 +47,7 @@ export function MemberCard({ member }: { member: Member }) {
               href={socials.linkedin}
               target="_blank"
               rel="noreferrer"
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 text-black/30 transition-all duration-200 hover:border-black hover:bg-black hover:text-white"
+              className="flex h-[1.625rem] w-[1.625rem] items-center justify-center rounded-full border border-black/[0.08] text-black/25 transition-all duration-200 hover:border-[#0a66c2] hover:bg-[#0a66c2] hover:text-white sm:h-7 sm:w-7"
               aria-label="LinkedIn"
             >
               <Linkedin className="h-3 w-3" />
@@ -58,7 +58,7 @@ export function MemberCard({ member }: { member: Member }) {
               href={socials.github}
               target="_blank"
               rel="noreferrer"
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 text-black/30 transition-all duration-200 hover:border-black hover:bg-black hover:text-white"
+              className="flex h-[1.625rem] w-[1.625rem] items-center justify-center rounded-full border border-black/[0.08] text-black/25 transition-all duration-200 hover:border-[#333] hover:bg-[#333] hover:text-white sm:h-7 sm:w-7"
               aria-label="GitHub"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
@@ -71,7 +71,7 @@ export function MemberCard({ member }: { member: Member }) {
               href={socials.instagram}
               target="_blank"
               rel="noreferrer"
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 text-black/30 transition-all duration-200 hover:border-black hover:bg-black hover:text-white"
+              className="flex h-[1.625rem] w-[1.625rem] items-center justify-center rounded-full border border-black/[0.08] text-black/25 transition-all duration-200 hover:border-[#e4405f] hover:bg-[#e4405f] hover:text-white sm:h-7 sm:w-7"
               aria-label="Instagram"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
@@ -84,7 +84,7 @@ export function MemberCard({ member }: { member: Member }) {
               href={socials.twitter}
               target="_blank"
               rel="noreferrer"
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 text-black/30 transition-all duration-200 hover:border-black hover:bg-black hover:text-white"
+              className="flex h-[1.625rem] w-[1.625rem] items-center justify-center rounded-full border border-black/[0.08] text-black/25 transition-all duration-200 hover:border-[#1da1f2] hover:bg-[#1da1f2] hover:text-white sm:h-7 sm:w-7"
               aria-label="Twitter"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
