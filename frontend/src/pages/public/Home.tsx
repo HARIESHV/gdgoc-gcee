@@ -14,8 +14,6 @@ import {
   Sparkles,
   Trophy,
   Users,
-  Award,
-  Ticket,
   Zap,
   Globe,
   Terminal,
@@ -41,7 +39,6 @@ const whyJoin = [
   { icon: Trophy, title: 'Hackathons & Contests', desc: 'Compete in build sprints, sharpen problem-solving and win recognition.' },
   { icon: HeartHandshake, title: 'Mentorship', desc: 'Guidance from seniors, faculty and industry developers throughout the year.' },
   { icon: Users, title: 'Community Network', desc: 'Connect with driven students across departments and batches.' },
-  { icon: Award, title: 'Certificates', desc: 'Earn participation certificates for active involvement in eligible events.' },
   { icon: Zap, title: 'Career Readiness', desc: 'Developer skills, tooling and a portfolio that recruiters notice.' },
 ];
 
@@ -353,12 +350,11 @@ export default function Home() {
               className="[&_h2]:text-white [&_.mx-auto]:text-white/60"
             />
           </Reveal>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-6">
             {[
               { label: 'Community Members', value: stats?.members ?? stats?.totalStudents ?? 0, icon: Users },
               { label: 'Events Hosted', value: stats?.totalEvents ?? 0, icon: CalendarDays },
               { label: 'Hackathons & Workshops', value: (stats?.workshops ?? 0) + (stats?.hackathons ?? 0), icon: Trophy },
-              { label: 'Certificates Issued', value: stats?.certificates ?? 0, icon: Award },
             ].map(({ label, value, icon: Icon }, i) => (
               <Reveal key={label} delay={i * 80}>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
@@ -469,7 +465,7 @@ export default function Home() {
 
       {/* Recent activities / leaderboard */}
       <section className="bg-slate-50 py-20">
-        <div className="container-x grid gap-10 lg:grid-cols-2">
+        <div className="container-x max-w-4xl">
           <Reveal>
             <SectionHeading align="left" eyebrow="Community activity" title="Leaderboard leaders" subtitle="Top contributors this year by community participation points." />
             <div className="card divide-y divide-navy-50">
@@ -496,29 +492,6 @@ export default function Home() {
             <Link to="/dashboard/leaderboard" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-g-blue hover:underline">
               Full leaderboard <ArrowRight className="h-4 w-4" />
             </Link>
-          </Reveal>
-
-          <Reveal delay={100}>
-            <SectionHeading align="left" eyebrow="Certificates" title="Get recognized for participating" subtitle="Active members receive consolidated participation certificates for eligible events." />
-            <div className="card group overflow-hidden border border-navy-100 bg-white shadow-sm transition-all duration-300 hover:shadow-lift">
-              <div className="relative overflow-hidden bg-navy-950">
-                <img
-                  src="/certificate-sample.jpg"
-                  alt="GDGoC GCEE Official Certificate of Participation"
-                  draggable={false}
-                  className="w-full object-cover transition-transform duration-500 group-hover:scale-102 pointer-events-none select-none"
-                />
-              </div>
-              <div className="flex flex-col gap-3 p-6 sm:flex-row bg-white border-t border-slate-100">
-                <Link to="/register" className="btn-primary flex-1">
-                  Join to earn yours
-                  <Ticket className="h-4 w-4" />
-                </Link>
-                <Link to="/certificates" className="btn-outline flex-1">
-                  Verify a certificate
-                </Link>
-              </div>
-            </div>
           </Reveal>
         </div>
       </section>
