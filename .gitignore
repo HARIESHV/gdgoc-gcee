@@ -1,20 +1,31 @@
 # Dependencies
 node_modules/
-npm-debug.log*
-
-# Build outputs
-frontend/dist/
-backend/dist/
-*.tsbuildinfo
-frontend/vite.config.js
-frontend/vite.config.d.ts
+*/node_modules/
+frontend/node_modules/
+backend/node_modules/
 
 # Env files
 .env
 .env.local
-.env.production
+.env.*
+!.env.example
+backend/.env
+backend/.env.local
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.local
 
-# Uploads / generated files
+# Build outputs
+dist/
+frontend/dist/
+backend/dist/
+build/
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Uploads
 backend/uploads/*.pdf
 !backend/uploads/.gitkeep
 
@@ -30,10 +41,3 @@ Thumbs.db
 
 # Vercel
 .vercel/
-
-.vercel
-.env*
-!.env.example
-
-.vercel
-.env*
