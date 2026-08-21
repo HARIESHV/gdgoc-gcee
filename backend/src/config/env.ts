@@ -17,7 +17,7 @@ for (const candidate of [
   path.resolve(__dirname, '..', '..', '..', '.env.local'),
 ]) {
   if (fs.existsSync(candidate)) {
-    dotenv.config({ path: candidate });
+    dotenv.config({ path: candidate, override: true });
   }
 }
 

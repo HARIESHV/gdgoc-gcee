@@ -74,20 +74,18 @@ function getGmailTransporter(): Transporter | null {
   const { user, appPassword } = getGmailCredentials();
   if (!user || !appPassword) return null;
 
-  if (!gmailTransporter) {
-    console.log(`[emailService] Initializing Gmail SMTP transporter for: ${user}`);
-    gmailTransporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user,
-        pass: appPassword,
-      },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-    });
-  }
-  return gmailTransporter;
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user,
+      pass: appPassword,
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+  });
 }
 
 export interface GmailMailOptions {
