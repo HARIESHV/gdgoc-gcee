@@ -5,6 +5,7 @@ import { Award, Eye, BadgeCheck, Download, FileText, ShieldX } from 'lucide-reac
 import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Modal } from '../../components/ui/Modal';
+import { CertificatePreview } from '../../components/admin/CertificatePreview';
 import { api, getErrorMessage, downloadPdf } from '../../lib/api';
 import { cn } from '../../lib/utils';
 import type { Certificate } from '../../types';
@@ -104,28 +105,18 @@ export default function MyCertificates() {
       <Modal open={!!preview} onClose={() => setPreview(null)} title="Certificate Preview" wide>
         {preview && (
           <div>
-            <div className="overflow-hidden rounded-2xl border border-navy-100">
-              <div className="bg-gradient-to-br from-navy-900 to-navy-700 p-8 text-white">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-display text-xl font-bold">GDGoC GCEE</p>
-                    <p className="text-xs text-white/70">Government College of Engineering, Erode</p>
-                  </div>
-                  {preview.qrCode ? (
-                    <img src={preview.qrCode} alt="QR" className="h-16 w-16 rounded bg-white p-1" />
-                  ) : (
-                    <FileText className="h-10 w-10 text-g-yellow" />
-                  )}
-                </div>
-                <div className="mt-8 text-center">
-                  <p className="text-base font-bold tracking-widest" style={{ color: '#c5a53a' }}>CERTIFICATE OF PARTICIPATION</p>
-                  <p className="mt-4 text-sm text-white/60">proudly presented to</p>
-                  <p className="mt-1 font-display text-2xl font-bold">{preview.studentName}</p>
-                  {preview.eventDateLabel && (
-                    <p className="mt-4 font-mono text-sm text-g-green">{preview.eventDateLabel}</p>
-                  )}
-                </div>
-              </div>
+            <div className="overflow-hidden rounded-2xl border border-navy-100 bg-slate-100 p-3 sm:p-5 shadow-inner">
+              <CertificatePreview
+                data={{
+                  participantName: preview.studentName,
+                  eventName: preview.eventName || preview.campaignName || 'GDGoC GCEE Event',
+                  eventDateLabel: preview.eventDateLabel || preview.issueDateLabel || '',
+                  certificateId: preview.certificateId,
+                  organization: preview.organization,
+                  institution: preview.institution,
+                  qrCode: preview.qrCode,
+                }}
+              />
             </div>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <Link to={`/certificate/${preview.certificateId}`} className="btn-outline flex-1">

@@ -27,6 +27,9 @@ import {
   revokeCertificate,
   restoreCertificate,
   adminCertificateStats,
+  quickGenerateAndSendCertificate,
+  previewCertificatePdf,
+  resendCertificateEmail,
 } from '../controllers/certificate.controller';
 import {
   listEventParticipants,
@@ -185,6 +188,9 @@ router.post('/certificate-campaigns/:id/generate/:studentId', generateSingleCert
 // Certificates
 router.get('/certificates', adminListCertificates);
 router.get('/certificates/stats', adminCertificateStats);
+router.post('/certificates/quick-generate', quickGenerateAndSendCertificate);
+router.post('/certificates/preview-pdf', previewCertificatePdf);
+router.post('/certificates/:certificateId/send-email', resendCertificateEmail);
 router.post('/certificates/:certificateId/revoke', revokeCertificate);
 router.post('/certificates/:certificateId/restore', restoreCertificate);
 

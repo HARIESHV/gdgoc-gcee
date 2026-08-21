@@ -1,8 +1,12 @@
-import { QrCode } from 'lucide-react';
+import { QrCode, Calendar } from 'lucide-react';
 
-const NAVY = '#0b1b33';
+const NAVY = '#0b2545';
+const DEEP_NAVY = '#07162c';
+const ROYAL_BLUE = '#134074';
 const GOLD = '#c5a53a';
-const GRAY = '#5f6b7a';
+const GOLD_LIGHT = '#f3e5ab';
+const GOLD_DARK = '#9a7b20';
+const GRAY = '#475569';
 
 export interface CertificatePreviewData {
   participantName: string;
@@ -16,161 +20,226 @@ export interface CertificatePreviewData {
 
 /**
  * Visual template for the GDGoC GCEE Certificate of Participation.
- * Mirrors the whitespace / navy / gold / architectural design used in the
- * generated PDF so the admin preview matches the downloadable file.
+ * Matches the reference certificate image with Google Developer Groups on Campus branding,
+ * GCEE crest, gold double borders, 3D ribbon medal, and QR seal.
  */
 export function CertificatePreview({ data }: { data: CertificatePreviewData }) {
   const org = data.organization || 'GDGoC GCEE';
   const inst = data.institution || 'Government College of Engineering, Erode';
+  const name = data.participantName || 'Student Name';
+  const event = data.eventName || 'AI Prompt Engineering Workshop';
+  const date = data.eventDateLabel || '18 August 2026';
+  const certId = data.certificateId || 'GDGCEE-20260818-A123';
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-lg bg-white shadow-xl"
-      style={{ aspectRatio: '841.89 / 595.28' }}
+      className="relative w-full overflow-hidden rounded-xl bg-white shadow-2xl select-none"
+      style={{ aspectRatio: '841.89 / 595.28', fontFamily: 'Georgia, serif' }}
     >
-      {/* Outer gold + inner navy frame */}
-      <div className="absolute inset-[1.2%] rounded-[3px] border-[2.5px]" style={{ borderColor: GOLD }} />
-      <div className="absolute inset-[2.4%] rounded-[2px] border" style={{ borderColor: NAVY }} />
+      {/* 1. Diagonal Layered Geometric Corners (Top-Left and Bottom-Right) */}
+      {/* Top-Left Geometric Corner */}
+      <svg className="pointer-events-none absolute left-0 top-0 h-[38%] w-[26%]" viewBox="0 0 220 220" fill="none">
+        <polygon points="0,0 170,0 0,210" fill={DEEP_NAVY} />
+        <polygon points="0,0 130,0 0,165" fill={ROYAL_BLUE} />
+        <polygon points="0,212 0,222 180,0 172,0" fill={GOLD} />
+        <polygon points="0,226 0,230 187,0 183,0" fill={GOLD_LIGHT} />
+      </svg>
 
-      {/* Corner decorations */}
-      <Corner className="left-[1.2%] top-[1.2%]" flipX={false} flipY={false} />
-      <Corner className="right-[1.2%] top-[1.2%]" flipX={true} flipY={false} />
-      <Corner className="left-[1.2%] bottom-[1.2%]" flipX={false} flipY={true} />
-      <Corner className="right-[1.2%] bottom-[1.2%]" flipX={true} flipY={true} />
+      {/* Bottom-Right Geometric Corner */}
+      <svg className="pointer-events-none absolute bottom-0 right-0 h-[38%] w-[26%]" viewBox="0 0 220 220" fill="none">
+        <g transform="rotate(180 110 110)">
+          <polygon points="0,0 170,0 0,210" fill={DEEP_NAVY} />
+          <polygon points="0,0 130,0 0,165" fill={ROYAL_BLUE} />
+          <polygon points="0,212 0,222 180,0 172,0" fill={GOLD} />
+          <polygon points="0,226 0,230 187,0 183,0" fill={GOLD_LIGHT} />
+        </g>
+      </svg>
 
-      <div className="relative flex h-full w-full flex-col items-center px-[8%] py-[4.5%] text-center">
-        {/* Branding */}
-        <p className="font-display text-[clamp(14px,2.4vw,26px)] font-bold tracking-wide" style={{ color: NAVY }}>
-          {org}
-        </p>
-        <p className="text-[clamp(7px,0.9vw,12px)] tracking-wide" style={{ color: GRAY }}>
-          {inst}
-        </p>
+      {/* 2. Double Gold Frame with Corner Knots */}
+      <div className="absolute inset-[3%] rounded-[2px] border-[2px]" style={{ borderColor: GOLD }} />
+      <div className="absolute inset-[3.8%] rounded-[1px] border-[0.8px]" style={{ borderColor: GOLD_DARK }} />
 
-        {/* Heading */}
-        <p className="mt-[1.6%] font-display text-[clamp(15px,2.6vw,30px)] font-bold leading-none" style={{ color: NAVY }}>
-          CERTIFICATE OF PARTICIPATION
-        </p>
-        <div className="mt-[1%] h-[3px] w-[30%] rounded-full" style={{ backgroundColor: GOLD }} />
-        <p className="mt-[2%] text-[clamp(8px,1vw,13px)]" style={{ color: GRAY }}>
-          This certificate is proudly presented to
-        </p>
+      {/* 3. Certificate Content */}
+      <div className="relative flex h-full w-full flex-col justify-between px-[7%] py-[4%] text-center">
+        {/* Top Header: GDGoC on Left, GCEE on Right */}
+        <div className="flex w-full items-center justify-between text-left">
+          {/* Left: Google Developer Groups on Campus */}
+          <div className="flex items-center gap-2 pl-[8%] sm:pl-[11%]">
+            <div className="flex items-center font-mono text-[clamp(12px,1.8vw,20px)] font-black">
+              <span style={{ color: '#4285F4' }}>&lt;</span>
+              <span style={{ color: '#34A853' }}>&gt;</span>
+            </div>
+            <div>
+              <div className="font-sans text-[clamp(10px,1.4vw,17px)] font-extrabold leading-tight tracking-tight">
+                <span style={{ color: '#4285F4' }}>G</span>
+                <span style={{ color: '#EA4335' }}>o</span>
+                <span style={{ color: '#FBBC05' }}>o</span>
+                <span style={{ color: '#4285F4' }}>g</span>
+                <span style={{ color: '#34A853' }}>l</span>
+                <span style={{ color: '#EA4335' }}>e</span>
+                <span className="text-navy-900 ml-1 font-bold">Developer Groups</span>
+              </div>
+              <p className="font-sans text-[clamp(6px,0.8vw,10px)] text-slate-500 font-medium leading-none">
+                on Campus
+              </p>
+              <p className="font-sans text-[clamp(7px,0.9vw,11px)] font-bold text-navy-950 mt-0.5">
+                {org}
+              </p>
+            </div>
+          </div>
 
-        {/* Participant name */}
-        <p
-          className="mt-[1.5%] max-w-full truncate font-display text-[clamp(20px,4.4vw,42px)] font-bold uppercase leading-none"
-          style={{ color: NAVY }}
-        >
-          {data.participantName}
-        </p>
-
-        {/* Architectural illustration */}
-        <ArchitecturalIllustration className="mt-[2.2%] h-[clamp(28px,4.6vw,54px)] w-auto text-navy-900/70" />
-
-        <p className="text-[clamp(8px,1vw,13px)]" style={{ color: GRAY }}>
-          for outstanding participation in
-        </p>
-        <p className="mt-[0.8%] max-w-full truncate text-[clamp(11px,1.7vw,20px)] font-semibold" style={{ color: NAVY }}>
-          {data.eventName}
-        </p>
-        <p className="mt-[0.6%] text-[clamp(9px,1.3vw,16px)] font-semibold" style={{ color: NAVY }}>
-          {data.eventDateLabel}
-        </p>
-
-        {/* Bottom row: badge left, QR right */}
-        <div className="mt-auto flex w-full items-end justify-between">
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex h-[clamp(34px,5.6vw,64px)] w-[clamp(34px,5.6vw,64px)] items-center justify-center rounded-full border-[3px]" style={{ borderColor: GOLD }}>
-              <div className="flex h-[72%] w-[72%] items-center justify-center rounded-full border" style={{ borderColor: GOLD }}>
-                <StarBadge />
+          {/* Right: GCEE Crest & Title */}
+          <div className="flex items-center gap-2.5 pr-[4%]">
+            {/* Crest SVG representation */}
+            <div className="flex h-[clamp(28px,4.5vw,50px)] w-[clamp(28px,4.5vw,50px)] items-center justify-center rounded-full border-[1.5px] border-navy-900 bg-white p-1">
+              <div className="h-full w-full rounded-full border border-navy-800 flex flex-col items-center justify-center text-[5px] font-bold text-navy-900 leading-none">
+                <span className="text-[4px] uppercase tracking-tighter">GCEE</span>
+                <span>★</span>
               </div>
             </div>
-            <p className="text-[clamp(6.5px,0.8vw,10px)] font-bold" style={{ color: NAVY }}>
-              {org}
-            </p>
-            <p className="-mt-1 text-[clamp(5.5px,0.65vw,8px)]" style={{ color: GRAY }}>
-              Certificate of Participation
+            <div>
+              <p className="font-sans text-[clamp(8px,1.2vw,14px)] font-extrabold uppercase leading-tight text-navy-950">
+                GOVERNMENT COLLEGE
+              </p>
+              <p className="font-sans text-[clamp(8px,1.2vw,14px)] font-extrabold uppercase leading-tight text-navy-950">
+                OF ENGINEERING, ERODE
+              </p>
+              <p className="font-sans text-[clamp(6px,0.8vw,9px)] font-bold tracking-widest text-[#c5a53a] mt-0.5">
+                LEARN • BUILD • IMPACT
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Center Section: Main Title & Presentation */}
+        <div className="my-auto flex flex-col items-center">
+          {/* Heading */}
+          <h1
+            className="font-serif text-[clamp(22px,4vw,44px)] font-bold tracking-wider leading-none text-navy-950"
+            style={{ color: NAVY }}
+          >
+            CERTIFICATE
+          </h1>
+
+          {/* Subheading: "— OF PARTICIPATION —" */}
+          <div className="mt-[0.6%] flex items-center justify-center gap-3">
+            <div className="h-[1.5px] w-12 sm:w-20 rounded-full" style={{ backgroundColor: GOLD }} />
+            <span
+              className="font-sans text-[clamp(8px,1.2vw,13px)] font-bold tracking-[0.25em] uppercase"
+              style={{ color: GOLD_DARK }}
+            >
+              OF PARTICIPATION
+            </span>
+            <div className="h-[1.5px] w-12 sm:w-20 rounded-full" style={{ backgroundColor: GOLD }} />
+          </div>
+
+          {/* Subtitle */}
+          <p className="mt-[1.5%] font-sans text-[clamp(7px,0.9vw,11px)] font-bold uppercase tracking-[0.2em] text-slate-500">
+            THIS IS PROUDLY PRESENTED TO
+          </p>
+
+          {/* Student Name */}
+          <p
+            className="mt-[0.8%] max-w-[85%] truncate font-serif text-[clamp(18px,3.8vw,42px)] italic font-semibold text-[#0f2c59]"
+            style={{ fontFamily: 'Times New Roman, Georgia, serif' }}
+          >
+            {name}
+          </p>
+
+          {/* Gold ornamental divider */}
+          <div className="mt-[1%] flex items-center justify-center gap-1">
+            <div className="h-[1px] w-20 sm:w-32" style={{ backgroundColor: GOLD }} />
+            <div className="h-2 w-2 rotate-45" style={{ backgroundColor: GOLD }} />
+            <div className="h-[1px] w-20 sm:w-32" style={{ backgroundColor: GOLD }} />
+          </div>
+
+          {/* Event description */}
+          <p className="mt-[1.2%] font-sans text-[clamp(7.5px,1vw,12px)] text-slate-600">
+            for actively participating in the event
+          </p>
+
+          {/* Event Name */}
+          <p className="mt-[0.4%] max-w-[85%] truncate font-sans text-[clamp(11px,1.8vw,21px)] font-bold text-navy-950">
+            {event}
+          </p>
+
+          <p className="mt-[0.4%] font-sans text-[clamp(7.5px,1vw,12px)] text-slate-600">
+            organized by {org}
+          </p>
+
+          {/* Event Date Badge */}
+          <div className="mt-[1.2%] inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-slate-800">
+            <Calendar className="h-3 w-3 text-blue-600" />
+            <span className="font-sans text-[clamp(7.5px,1vw,12px)] font-bold text-navy-900">
+              {date}
+            </span>
+          </div>
+        </div>
+
+        {/* Bottom Row: Badges & Footer */}
+        <div className="relative flex w-full items-end justify-between px-2">
+          {/* Left Badge: 3D Gold Ribbon Medal */}
+          <div className="flex flex-col items-center">
+            <div className="relative flex h-[clamp(44px,7vw,76px)] w-[clamp(44px,7vw,76px)] items-center justify-center">
+              {/* Ribbon tails */}
+              <div className="absolute -bottom-4 -left-1 h-8 w-4 -rotate-12 bg-navy-900" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)' }} />
+              <div className="absolute -bottom-4 -right-1 h-8 w-4 rotate-12 bg-navy-900" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)' }} />
+              {/* Circular Gold Seal */}
+              <div
+                className="relative z-10 flex h-full w-full items-center justify-center rounded-full shadow-lg border-[3px]"
+                style={{ backgroundColor: GOLD, borderColor: GOLD_DARK }}
+              >
+                <div className="flex h-[80%] w-[80%] flex-col items-center justify-center rounded-full bg-navy-950 text-center p-1 border border-[#e0c870]">
+                  <span className="font-sans text-[clamp(4px,0.6vw,7px)] font-black uppercase tracking-tighter text-[#f3e5ab] leading-none">
+                    BUILD
+                  </span>
+                  <span className="font-sans text-[clamp(4px,0.6vw,7px)] font-black uppercase tracking-tighter text-[#f3e5ab] leading-none">
+                    CONNECT
+                  </span>
+                  <span className="font-sans text-[clamp(4px,0.6vw,7px)] font-black uppercase tracking-tighter text-[#f3e5ab] leading-none">
+                    INSPIRE
+                  </span>
+                  <span className="text-[clamp(5px,0.7vw,8px)] text-[#c5a53a] mt-0.5 leading-none">
+                    ★★★
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Center Footer: Certificate ID */}
+          <div className="flex flex-col items-center pb-1">
+            {/* Gold flourish */}
+            <div className="flex items-center gap-1 opacity-75 mb-1">
+              <div className="h-[1px] w-8 bg-[#c5a53a]" />
+              <span className="text-[9px] text-[#c5a53a]">❦</span>
+              <div className="h-[1px] w-8 bg-[#c5a53a]" />
+            </div>
+            <p className="font-mono text-[clamp(6.5px,0.9vw,10px)] font-bold tracking-widest text-slate-600">
+              CERTIFICATE ID: {certId}
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-1">
-            {data.qrCode ? (
-              <img src={data.qrCode} alt="QR code" className="h-[clamp(40px,6.4vw,74px)] w-[clamp(40px,6.4vw,74px)] rounded border border-navy-100 bg-white p-1" />
-            ) : (
-              <div className="flex h-[clamp(40px,6.4vw,74px)] w-[clamp(40px,6.4vw,74px)] items-center justify-center rounded border border-black/10 bg-white text-black/20">
-                <QrCode className="h-1/2 w-1/2" />
+          {/* Right Badge: Gold Starburst QR Seal */}
+          <div className="flex flex-col items-center pr-2">
+            <div
+              className="flex h-[clamp(44px,7vw,78px)] w-[clamp(44px,7vw,78px)] flex-col items-center justify-center rounded-full p-1 shadow-md border-[2.5px]"
+              style={{ backgroundColor: GOLD, borderColor: GOLD_DARK }}
+            >
+              <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white p-1">
+                {data.qrCode ? (
+                  <img src={data.qrCode} alt="Certificate QR" className="h-[65%] w-[65%] object-contain" />
+                ) : (
+                  <QrCode className="h-[60%] w-[60%] text-navy-900" />
+                )}
+                <span className="font-sans text-[clamp(3.5px,0.5vw,5.5px)] font-extrabold uppercase leading-none text-navy-950 mt-0.5 text-center">
+                  SCAN TO DOWNLOAD<br />YOUR CERTIFICATE
+                </span>
               </div>
-            )}
-            <p className="text-[clamp(5.5px,0.65vw,8px)] font-bold tracking-wide" style={{ color: NAVY }}>
-              {data.certificateId}
-            </p>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function Corner({ className, flipX, flipY }: { className: string; flipX: boolean; flipY: boolean }) {
-  return (
-    <div
-      className={`pointer-events-none absolute h-[6%] w-[6%] ${className}`}
-      style={{ transform: `${flipX ? 'scaleX(-1)' : ''} ${flipY ? 'scaleY(-1)' : ''}` }}
-    >
-      <svg viewBox="0 0 100 100" className="h-full w-full" fill="none">
-        <path d="M0 100 L0 0 L100 0" stroke={GOLD} strokeWidth="6" />
-        <path d="M8 100 L8 8 L100 8" stroke={NAVY} strokeWidth="3" />
-      </svg>
-    </div>
-  );
-}
-
-function StarBadge() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[60%] w-[60%]" style={{ fill: GOLD }}>
-      <path d="M12 2l2.7 6.3 6.8.6-5.2 4.4 1.6 6.7L12 16.9l-5.9 3.1 1.6-6.7L2.5 8.9l6.8-.6L12 2z" />
-    </svg>
-  );
-}
-
-function ArchitecturalIllustration({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 240 70" className={className} fill="none" aria-hidden="true">
-      {/* Building base */}
-      <path
-        d="M20 62 L20 28 L60 8 L100 24 L100 62 Z"
-        stroke="#0b1b33"
-        strokeWidth="2.5"
-        strokeOpacity="0.55"
-        fill="none"
-      />
-      {/* Front body */}
-      <path
-        d="M60 62 L60 30 L100 24 L140 30 L140 62 Z"
-        stroke="#0b1b33"
-        strokeWidth="2"
-        strokeOpacity="0.4"
-        fill="none"
-      />
-      {/* Right wing */}
-      <path
-        d="M140 62 L140 30 L180 22 L220 30 L220 62 Z"
-        stroke="#0b1b33"
-        strokeWidth="2.5"
-        strokeOpacity="0.55"
-        fill="none"
-      />
-      {/* Columns */}
-      {[68, 82, 96, 110, 124].map((x) => (
-        <path key={x} d={`M${x} 62 L${x} 32`} stroke="#0b1b33" strokeWidth="1.6" strokeOpacity="0.45" />
-      ))}
-      {/* Pediment / dome */}
-      <path d="M92 14 L112 6 L132 14" stroke="#c5a53a" strokeWidth="2" strokeOpacity="0.8" fill="none" />
-      {/* Flag */}
-      <path d="M112 6 L112 2" stroke="#c5a53a" strokeWidth="1.6" />
-      <path d="M112 2 L122 4 L112 6 Z" fill="#c5a53a" fillOpacity="0.8" />
-      {/* Ground line */}
-      <path d="M16 62 L224 62" stroke="#c5a53a" strokeWidth="2" strokeOpacity="0.7" />
-    </svg>
   );
 }

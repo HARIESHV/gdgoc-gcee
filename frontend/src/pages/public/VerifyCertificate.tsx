@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ShieldCheck, ShieldX, Download, QrCode } from 'lucide-react';
 import { PageLoader } from '../../components/ui/Spinner';
+import { CertificatePreview } from '../../components/admin/CertificatePreview';
 import { api, getErrorMessage } from '../../lib/api';
 import { downloadPdf, cn } from '../../lib/utils';
 import type { Certificate } from '../../types';
@@ -83,35 +84,18 @@ export default function VerifyCertificate() {
     <div className="min-h-screen bg-slate-50 pt-20 pb-20 sm:pt-28">
       <div className="container-x max-w-3xl px-4 sm:px-6">
         {/* Certificate Preview Card */}
-        <div className="overflow-hidden rounded-2xl border border-navy-100 bg-white shadow-lift">
-          <div className="bg-gradient-to-br from-navy-900 to-navy-700 p-6 text-white sm:p-10">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="font-display text-lg font-bold sm:text-xl">GDGoC GCEE</p>
-                <p className="text-[10px] text-white/70 sm:text-xs">Government College of Engineering, Erode</p>
-              </div>
-              <div className="hidden h-16 w-16 shrink-0 rounded-lg bg-white p-1.5 sm:block sm:h-20 sm:w-20">
-                {cert.qrCode ? (
-                  <img src={cert.qrCode} alt="QR code" className="h-full w-full" />
-                ) : (
-                  <QrCode className="h-full w-full text-navy-900" />
-                )}
-              </div>
-            </div>
-
-            <div className="mt-6 text-center sm:mt-8">
-              <p className="text-sm font-bold tracking-widest sm:text-base" style={{ color: '#c5a53a' }}>CERTIFICATE OF PARTICIPATION</p>
-              <div className="mx-auto mt-2 h-0.5 w-24 rounded bg-g-yellow sm:mt-3 sm:w-32" />
-              <p className="mt-4 text-xs text-white/60 sm:mt-5 sm:text-sm">presented to</p>
-              <p className="mt-1 font-display text-2xl font-bold text-white sm:text-3xl">{cert.studentName}</p>
-              <p className="mt-3 text-xs text-white/80 sm:mt-4 sm:text-sm">{eventName}</p>
-              {eventDate && <p className="mt-1 text-xs text-white/80 sm:text-sm">{eventDate}</p>}
-            </div>
-
-            <div className="mt-6 text-center sm:mt-8">
-              <p className="text-[10px] font-mono tracking-wide text-white/50">Certificate ID: {cert.certificateId}</p>
-            </div>
-          </div>
+        <div className="overflow-hidden rounded-2xl border border-navy-100 bg-slate-100 p-3 sm:p-5 shadow-lift">
+          <CertificatePreview
+            data={{
+              participantName: cert.studentName,
+              eventName: eventName,
+              eventDateLabel: eventDate || cert.issueDateLabel || '',
+              certificateId: cert.certificateId,
+              organization: cert.organization,
+              institution: cert.institution,
+              qrCode: cert.qrCode,
+            }}
+          />
         </div>
 
         {/* Verification Status Banner */}

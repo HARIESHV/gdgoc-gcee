@@ -1,9 +1,15 @@
 import type { Response } from 'express';
 import { Certificate } from '../models/Certificate';
 import { CertificateCampaign } from '../models/CertificateCampaign';
+import { Student } from '../models/Student';
 import type { AuthRequest } from '../middleware/auth';
 import { formatDotDate, todayIST } from '../utils/dates';
 import { generateCertificatePDF } from '../utils/pdf';
+import { generateQRCodeDataURL } from '../utils/qr';
+import { nextCertificateId } from '../utils/ids';
+import { getPublicAppUrl } from '../config/env';
+import { sendGmailEmail } from '../services/emailService';
+import { generateCertificateEmailHtml } from '../services/email/templates/certificate.template';
 import { connectDB } from '../config/db';
 
 const PDF_MIME = 'application/pdf';
@@ -212,6 +218,245 @@ export async function adminCertificateStats(_: any, res: Response) {
       stats: { total, valid, revoked },
       byStatus,
       issueDate: todayIST(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/**
+ * POST /api/admin/certificates/quick-generate-and-send
+ * Body: { studentName, studentEmail, eventName, eventDate, sendEmail = true }
+ * Admin enters only the event name, event date, and student name (+ email to send).
+ */
+export async function quickGenerateAndSendCertificate(req: any, res: Response) {
+  try {
+    await connectDB();
+    const { studentName, studentEmail, eventName, eventDate, sendEmail = true } = req.body;
+
+    if (!studentName || !studentName.trim()) {
+      res.status(400).json({ success: false, message: 'Student name is required.' });
+      return;
+    }
+    if (!eventName || !eventName.trim()) {
+      res.status(400).json({ success: false, message: 'Event name is required.' });
+      return;
+    }
+    if (!eventDate || !eventDate.trim()) {
+      res.status(400).json({ success: false, message: 'Event date is required.' });
+      return;
+    }
+
+    const cleanName = studentName.trim();
+    const cleanEmail = (studentEmail || '').trim().toLowerCase();
+    const cleanEventName = eventName.trim();
+    const cleanEventDate = eventDate.trim();
+    const issueDate = todayIST();
+
+    const studentRecord = cleanEmail ? await Student.findOne({ email: cleanEmail }).lean() : null;
+
+    let cert: any = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const certificateId = await nextCertificateId();
+      const appUrl = getPublicAppUrl();
+      const verificationUrl = `${appUrl}/certificate/${certificateId}`;
+      const qrCode = await generateQRCodeDataURL(verificationUrl);
+
+      const pdfBuffer = await generateCertificatePDF({
+        certificateId,
+        studentName: cleanName,
+        eventName: cleanEventName,
+        eventDate: cleanEventDate,
+        issueDate,
+        qrCodeDataURL: qrCode,
+        verificationUrl,
+      });
+
+      try {
+        cert = await Certificate.create({
+          certificateId,
+          studentId: studentRecord?._id || null,
+          studentName: cleanName,
+          studentEmail: cleanEmail,
+          organization: 'GDGoC GCEE',
+          institution: 'Government College of Engineering, Erode',
+          eventName: cleanEventName,
+          eventDate: cleanEventDate,
+          issueDate,
+          verificationUrl,
+          qrCode,
+          pdfBuffer,
+          status: 'VALID',
+          issuedBy: `admin:${req.adminId || 'dashboard'}`,
+          participationStatus: 'PARTICIPATED',
+        });
+        break;
+      } catch (err: any) {
+        if (err.code === 11000) continue;
+        throw err;
+      }
+    }
+
+    if (!cert) {
+      res.status(500).json({ success: false, message: 'Failed to allocate a unique certificate ID. Please retry.' });
+      return;
+    }
+
+    let emailSent = false;
+    let emailError: string | undefined;
+
+    if (sendEmail && cleanEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      const appUrl = getPublicAppUrl();
+      const verificationUrl = `${appUrl}/certificate/${cert.certificateId}`;
+      const downloadUrl = `${appUrl}/api/certificates/${cert.certificateId}/download`;
+
+      const { subject, html, text } = generateCertificateEmailHtml({
+        studentName: cleanName,
+        eventName: cleanEventName,
+        certificateId: cert.certificateId,
+        verificationUrl,
+        downloadUrl,
+      });
+
+      const sendResult = await sendGmailEmail({
+        to: cleanEmail,
+        subject,
+        html,
+        text,
+        attachments: [
+          {
+            filename: `${cert.certificateId}.pdf`,
+            content: Buffer.from(cert.pdfBuffer),
+          },
+        ],
+      });
+
+      if (sendResult.success) {
+        emailSent = true;
+      } else {
+        emailError = sendResult.error;
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: emailSent
+        ? `Certificate ${cert.certificateId} generated and delivered to ${cleanEmail}!`
+        : `Certificate ${cert.certificateId} generated successfully.`,
+      certificate: publicView(cert),
+      emailSent,
+      emailError,
+    });
+  } catch (err: any) {
+    console.error('[certificate] quickGenerate error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/**
+ * POST /api/admin/certificates/preview-pdf
+ * Body: { studentName, eventName, eventDate }
+ * Returns on-the-fly generated PDF buffer for live instant preview.
+ */
+export async function previewCertificatePdf(req: any, res: Response) {
+  try {
+    const { studentName, eventName, eventDate } = req.body;
+    const cleanName = (studentName || 'Student Name').trim();
+    const cleanEventName = (eventName || 'AI Prompt Engineering Workshop').trim();
+    const cleanEventDate = (eventDate || todayIST()).trim();
+    const issueDate = todayIST();
+
+    const sampleId = 'GDGCEE-PREVIEW-001';
+    const appUrl = getPublicAppUrl();
+    const verificationUrl = `${appUrl}/certificate/${sampleId}`;
+    const qrCode = await generateQRCodeDataURL(verificationUrl);
+
+    const pdfBuffer = await generateCertificatePDF({
+      certificateId: sampleId,
+      studentName: cleanName,
+      eventName: cleanEventName,
+      eventDate: cleanEventDate,
+      issueDate,
+      qrCodeDataURL: qrCode,
+      verificationUrl,
+    });
+
+    res.setHeader('Content-Type', PDF_MIME);
+    res.setHeader('Content-Disposition', 'inline; filename="certificate-preview.pdf"');
+    res.send(pdfBuffer);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/**
+ * POST /api/admin/certificates/:certificateId/send-email
+ * Resends certificate email with PDF attachment to student.
+ */
+export async function resendCertificateEmail(req: any, res: Response) {
+  try {
+    await connectDB();
+    const { certificateId } = req.params;
+    const cert = await Certificate.findOne({ certificateId });
+    if (!cert) {
+      res.status(404).json({ success: false, message: 'Certificate not found.' });
+      return;
+    }
+
+    const targetEmail = (req.body.email || cert.studentEmail || '').trim().toLowerCase();
+    if (!targetEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
+      res.status(400).json({ success: false, message: 'Valid student email is required.' });
+      return;
+    }
+
+    const appUrl = getPublicAppUrl();
+    const verificationUrl = `${appUrl}/certificate/${cert.certificateId}`;
+    const downloadUrl = `${appUrl}/api/certificates/${cert.certificateId}/download`;
+
+    const { subject, html, text } = generateCertificateEmailHtml({
+      studentName: cert.studentName,
+      eventName: cert.eventName || 'GDGoC GCEE Event',
+      certificateId: cert.certificateId,
+      verificationUrl,
+      downloadUrl,
+    });
+
+    let pdfBuffer = cert.pdfBuffer;
+    if (!pdfBuffer) {
+      pdfBuffer = await generateCertificatePDF({
+        certificateId: cert.certificateId,
+        studentName: cert.studentName,
+        eventName: cert.eventName || '',
+        eventDate: cert.eventDate || '',
+        issueDate: cert.issueDate,
+        qrCodeDataURL: cert.qrCode,
+        verificationUrl: cert.verificationUrl,
+      });
+      cert.pdfBuffer = pdfBuffer;
+      await cert.save();
+    }
+
+    const sendResult = await sendGmailEmail({
+      to: targetEmail,
+      subject,
+      html,
+      text,
+      attachments: [
+        {
+          filename: `${cert.certificateId}.pdf`,
+          content: Buffer.from(pdfBuffer),
+        },
+      ],
+    });
+
+    if (!sendResult.success) {
+      res.status(500).json({ success: false, message: sendResult.error || 'Failed to send certificate email.' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: `Certificate email delivered to ${targetEmail}!`,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
