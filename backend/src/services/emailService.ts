@@ -135,8 +135,11 @@ export async function sendGmailEmail(opts: GmailMailOptions): Promise<EmailSendR
 
   const transporter = getGmailTransporter()!;
   try {
+    const fromAddress = `"GDGoC GCEE" <${env.gmail.user}>`;
+    console.log(`[emailService] Sending email to recipient: ${cleanTo} from: ${fromAddress}`);
+
     const info = await transporter.sendMail({
-      from: `${CLUB.name} <${env.gmail.user}>`,
+      from: fromAddress,
       to: cleanTo,
       replyTo: opts.replyTo ? sanitizeHeaderValue(opts.replyTo) : undefined,
       subject: safeSubject,
@@ -144,6 +147,20 @@ export async function sendGmailEmail(opts: GmailMailOptions): Promise<EmailSendR
       text: opts.text || htmlToText(opts.html),
       attachments: opts.attachments,
     });
+
+    console.log('[emailService] Nodemailer response:', {
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      response: info.response,
+    });
+
+    const acceptedList = Array.isArray(info.accepted) ? info.accepted.map((a: any) => String(a).toLowerCase()) : [];
+    if (acceptedList.length > 0 && !acceptedList.includes(cleanTo.toLowerCase())) {
+      console.error('[emailService] Gmail SMTP rejected recipient:', cleanTo);
+      return { success: false, error: 'Gmail SMTP did not accept the recipient address.' };
+    }
+
     return { success: true, id: info.messageId };
   } catch (err: any) {
     // Log full details server-side; return a SAFE message to callers/frontend.
@@ -151,11 +168,12 @@ export async function sendGmailEmail(opts: GmailMailOptions): Promise<EmailSendR
       message: err?.message,
       code: err?.code,
       command: err?.command,
+      response: err?.response,
     });
     const safeError =
       err?.code === 'EAUTH'
-        ? 'Email authentication failed on the server. Please contact the administrator.'
-        : 'Unable to send the email right now. Please try again later.';
+        ? 'Gmail SMTP authentication failed. Please check GMAIL_USER and GMAIL_APP_PASSWORD.'
+        : 'Unable to send OTP via Gmail SMTP. Please check your email and try again.';
     return { success: false, error: safeError };
   }
 }

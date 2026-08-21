@@ -34,7 +34,7 @@ function hashOtp(otp: string): string {
   return bcrypt.hashSync(otp, 10);
 }
 
-const OTP_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
+const OTP_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000;    // 60 seconds cooldown
 const MAX_OTP_ATTEMPTS = 5;              // Max 5 attempts per OTP
 
@@ -127,7 +127,24 @@ export async function register(req: AuthRequest, res: Response) {
     const otpHash = hashOtp(otp);
     const otpExpiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
 
-    // Persist the student FIRST — email delivery must never block registration.
+    // Send OTP via Nodemailer / Gmail SMTP FIRST
+    console.log(`[auth] Sending Join OTP email to: ${cleanEmail}`);
+    const sendResult = await sendOTPEmail({
+      to: cleanEmail,
+      studentName: name.trim(),
+      otp,
+    });
+
+    if (!sendResult.success) {
+      console.error(`[auth] Verification email delivery failed for ${cleanEmail}:`, sendResult.error);
+      res.status(500).json({
+        success: false,
+        message: sendResult.error || 'Unable to send OTP. Please check your email address and try again.',
+      });
+      return;
+    }
+
+    // Save student only after Gmail SMTP confirms acceptance
     let student: any;
     if (existingStudent) {
       // Registered previously but never completed verification: refresh details & OTP
@@ -160,39 +177,17 @@ export async function register(req: AuthRequest, res: Response) {
       });
     }
 
-    console.log(`[API] Registration successful for ${cleanEmail}${existingStudent ? ' (re-registration, pending verification)' : ''}`);
+    console.log(`[API] Registration and OTP send successful for ${cleanEmail}`);
 
     const token = signToken({ id: String(student._id), role: 'student' });
     setAuthCookie(res, token);
 
-    // Attempt OTP email AFTER the record is saved; failure is logged, not fatal.
-    const sendResult = await sendOTPEmail({
-      to: cleanEmail,
-      studentName: name.trim(),
-      otp,
-    });
-
-    if (!sendResult.success) {
-      console.error(`[API] Verification email delivery failed for ${cleanEmail}:`, sendResult.error);
-      res.status(existingStudent ? 200 : 201).json({
-        success: true,
-        message: 'Account created! We could not deliver the verification email right now — please use "Resend OTP" in a few minutes.',
-        token,
-        student: publicStudent(student),
-        requiresVerification: true,
-        emailDelivered: false,
-      });
-      return;
-    }
-
-    console.log(`[API] Verification email sent to ${cleanEmail}`);
     res.status(existingStudent ? 200 : 201).json({
       success: true,
-      message: 'Account created. Verification OTP sent to your Gmail inbox.',
+      message: 'OTP sent successfully to your Gmail inbox.',
       token,
       student: publicStudent(student),
       requiresVerification: true,
-      emailDelivered: true,
     });
   } catch (err: any) {
     console.error('[auth] register error:', err.message);
@@ -259,7 +254,7 @@ export async function sendOtp(req: AuthRequest, res: Response) {
     const otpHash = hashOtp(otp);
     const otpExpiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
 
-    // Send new OTP via Resend
+    // Send new OTP via Nodemailer / Gmail SMTP
     const sendResult = await sendOTPEmail({
       to: student.email,
       studentName: student.name,
@@ -267,10 +262,10 @@ export async function sendOtp(req: AuthRequest, res: Response) {
     });
 
     if (!sendResult.success) {
-      console.error(`[auth] Resend OTP failed for ${cleanEmail}:`, sendResult.error);
-      res.status(503).json({
+      console.error(`[auth] Resend OTP email failed for ${cleanEmail}:`, sendResult.error);
+      res.status(500).json({
         success: false,
-        message: 'We could not send the verification email right now. Please try again in a few minutes.',
+        message: sendResult.error || 'Unable to send OTP. Please try again.',
       });
       return;
     }
@@ -283,7 +278,7 @@ export async function sendOtp(req: AuthRequest, res: Response) {
 
     res.status(200).json({
       success: true,
-      message: 'OTP sent successfully to your Gmail.',
+      message: 'New OTP sent to your Gmail.',
     });
   } catch (err: any) {
     console.error('[auth] sendOtp error:', err.message);

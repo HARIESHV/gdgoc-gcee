@@ -61,19 +61,12 @@ export default function Register() {
 
     setBusy(true);
     try {
-      const result = await registerStudent(form);
-      if (result?.emailDelivered === false) {
-        toast.success(
-          'Account created! The verification email could not be delivered right now — you can use "Resend OTP" in a few minutes.',
-          { duration: 6000 }
-        );
-      } else {
-        toast.success('OTP sent to your Gmail! Please check your inbox.');
-      }
+      await registerStudent(form);
+      toast.success('OTP sent to your Gmail! Please check your inbox.');
       setStep(2);
       startResendCooldown();
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      toast.error(getErrorMessage(err) || 'Unable to send OTP. Please check your email address and try again.');
     } finally {
       setBusy(false);
     }
@@ -346,7 +339,7 @@ export default function Register() {
                 className="btn-primary w-full !py-3 font-semibold text-sm"
               >
                 {busy ? <ButtonSpinner /> : <UserPlus className="h-4 w-4" />}
-                {busy ? 'Creating account…' : 'Join Community'}
+                {busy ? 'Sending OTP…' : 'Join Community'}
               </button>
             </form>
           )}
