@@ -61,8 +61,15 @@ export default function Register() {
 
     setBusy(true);
     try {
-      await registerStudent(form);
-      toast.success('OTP sent to your Gmail! Please check your inbox.');
+      const result = await registerStudent(form);
+      if (result?.emailDelivered === false) {
+        toast.success(
+          'Account created! The verification email could not be delivered right now — you can use "Resend OTP" in a few minutes.',
+          { duration: 6000 }
+        );
+      } else {
+        toast.success('OTP sent to your Gmail! Please check your inbox.');
+      }
       setStep(2);
       startResendCooldown();
     } catch (err) {

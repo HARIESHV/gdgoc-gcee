@@ -188,9 +188,15 @@ export async function sendOTPEmail(opts: {
 export async function sendWelcomeEmail(opts: {
   to: string;
   studentName?: string;
+  rollNumber?: string;
+  department?: string;
+  year?: string;
 }): Promise<SendMailResult> {
   const { subject, html, text } = generateWelcomeEmailHtml({
     studentName: opts.studentName,
+    rollNumber: opts.rollNumber,
+    department: opts.department,
+    year: opts.year,
   });
 
   return sendEmail({

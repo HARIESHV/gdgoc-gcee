@@ -2,12 +2,20 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { api, getErrorMessage } from '../lib/api';
 import type { Admin, Student } from '../types';
 
+interface RegisterResult {
+  success: boolean;
+  message: string;
+  student: Student;
+  requiresVerification?: boolean;
+  emailDelivered?: boolean;
+}
+
 interface AuthContextValue {
   student: Student | null;
   admin: Admin | null;
   loading: boolean;
   loginStudent: (email: string, password: string) => Promise<Student>;
-  registerStudent: (data: Record<string, string>) => Promise<Student>;
+  registerStudent: (data: Record<string, string>) => Promise<RegisterResult>;
   logoutStudent: () => Promise<void>;
   loginAdmin: (email: string, password: string) => Promise<Admin>;
   logoutAdmin: () => Promise<void>;
