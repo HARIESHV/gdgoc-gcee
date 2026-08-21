@@ -3,6 +3,8 @@ import { EventModel, Student, GoogleFormRegistration, EmailLog } from '../models
 import { connectDB } from '../config/db';
 import { sendBulkEventAnnouncement } from '../services/email.service';
 
+import { getPublicAppUrl } from '../config/env';
+
 // POST /api/admin/events/:eventId/send-announcement
 export async function sendEventAnnouncement(req: any, res: Response) {
   try {
@@ -42,7 +44,8 @@ export async function sendEventAnnouncement(req: any, res: Response) {
       return;
     }
 
-    const regUrl = `https://gdgoc-gcee.vercel.app/events/${event.eventId}/register`;
+    const appUrl = getPublicAppUrl();
+    const regUrl = event.registrationLink || `${appUrl}/events/${event.eventId}`;
     const emailSubject = subject || `Registration Open – ${event.title}`;
 
     const result = await sendBulkEventAnnouncement({

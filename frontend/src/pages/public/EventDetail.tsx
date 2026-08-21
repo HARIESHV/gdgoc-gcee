@@ -288,16 +288,66 @@ export default function EventDetail() {
                         Event cancelled
                       </div>
                     ) : registered ? (
-                      <div className="rounded border border-green-200 bg-green-50 p-3 text-center font-mono text-sm font-bold text-green-700">
-                        ✓ You are registered!
+                      <div className="space-y-3">
+                        <div className="rounded border border-green-200 bg-green-50 p-3 text-center font-mono text-sm font-bold text-green-700">
+                          ✓ You are registered!
+                        </div>
+                        {hasGoogleForm && (
+                          <a
+                            href={event.googleFormUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black"
+                          >
+                            Open Google Form <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
                       </div>
                     ) : isUpcoming && event.registrationEnabled ? (
-                      <Link
-                        to={`/events/${event.eventId}/register`}
-                        className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black"
-                      >
-                        Register for Event <ExternalLink className="h-4 w-4" />
-                      </Link>
+                      student ? (
+                        <div className="space-y-3">
+                          <button
+                            onClick={handleStudentRegister}
+                            disabled={regBusy}
+                            className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black disabled:opacity-50"
+                          >
+                            {regBusy ? 'Registering...' : 'Register for Event'}
+                          </button>
+                          {hasGoogleForm && (
+                            <a
+                              href={event.googleFormUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex w-full items-center justify-center gap-2 border border-black/20 bg-white px-6 py-2.5 font-mono text-xs font-bold text-black transition hover:bg-black hover:text-white"
+                            >
+                              Google Form Link <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          <Link
+                            to={`/events/${event.eventId}/register`}
+                            className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black"
+                          >
+                            Register for Event <ExternalLink className="h-4 w-4" />
+                          </Link>
+                          <div className="grid grid-cols-2 gap-2 pt-1 text-center">
+                            <Link
+                              to={`/login?redirect=${encodeURIComponent(`/events/${event.eventId}`)}`}
+                              className="border border-black/20 bg-white px-3 py-2 font-mono text-xs font-semibold text-black transition hover:bg-black hover:text-white"
+                            >
+                              Sign In
+                            </Link>
+                            <Link
+                              to={`/join?redirect=${encodeURIComponent(`/events/${event.eventId}`)}`}
+                              className="border border-black/20 bg-white px-3 py-2 font-mono text-xs font-semibold text-black transition hover:bg-black hover:text-white"
+                            >
+                              Join Club
+                            </Link>
+                          </div>
+                        </div>
+                      )
                     ) : (
                       <div className="rounded border border-black/10 bg-gray-50 p-3 text-center font-mono text-sm text-black/40">
                         {isUpcoming ? 'Registration opens soon' : 'Registration closed'}

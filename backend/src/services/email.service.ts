@@ -1,4 +1,4 @@
-import { env, CLUB } from '../config/env';
+import { env, CLUB, getPublicAppUrl } from '../config/env';
 import { EmailLog } from '../models/EmailLog';
 import {
   sendAdminAnnouncementEmail,
@@ -88,7 +88,9 @@ export async function sendBulkEventAnnouncement(opts: {
       continue;
     }
 
-    const regLink = opts.eventRegistrationLink || (env.clientUrl || env.appUrl || 'https://gdgoc-gcee.vercel.app') + '/events';
+    const regLink =
+      opts.eventRegistrationLink ||
+      `${getPublicAppUrl()}/events${opts.eventId ? `/${opts.eventId}` : ''}`;
     const result = await sendEventAnnouncementEmail({
       to: student.email,
       studentName: student.name || 'Student',

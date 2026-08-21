@@ -38,6 +38,36 @@ if (forceDns.length > 0) {
   }
 }
 
+/**
+ * Get the public canonical URL of the application.
+ * In production / Vercel, never returns localhost so emails always have valid links.
+ */
+export function getPublicAppUrl(): string {
+  const candidates = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.VITE_APP_URL,
+    process.env.APP_URL,
+    process.env.CLIENT_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '',
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+  ];
+
+  for (const c of candidates) {
+    if (c && typeof c === 'string' && c.trim() && !c.includes('localhost') && !c.includes('127.0.0.1')) {
+      return c.trim().replace(/\/+$/, '');
+    }
+  }
+
+  // When running in production or on Vercel, default to the official production URL
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+    return 'https://gdgoc-gcee-clubs.vercel.app';
+  }
+
+  // Local development fallback
+  const devCandidate = process.env.APP_URL || process.env.CLIENT_URL || 'http://localhost:5173';
+  return devCandidate.trim().replace(/\/+$/, '');
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   isProd: process.env.NODE_ENV === 'production',
@@ -45,8 +75,8 @@ export const env = {
   mongodbUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/gdgoc-gcee',
   jwtSecret: process.env.JWT_SECRET || 'dev-insecure-secret-change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  appUrl: process.env.APP_URL || 'http://localhost:5173',
-  clientUrl: process.env.CLIENT_URL || process.env.APP_URL || 'http://localhost:5173',
+  appUrl: getPublicAppUrl(),
+  clientUrl: getPublicAppUrl(),
   cookieSecure: process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
   adminEmail: process.env.ADMIN_EMAIL || 'admin@gdgocgcee.in',
   adminPassword: process.env.ADMIN_PASSWORD || 'Admin@123',

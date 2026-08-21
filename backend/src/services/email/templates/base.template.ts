@@ -1,4 +1,4 @@
-import { env, CLUB } from '../../../config/env';
+import { env, CLUB, getPublicAppUrl } from '../../../config/env';
 
 export function escapeHtml(str: string): string {
   return (str || '')
@@ -10,7 +10,7 @@ export function escapeHtml(str: string): string {
 }
 
 export function baseEmailHtml(content: string, previewText?: string): string {
-  const siteUrl = escapeHtml(env.clientUrl || env.appUrl || 'https://gdgoc-gcee.vercel.app');
+  const siteUrl = escapeHtml(getPublicAppUrl());
   const previewTag = previewText
     ? `<div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
         ${escapeHtml(previewText)}

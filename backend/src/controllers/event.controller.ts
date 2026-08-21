@@ -5,7 +5,7 @@ import type { AuthRequest } from '../middleware/auth';
 import { nextEventId } from '../utils/ids';
 import { todayIST, isDateBefore, formatTimeRange } from '../utils/dates';
 import { connectDB } from '../config/db';
-import { env } from '../config/env';
+import { env, getPublicAppUrl } from '../config/env';
 import { sendEventEmail, sendBulkEventRegistrationEmails, emailIsConfigured } from '../lib/mailer';
 
 export function eventQuery(identifier: string) {
@@ -732,9 +732,10 @@ export async function sendEventRegistrationEmailToStudents(req: any, res: Respon
       return;
     }
 
+    const appUrl = getPublicAppUrl();
     const regUrl =
       event.registrationLink ||
-      `${env.clientUrl || env.appUrl || 'https://gdgoc-gcee.vercel.app'}/events/${event.eventId}/register`;
+      `${appUrl}/events/${event.eventId}`;
 
     const subject = `You're Invited! ${event.title} – GDGoC GCEE`;
 

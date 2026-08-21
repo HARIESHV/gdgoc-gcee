@@ -294,12 +294,18 @@ export default function EventRegister() {
                         <p className="mt-2 text-xs text-ink-muted">
                           You must first become a community member before you can register for GDGoC GCEE workshops and events.
                         </p>
-                        <div className="mt-4">
+                        <div className="mt-4 flex flex-wrap gap-2">
                           <Link
-                            to={`/join?redirect=/events/${event.eventId}/register`}
+                            to={`/join?redirect=${encodeURIComponent(`/events/${event.eventId}`)}`}
                             className="inline-flex items-center gap-2 rounded-lg bg-g-blue px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-g-blue/90"
                           >
                             <UserPlus className="h-3.5 w-3.5" /> Join GDGoC GCEE
+                          </Link>
+                          <Link
+                            to={`/login?redirect=${encodeURIComponent(`/events/${event.eventId}`)}`}
+                            className="inline-flex items-center gap-2 rounded-lg border border-navy-200 bg-white px-4 py-2 text-xs font-bold text-navy-800 shadow-sm transition hover:bg-navy-50"
+                          >
+                            Sign In
                           </Link>
                         </div>
                       </div>
