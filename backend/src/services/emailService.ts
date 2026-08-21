@@ -53,28 +53,34 @@ function htmlToText(html: string): string {
 
 let gmailTransporter: Transporter | null = null;
 
+export function getGmailCredentials(): { user: string; appPassword: string } {
+  const user = (process.env.GMAIL_USER || env.gmail.user || '').trim().toLowerCase();
+  const appPassword = (process.env.GMAIL_APP_PASSWORD || env.gmail.appPassword || '').replace(/\s+/g, '');
+  return { user, appPassword };
+}
+
 export function isGmailConfigured(): boolean {
-  return Boolean(env.gmail.user && env.gmail.appPassword);
+  const { user, appPassword } = getGmailCredentials();
+  return Boolean(user && appPassword);
 }
 
 /** From header used for all normal website emails (the club's Gmail). */
 export function getGmailFromAddress(): string {
-  return `${CLUB.name} <${env.gmail.user}>`;
+  const { user } = getGmailCredentials();
+  return `${CLUB.name} <${user || 'gceegdgoc@gmail.com'}>`;
 }
 
 function getGmailTransporter(): Transporter | null {
-  if (!isGmailConfigured()) return null;
+  const { user, appPassword } = getGmailCredentials();
+  if (!user || !appPassword) return null;
+
   if (!gmailTransporter) {
+    console.log(`[emailService] Initializing Gmail SMTP transporter for: ${user}`);
     gmailTransporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      service: 'gmail',
       auth: {
-        user: env.gmail.user,
-        pass: env.gmail.appPassword,
-      },
-      tls: {
-        rejectUnauthorized: false,
+        user,
+        pass: appPassword,
       },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
@@ -123,8 +129,8 @@ export async function sendGmailEmail(opts: GmailMailOptions): Promise<EmailSendR
   }
 
   if (!isGmailConfigured()) {
-    console.error('[emailService] Gmail SMTP is not configured. Missing GMAIL_USER / GMAIL_APP_PASSWORD.');
-    return { success: false, error: 'Email service is not configured on the server.' };
+    console.error('[emailService] Gmail email service not configured. Missing GMAIL_USER or GMAIL_APP_PASSWORD environment variables.');
+    return { success: false, error: 'Email service is not configured on the server. Please verify GMAIL_USER and GMAIL_APP_PASSWORD.' };
   }
 
   // Header-injection protection on subject and envelope fields.
@@ -135,7 +141,7 @@ export async function sendGmailEmail(opts: GmailMailOptions): Promise<EmailSendR
 
   const transporter = getGmailTransporter()!;
   try {
-    const fromAddress = `"GDGoC GCEE" <${env.gmail.user}>`;
+    const fromAddress = getGmailFromAddress();
     console.log(`[emailService] Sending email to recipient: ${cleanTo} from: ${fromAddress}`);
 
     const info = await transporter.sendMail({
