@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
+import { env } from './env';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = env.mongodbUri;
 
 if (!MONGODB_URI) {
   console.error('[db] MONGODB_URI environment variable is not configured');
-  throw new Error('MONGODB_URI environment variable is not configured. Set it in your Vercel dashboard.');
+  throw new Error('MONGODB_URI environment variable is not configured.');
 }
 
 interface MongooseCache {

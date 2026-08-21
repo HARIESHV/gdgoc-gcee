@@ -5,16 +5,19 @@ import path from 'node:path';
 
 dotenv.config();
 
-// Local development convenience: this repo keeps credentials in the root
-// `.env.local` (gitignored). dotenv never overrides already-set variables,
-// so this only fills gaps when the backend runs from its own directory.
+// Robust environment loading across root, backend, or nested directories
 for (const candidate of [
+  path.resolve(process.cwd(), '.env'),
   path.resolve(process.cwd(), '.env.local'),
-  path.resolve(process.cwd(), '..', '.env.local'),
+  path.resolve(process.cwd(), 'backend', '.env'),
+  path.resolve(process.cwd(), 'backend', '.env.local'),
+  path.resolve(__dirname, '..', '..', '.env'),
+  path.resolve(__dirname, '..', '..', '.env.local'),
+  path.resolve(__dirname, '..', '..', '..', '.env'),
+  path.resolve(__dirname, '..', '..', '..', '.env.local'),
 ]) {
   if (fs.existsSync(candidate)) {
     dotenv.config({ path: candidate });
-    break;
   }
 }
 

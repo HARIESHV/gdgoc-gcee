@@ -1,336 +1,42 @@
-import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
-import { Resend } from 'resend';
+import {
+  sendEmail,
+  sendOTPEmail,
+  sendWelcomeEmail,
+  sendEventRegistrationEmail,
+  sendWorkshopEmail,
+  sendHackathonEmail,
+  sendCertificateEmail,
+  sendAdminAnnouncementEmail,
+  sendBulkAnnouncementEmails,
+  isEmailConfigured,
+  getResendSender,
+  type SendMailOptions,
+  type SendMailResult,
+} from '../services/email/resend.service';
 import { env, CLUB } from '../config/env';
-import { formatFullDate } from '../utils/dates';
 
-const FROM_NAME = 'GDGoC GCEE';
+export {
+  sendEmail,
+  sendEmail as sendMail,
+  sendOTPEmail,
+  sendOTPEmail as sendOtpEmail,
+  sendWelcomeEmail,
+  sendEventRegistrationEmail,
+  sendWorkshopEmail,
+  sendHackathonEmail,
+  sendCertificateEmail,
+  sendAdminAnnouncementEmail,
+  sendBulkAnnouncementEmails,
+  isEmailConfigured,
+  isEmailConfigured as emailIsConfigured,
+  getResendSender,
+  type SendMailOptions,
+  type SendMailResult,
+};
 
-let resendInstance: Resend | null = null;
-function getResendInstance(): Resend | null {
-  if (env.resendApiKey) {
-    if (!resendInstance) {
-      resendInstance = new Resend(env.resendApiKey);
-    }
-    return resendInstance;
-  }
-  return null;
-}
+export const sendThankYouEmail = sendWelcomeEmail;
 
-/** True when either Resend API Key or Gmail SMTP credentials are configured on the server. */
-export function emailIsConfigured(): boolean {
-  return Boolean(env.resendApiKey || (env.gmail.user && env.gmail.appPassword));
-}
-
-/** Public config status — never includes secrets, safe to return to the browser/admin UI. */
-export function getEmailConfigStatus() {
-  const gmailConfigured = Boolean(env.gmail.user && env.gmail.appPassword);
-  return {
-    configured: emailIsConfigured(),
-    provider: gmailConfigured ? 'gmail' : env.resendApiKey ? 'resend' : 'none',
-    hasApiKey: Boolean(env.resendApiKey),
-    hasUser: Boolean(env.gmail.user),
-    hasFromEmail: Boolean(env.gmail.user || env.resendFromEmail),
-    hasAppPassword: Boolean(env.gmail.appPassword),
-    adminEmail: env.adminEmail || 'gdgocgcee@gmail.com',
-    fromEmail: (gmailConfigured ? env.gmail.user : env.resendFromEmail) || '',
-  };
-}
-
-let transporter: Transporter | null = null;
-
-export function getTransport(): Transporter {
-  if (transporter) return transporter;
-  if (!env.gmail.user || !env.gmail.appPassword) {
-    throw new Error('Gmail SMTP is not configured.');
-  }
-  transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-      user: env.gmail.user,
-      pass: env.gmail.appPassword,
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
-  return transporter;
-}
-
-function getGmailFromAddress(): string {
-  return `${FROM_NAME} <${env.gmail.user || 'gdgocgcee@gmail.com'}>`;
-}
-
-function getResendFromAddress(): string {
-  return `${env.resendFromName || FROM_NAME} <${env.resendFromEmail || 'onboarding@resend.dev'}>`;
-}
-
-export function escapeHtml(str: string): string {
-  return (str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-export interface SendMailOptions {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-  replyTo?: string;
-  attachments?: Array<{ filename: string; content: Buffer | string }>;
-}
-
-export type SendMailResult = { success: boolean; id?: string; error?: string };
-
-/** Send one email via Gmail SMTP (primary) or fall back to Resend. Returns a result object. */
-export async function sendMail(opts: SendMailOptions): Promise<SendMailResult> {
-  if (!emailIsConfigured()) {
-    console.error('[mailer] Email service is not configured (missing GMAIL_USER/GMAIL_APP_PASSWORD or RESEND_API_KEY).');
-    return { success: false, error: 'Email service is not configured.' };
-  }
-
-  // 1. Send via Gmail SMTP if GMAIL credentials are present (primary per spec)
-  if (env.gmail.user && env.gmail.appPassword) {
-    try {
-      const transport = getTransport();
-      const info = await transport.sendMail({
-        from: getGmailFromAddress(),
-        to: opts.to,
-        replyTo: opts.replyTo,
-        subject: opts.subject,
-        html: opts.html,
-        text: opts.text,
-        attachments: opts.attachments,
-      });
-      console.log(`[MAIL] Message accepted:`, info.accepted);
-      console.log(`[MAIL] Message rejected:`, info.rejected);
-      return { success: true, id: info.messageId };
-    } catch (err: any) {
-      console.error('[mailer] Gmail SMTP error:', err.message);
-      if (!env.resendApiKey) {
-        return { success: false, error: err.message };
-      }
-      console.warn('[mailer] Gmail SMTP failed, falling back to Resend.');
-    }
-  }
-
-  // 2. Fallback to Resend if an API key is configured
-  if (env.resendApiKey) {
-    try {
-      const resend = getResendInstance()!;
-      const from = getResendFromAddress();
-
-      const payload: any = {
-        from,
-        to: opts.to,
-        subject: opts.subject,
-        html: opts.html,
-      };
-      if (opts.text) payload.text = opts.text;
-      if (opts.replyTo) payload.reply_to = opts.replyTo;
-      if (opts.attachments && opts.attachments.length > 0) {
-        payload.attachments = opts.attachments.map((a) => ({
-          filename: a.filename,
-          content: Buffer.isBuffer(a.content) ? a.content : Buffer.from(a.content),
-        }));
-      }
-
-      const res = await resend.emails.send(payload);
-      if (res.error) {
-        console.error('[mailer] Resend API error:', res.error);
-        return { success: false, error: res.error.message || 'Resend delivery failed' };
-      }
-      return { success: true, id: res.data?.id };
-    } catch (err: any) {
-      console.error('[mailer] Resend error:', err.message);
-      return { success: false, error: err.message };
-    }
-  }
-
-  return { success: false, error: 'Email service failed to deliver message.' };
-}
-
-function baseHtml(content: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding:24px 0;">
-    <tr><td align="center">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #e2e8f0;">
-        <tr>
-          <td style="background-color:#0b1b33; padding:26px 28px; text-align:left;">
-            <h1 style="margin:0; color:#ffffff; font-size:22px; font-weight:800; letter-spacing:-0.5px;">GDGoC GCEE</h1>
-            <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1.5px;">Google Developer Groups on Campus · ${CLUB.institution}</p>
-          </td>
-        </tr>
-        ${content}
-        <tr>
-          <td style="background-color:#f8fafc; padding:18px 28px; border-top:1px solid #e2e8f0; text-align:center;">
-            <p style="margin:0; color:#94a3b8; font-size:11px; line-height:1.6;">
-              ${FROM_NAME} · ${CLUB.institution}<br/>
-              <a href="${escapeHtml(env.clientUrl || env.appUrl || '')}" style="color:#4285F4; text-decoration:none;">${CLUB.websiteName} Website</a>
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-}
-
-/** Verify Gmail SMTP connection at runtime safely without exposing credentials. */
-export async function verifyGmailConnection(): Promise<{ ok: boolean; error?: string }> {
-  if (!env.gmail.user || !env.gmail.appPassword) {
-    console.warn('[mailer] GMAIL_USER or GMAIL_APP_PASSWORD is not configured');
-    return { ok: false, error: 'GMAIL_USER or GMAIL_APP_PASSWORD is not configured' };
-  }
-  try {
-    const transport = getTransport();
-    await transport.verify();
-    console.log('[mailer] ✓ Gmail SMTP connection verified successfully');
-    return { ok: true };
-  } catch (err: any) {
-    console.error('[mailer] Gmail SMTP connection failed:', err.message);
-    return { ok: false, error: err.message };
-  }
-}
-
-export async function sendOtpEmail(opts: {
-  to: string;
-  studentName: string;
-  otp: string;
-}): Promise<SendMailResult> {
-  const name = escapeHtml(opts.studentName || 'Student');
-  const otp = String(opts.otp || '').trim();
-
-  // Validate OTP length and format
-  if (!otp || !/^\d{6}$/.test(otp)) {
-    console.error('[OTP] Invalid OTP supplied to sendOtpEmail:', otp);
-    throw new Error('Invalid OTP supplied to email function');
-  }
-
-  console.log('[OTP] Generated: 6-digit OTP');
-  console.log('[OTP] Mailer received valid OTP:', /^\d{6}$/.test(otp));
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>GDGoC GCEE OTP</title>
-</head>
-<body style="margin:0;padding:20px;font-family:Arial,sans-serif;background-color:#ffffff;color:#1e293b;">
-  <div style="max-width:560px;margin:0 auto;border:1px solid #e2e8f0;border-radius:12px;padding:24px;">
-    <h2 style="color:#0b1b33;margin-top:0;">GDGoC GCEE Email Verification</h2>
-    <p>Hello ${name},</p>
-    <p>Your email verification OTP is:</p>
-    <p style="
-      font-size:36px;
-      font-weight:bold;
-      letter-spacing:10px;
-      text-align:center;
-      padding:20px;
-      margin:20px 0;
-      border:2px solid #4285F4;
-      background-color:#f8fafc;
-      color:#000000;
-      font-family:Consolas,monospace;
-    ">
-      ${otp}
-    </p>
-    <p>This OTP expires in 10 minutes.</p>
-    <p>If you did not request this OTP, please ignore this email.</p>
-    <p style="margin-bottom:0;">
-      Regards,<br>
-      <strong>GDGoC GCEE</strong>
-    </p>
-  </div>
-</body>
-</html>`;
-
-  const text = `Hello ${opts.studentName || 'Student'},
-
-Your GDGoC GCEE email verification OTP is:
-
-${otp}
-
-This OTP expires in 10 minutes.
-
-If you did not request this OTP, please ignore this email.
-
-Regards,
-GDGoC GCEE`;
-
-  // Pre-SMTP validation check: verify OTP is actually inside both HTML and plain text
-  if (!html.includes(otp)) {
-    throw new Error('OTP is missing from generated email HTML');
-  }
-  if (!text.includes(otp)) {
-    throw new Error('OTP is missing from generated email text');
-  }
-
-  const result = await sendMail({
-    to: opts.to,
-    subject: 'GDGoC GCEE - Email Verification OTP',
-    html,
-    text,
-  });
-  console.log(`[OTP] Email accepted by SMTP: ${result.success}`);
-  return result;
-}
-
-export async function sendThankYouEmail(opts: {
-  to: string;
-  studentName: string;
-}): Promise<SendMailResult> {
-  const name = escapeHtml(opts.studentName || 'Student');
-
-  const html = baseHtml(`
-    <tr><td style="padding:32px 32px 12px 32px;">
-      <p style="margin:0; color:#1e293b; font-size:16px; line-height:1.5;">Dear <strong>${name}</strong>,</p>
-      <p style="margin:20px 0 0 0; color:#475569; font-size:14px; line-height:1.6;">
-        Thank you for joining the <strong>GDGoC GCEE</strong> community!
-      </p>
-      <p style="margin:16px 0 0 0; color:#475569; font-size:14px; line-height:1.6;">
-        This email confirms that your community signup was <strong>successful</strong>. Your email address has been verified and you are now part of the Google Developer Groups family at Government College of Engineering, Erode.
-      </p>
-    </td></tr>
-    <tr><td style="padding:12px 32px;">
-      <div style="background-color:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px 16px;">
-        <p style="margin:0; color:#166534; font-size:13px; font-weight:700;">&#10003; Community signup confirmed &amp; email verified</p>
-      </div>
-    </td></tr>
-    <tr><td style="padding:20px 32px 32px 32px;">
-      <p style="margin:0; color:#475569; font-size:14px; line-height:1.6;">
-        Keep an eye on your inbox for upcoming workshops, hackathons, technical talks and community events. You can also explore our website to learn more:
-      </p>
-      <p style="margin:24px 0 0 0; text-align:center;">
-        <a href="${escapeHtml(env.clientUrl || env.appUrl || '')}" style="background-color:#4285F4; color:#ffffff; font-weight:700; font-size:14px; padding:12px 30px; border-radius:8px; text-decoration:none; display:inline-block;">Visit GDGoC GCEE</a>
-      </p>
-    </td></tr>
-  `);
-
-  const result = await sendMail({
-    to: opts.to,
-    subject: 'Thank You for Joining GDGoC GCEE',
-    html,
-  });
-  console.log(`[mailer] sendThankYouEmail -> ${opts.to} (${result.success ? 'sent' : 'failed'})`);
-  return result;
-}
-
+/** Send single event email */
 export async function sendEventEmail(opts: {
   to: string;
   studentName: string;
@@ -344,67 +50,21 @@ export async function sendEventEmail(opts: {
     registrationLink?: string;
   };
 }): Promise<SendMailResult> {
-  const name = escapeHtml(opts.studentName || 'Student');
-  const eventTitle = escapeHtml(opts.event.title || 'GDGoC GCEE Event');
-  const eventDescription = escapeHtml(opts.event.description || '');
-  const eventDate = formatFullDate(opts.event.date) || 'TBA';
-  const eventTime = escapeHtml(opts.event.time || 'TBA');
-  const eventVenue = escapeHtml(opts.event.venue || CLUB.institution);
-  const poster = opts.event.poster || '';
-  const regUrl = opts.event.registrationLink && /^https?:\/\//.test(opts.event.registrationLink)
-    ? opts.event.registrationLink
-    : (env.clientUrl || env.appUrl || 'https://gdgoc-gcee.vercel.app') + '/events';
-
-  const posterHtml = poster
-    ? `<tr><td style="padding:0;">
-        <img src="${escapeHtml(poster)}" alt="${eventTitle} poster" width="600" style="display:block; width:100%; max-width:600px; height:auto; border:none;" />
-      </td></tr>`
-    : '';
-
-  const html = baseHtml(`
-    ${posterHtml}
-    <tr><td style="padding:28px 32px 0 32px;">
-      <p style="margin:0 0 6px 0; color:#4285F4; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px;">You're Invited!</p>
-      <h2 style="margin:0; color:#0b1b33; font-size:22px; font-weight:800; line-height:1.3;">${eventTitle}</h2>
-      ${eventDescription ? `<p style="margin:12px 0 0 0; color:#475569; font-size:14px; line-height:1.65;">${eventDescription}</p>` : ''}
-    </td></tr>
-    <tr><td style="padding:18px 32px;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
-        <tr>
-          <td style="padding:12px 16px; color:#64748b; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; width:35%; border-bottom:1px solid #e2e8f0;">Date</td>
-          <td style="padding:12px 16px; color:#0b1b33; font-size:13px; font-weight:600; border-bottom:1px solid #e2e8f0;">${eventDate}</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 16px; color:#64748b; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e2e8f0;">Time</td>
-          <td style="padding:12px 16px; color:#0b1b33; font-size:13px; border-bottom:1px solid #e2e8f0;">${eventTime}</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 16px; color:#64748b; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Venue</td>
-          <td style="padding:12px 16px; color:#0b1b33; font-size:13px;">${eventVenue}</td>
-        </tr>
-      </table>
-    </td></tr>
-    <tr><td style="padding:6px 32px 26px 32px; text-align:center;">
-      <a href="${escapeHtml(regUrl)}" style="background-color:#34A853; color:#ffffff; font-weight:700; font-size:15px; padding:14px 36px; border-radius:8px; text-decoration:none; display:inline-block;">REGISTER NOW</a>
-    </td></tr>
-    <tr><td style="padding:0 32px 32px 32px;">
-      <p style="margin:0; color:#475569; font-size:14px; line-height:1.6;">We look forward to seeing you there!</p>
-      <p style="margin:14px 0 0 0; color:#0b1b33; font-size:13px; font-weight:700;">${FROM_NAME} Team</p>
-    </td></tr>
-  `);
-
-  const result = await sendMail({
+  return sendAdminAnnouncementEmail({
     to: opts.to,
-    subject: `You're Invited! ${eventTitle} – GDGoC GCEE`,
-    html,
+    studentName: opts.studentName,
+    title: opts.event.title,
+    description: opts.event.description,
+    date: opts.event.date,
+    time: opts.event.time,
+    venue: opts.event.venue,
+    posterUrl: opts.event.poster,
+    registrationLink: opts.event.registrationLink,
+    subject: `You're Invited! ${opts.event.title} – ${CLUB.name}`,
   });
-  console.log(`[mailer] sendEventEmail -> ${opts.to} (${result.success ? 'sent' : 'failed'})`);
-  return result;
 }
 
-export const sendWelcomeEmail = sendThankYouEmail;
-export const sendEventRegistrationEmail = sendEventEmail;
-
+/** Bulk event registration emails */
 export async function sendBulkEventRegistrationEmails(opts: {
   recipients: Array<{ email: string; name: string }>;
   event: {
@@ -418,51 +78,49 @@ export async function sendBulkEventRegistrationEmails(opts: {
   };
   batchSize?: number;
   delayMs?: number;
-}): Promise<{
-  sentCount: number;
-  failedCount: number;
-  totalRecipients: number;
-  failedEmails: string[];
-}> {
-  const { recipients, event, batchSize = 10, delayMs = 200 } = opts;
-  let sentCount = 0;
-  let failedCount = 0;
-  const failedEmails: string[] = [];
+}) {
+  return sendBulkAnnouncementEmails({
+    recipients: opts.recipients,
+    title: opts.event.title,
+    description: opts.event.description,
+    date: opts.event.date,
+    time: opts.event.time,
+    venue: opts.event.venue,
+    posterUrl: opts.event.poster,
+    registrationLink: opts.event.registrationLink,
+    subject: `You're Invited! ${opts.event.title} – ${CLUB.name}`,
+    batchSize: opts.batchSize,
+    delayMs: opts.delayMs,
+  });
+}
 
-  for (let i = 0; i < recipients.length; i += batchSize) {
-    const batch = recipients.slice(i, i + batchSize);
-    await Promise.all(
-      batch.map(async (student) => {
-        const res = await sendEventEmail({
-          to: student.email,
-          studentName: student.name,
-          event,
-        });
-        if (res.success) {
-          sentCount++;
-        } else {
-          failedCount++;
-          failedEmails.push(student.email);
-        }
-      })
-    );
-    if (i + batchSize < recipients.length && delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-  }
-
+/** Public config status safe to return to client/admin UI */
+export function getEmailConfigStatus() {
+  const configured = isEmailConfigured();
+  const gmailConfigured = Boolean(env.gmail.user && env.gmail.appPassword);
   return {
-    sentCount,
-    failedCount,
-    totalRecipients: recipients.length,
-    failedEmails,
+    configured,
+    provider: env.resendApiKey ? 'resend' : gmailConfigured ? 'gmail' : 'none',
+    hasApiKey: Boolean(env.resendApiKey),
+    hasUser: Boolean(env.gmail.user),
+    hasFromEmail: Boolean(env.resendFromEmail || env.gmail.user),
+    hasAppPassword: Boolean(env.gmail.appPassword),
+    adminEmail: env.adminEmail || 'gdgocgcee@gmail.com',
+    fromEmail: (env.resendFromEmail || env.gmail.user) || '',
   };
 }
 
+export function escapeHtml(str: string): string {
+  return (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
- * Resend-compatible shim so existing email utilities (utils/email.ts, email.service.ts,
- * eventDistribution.controller.ts) keep working unchanged but now send via Gmail SMTP.
- * Mimics `resend.emails.send()` returning `{ data: { id } }` or `{ error }`.
+ * Resend-compatible shim for legacy call-sites.
  */
 export function getResendCompatibleMailer() {
   return {
@@ -476,7 +134,7 @@ export function getResendCompatibleMailer() {
         text?: string;
         attachments?: Array<{ filename: string; content: Buffer | string }>;
       }): Promise<{ data?: { id: string } | null; error?: { message: string } | null }> => {
-        const result = await sendMail({
+        const result = await sendEmail({
           to: msg.to || '',
           subject: msg.subject || '',
           html: msg.html || '',
@@ -493,5 +151,4 @@ export function getResendCompatibleMailer() {
   };
 }
 
-/** Return type compatible across the app (unused internally; kept for API completeness). */
 export type ResendCompatibleMailer = ReturnType<typeof getResendCompatibleMailer>;

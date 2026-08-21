@@ -1,76 +1,20 @@
-import { env } from '../config/env';
+import { env, CLUB } from '../config/env';
 import { EmailLog } from '../models/EmailLog';
-import { sendMail, emailIsConfigured, escapeHtml } from '../lib/mailer';
+import {
+  sendEmail,
+  sendWelcomeEmail,
+  sendAdminAnnouncementEmail,
+  isEmailConfigured,
+  getResendSender,
+} from './email/resend.service';
+
+export {
+  sendWelcomeEmail,
+  isEmailConfigured as emailIsConfigured,
+};
 
 function getFromAddress(): string {
-  return `GDGoC GCEE <${env.gmail.user || 'gdgocgcee@gmail.com'}>`;
-}
-
-/**
- * 1. AUTOMATIC THANK-YOU / WELCOME EMAIL
- * Triggered ONLY AFTER successful student record save in MongoDB.
- */
-export async function sendWelcomeEmail(opts: {
-  to: string;
-  studentName: string;
-}): Promise<{ success: boolean; error?: string }> {
-  return sendThankYou(opts.to, opts.studentName);
-}
-
-async function sendThankYou(to: string, studentName: string): Promise<{ success: boolean; error?: string }> {
-  const name = escapeHtml(studentName || 'Student');
-
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding: 24px 0;">
-    <tr>
-      <td align="center">
-        <table width="100%" style="max-width: 580px; background-color:#ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="background-color:#0b1b33; padding: 28px 32px; text-align: left;">
-              <h1 style="margin:0; color:#ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">GDGoC GCEE</h1>
-              <p style="margin: 4px 0 0 0; color:#94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Google Developer Groups on Campus</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 32px;">
-              <p style="margin-top:0; color:#1e293b; font-size: 16px; line-height: 1.5;">Hi <strong>${name}</strong>,</p>
-              <p style="color:#475569; font-size: 14px; line-height: 1.6;">Thank you for registering with GDGoC GCEE.</p>
-              <p style="color:#475569; font-size: 14px; line-height: 1.6;">Your student account has been successfully created and your email is verified.</p>
-              <p style="color:#475569; font-size: 14px; line-height: 1.6;">You can now access the GDGoC GCEE website and stay updated about upcoming workshops, hackathons, coding events, seminars, webinars, technical sessions, and community activities.</p>
-              <p style="color:#475569; font-size: 14px; line-height: 1.6;">We look forward to seeing you at our upcoming events.</p>
-              <hr style="border:none; border-top:1px solid #e2e8f0; margin: 24px 0;" />
-              <p style="margin:0; color:#64748b; font-size: 13px; line-height: 1.5;">
-                Regards,<br/>
-                <strong>GDGoC GCEE Team</strong><br/>
-                Government College of Engineering, Erode
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="background-color:#f8fafc; padding: 16px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
-              <p style="margin:0; color:#94a3b8; font-size: 11px;">
-                This welcome email was sent to ${escapeHtml(to)}.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `;
-
-  const result = await sendMail({ to, subject: 'Welcome to GDGoC GCEE', html });
-  if (!result.success) return { success: false, error: result.error };
-  return { success: true };
+  return getResendSender();
 }
 
 /**
@@ -90,106 +34,26 @@ export async function sendEventAnnouncementEmail(opts: {
   customSubject?: string;
   customMessage?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  if (!emailIsConfigured()) {
+  if (!isEmailConfigured()) {
     return { success: false, error: 'Email service is not configured.' };
   }
 
-  const name = escapeHtml(opts.studentName || 'Student');
-  const eventTitle = escapeHtml(opts.eventName);
-  const eventDate = escapeHtml(opts.eventDate || 'TBA');
-  const eventTime = escapeHtml(opts.eventTime || 'TBA');
-  const eventLocation = escapeHtml(opts.eventLocation || 'TBA');
-  const eventType = escapeHtml(opts.eventType || 'Workshop');
-  const registrationDeadline = escapeHtml(opts.registrationDeadline || 'Until Event Date');
-  const regUrl = opts.eventRegistrationLink;
-  const poster = opts.eventPoster || '';
+  const result = await sendAdminAnnouncementEmail({
+    to: opts.to,
+    studentName: opts.studentName,
+    title: opts.eventName,
+    type: opts.eventType || 'Event',
+    date: opts.eventDate,
+    time: opts.eventTime,
+    venue: opts.eventLocation,
+    posterUrl: opts.eventPoster,
+    registrationLink: opts.eventRegistrationLink,
+    deadline: opts.registrationDeadline,
+    customMessage: opts.customMessage,
+    subject: opts.customSubject || `Registration Open – ${opts.eventName} [${CLUB.name}]`,
+  });
 
-  const subject = opts.customSubject || `Registration Open – ${opts.eventName}`;
-
-  const posterHtml = poster
-    ? `<tr><td style="padding:0;">
-        <img src="${escapeHtml(poster)}" alt="Event poster" width="580" style="display:block; width:100%; max-width:580px; height:auto; border:none;" />
-      </td></tr>`
-    : '';
-
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding: 24px 0;">
-    <tr>
-      <td align="center">
-        <table width="100%" style="max-width: 580px; background-color:#ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="background-color:#0b1b33; padding: 28px 32px; text-align: left;">
-              <h1 style="margin:0; color:#ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">GDGoC GCEE</h1>
-              <p style="margin: 4px 0 0 0; color:#94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Google Developer Groups on Campus</p>
-            </td>
-          </tr>
-          ${posterHtml}
-          <tr>
-            <td style="padding: 32px;">
-              <p style="margin-top:0; color:#1e293b; font-size: 15px; line-height: 1.5;">Hi <strong>${name}</strong>,</p>
-              <p style="color:#475569; font-size: 14px; line-height: 1.6;">We are excited to announce an upcoming event organized by GDGoC GCEE.</p>
-
-              <table width="100%" style="background-color:#f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin: 20px 0;" cellpadding="12" cellspacing="0">
-                <tr>
-                  <td style="color:#64748b; font-size: 12px; text-transform: uppercase; width: 35%; border-bottom: 1px solid #e2e8f0;">Event</td>
-                  <td style="color:#0b1b33; font-size: 13px; font-weight: 700; border-bottom: 1px solid #e2e8f0;">${eventTitle}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0;">Date</td>
-                  <td style="color:#0b1b33; font-size: 13px; border-bottom: 1px solid #e2e8f0;">${eventDate}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0;">Time</td>
-                  <td style="color:#0b1b33; font-size: 13px; border-bottom: 1px solid #e2e8f0;">${eventTime}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0;">Venue</td>
-                  <td style="color:#0b1b33; font-size: 13px; border-bottom: 1px solid #e2e8f0;">${eventLocation}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b; font-size: 12px; text-transform: uppercase;">Event Type</td>
-                  <td style="color:#0b1b33; font-size: 13px;">${eventType}</td>
-                </tr>
-              </table>
-
-              ${opts.customMessage ? `<p style="color:#475569; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(opts.customMessage)}</p>` : ''}
-
-              <p style="color:#475569; font-size: 14px; line-height: 1.6;">Registration is now open.</p>
-
-              <p style="text-align: center; margin: 28px 0;">
-                <a href="${escapeHtml(regUrl)}" style="background-color:#4285F4; color:#ffffff; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 8px; text-decoration: none; display: inline-block;">REGISTER NOW</a>
-              </p>
-
-              <p style="color:#64748b; font-size: 12px; text-align: center; margin-bottom: 24px;">
-                Registration Deadline: <strong>${registrationDeadline}</strong>
-              </p>
-
-              <hr style="border:none; border-top:1px solid #e2e8f0; margin: 24px 0;" />
-              <p style="margin:0; color:#64748b; font-size: 13px; line-height: 1.5;">
-                Regards,<br/>
-                <strong>GDGoC GCEE Team</strong><br/>
-                Government College of Engineering, Erode
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `;
-
-  const result = await sendMail({ to: opts.to, subject, html });
-  if (!result.success) return { success: false, error: result.error };
-  return { success: true };
+  return result;
 }
 
 /**

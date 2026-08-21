@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import type { Response } from 'express';
 import { Student } from '../models/Student';
@@ -5,7 +6,7 @@ import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import type { AuthRequest } from '../middleware/auth';
 import { connectDB } from '../config/db';
-import { sendOtpEmail, sendThankYouEmail } from '../utils/email';
+import { sendOTPEmail, sendWelcomeEmail } from '../services/email/resend.service';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -19,13 +20,23 @@ function setAuthCookie(res: Response, token: string) {
   res.cookie('gdgoc_token', token, COOKIE_OPTS);
 }
 
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+/**
+ * Generate a cryptographically secure 6-digit OTP
+ */
+function generateSecureOtp(): string {
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
+/**
+ * Securely hash OTP with bcrypt before storing
+ */
 function hashOtp(otp: string): string {
   return bcrypt.hashSync(otp, 10);
 }
+
+const OTP_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
+const RESEND_COOLDOWN_MS = 60 * 1000;    // 60 seconds cooldown
+const MAX_OTP_ATTEMPTS = 5;              // Max 5 attempts per OTP
 
 export function publicStudent(student: any) {
   return {
@@ -65,6 +76,7 @@ export async function register(req: AuthRequest, res: Response) {
       res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
       return;
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
@@ -75,50 +87,74 @@ export async function register(req: AuthRequest, res: Response) {
     const cleanRollNumber = (rollNumber || '').trim();
 
     // Check if an account with this email exists
-    const existingEmail = await Student.findOne({ email: cleanEmail });
-    if (existingEmail) {
-      if (existingEmail.isVerified) {
+    const existingStudent = await Student.findOne({ email: cleanEmail });
+    if (existingStudent) {
+      if (existingStudent.isVerified) {
         res.status(409).json({
           success: false,
           message: 'An account with this email already exists. Please log in.',
         });
         return;
       }
-      // If student registered previously but never completed OTP verification, update with new details & password
-      const passwordHash = await bcrypt.hash(password, 10);
-      const otp = generateOtp();
-      console.log(`\n========================================\n[auth] 🔑 OTP for ${cleanEmail}: ${otp}\n========================================\n`);
-      const otpHash = hashOtp(otp);
-      const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-      existingEmail.name = name.trim();
-      existingEmail.phone = (phone || '').trim();
-      existingEmail.rollNumber = cleanRollNumber;
-      existingEmail.department = (department || '').trim();
-      existingEmail.year = (year || '').trim();
-      existingEmail.passwordHash = passwordHash;
-      existingEmail.otp = otpHash;
-      existingEmail.otpExpiresAt = otpExpiresAt;
-      await existingEmail.save();
-
-      // Send OTP email
-      try {
-        const sendRes = await sendOtpEmail({ to: cleanEmail, studentName: existingEmail.name, otp });
-        if (!sendRes.success) {
-          console.warn(`[auth] Warning: OTP email could not be delivered to ${cleanEmail}: ${sendRes.error}`);
+      // Check resend cooldown
+      if (existingStudent.otpLastSentAt) {
+        const timeSinceLastSent = Date.now() - new Date(existingStudent.otpLastSentAt).getTime();
+        if (timeSinceLastSent < RESEND_COOLDOWN_MS) {
+          const waitSeconds = Math.ceil((RESEND_COOLDOWN_MS - timeSinceLastSent) / 1000);
+          res.status(429).json({
+            success: false,
+            message: `Please wait ${waitSeconds}s before requesting a new OTP.`,
+            cooldownSeconds: waitSeconds,
+          });
+          return;
         }
-      } catch (err: any) {
-        console.error(`[auth] OTP email error for ${cleanEmail}:`, err.message);
       }
 
-      const token = signToken({ id: String(existingEmail._id), role: 'student' });
+      // If student registered previously but never completed OTP verification, update with new details & password
+      const passwordHash = await bcrypt.hash(password, 10);
+      const otp = generateSecureOtp();
+      const otpHash = hashOtp(otp);
+      const otpExpiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
+
+      // Send OTP via Resend first
+      const sendResult = await sendOTPEmail({
+        to: cleanEmail,
+        studentName: name.trim(),
+        otp,
+      });
+
+      if (!sendResult.success) {
+        console.error(`[auth] Failed to send OTP to ${cleanEmail}:`, sendResult.error);
+        res.status(500).json({
+          success: false,
+          message: sendResult.error?.includes('domain') || sendResult.error?.includes('testing')
+            ? `Email delivery restricted by Resend configuration: ${sendResult.error}`
+            : 'Unable to send verification email. Please check your email address or try again.',
+        });
+        return;
+      }
+
+      existingStudent.name = name.trim();
+      existingStudent.phone = (phone || '').trim();
+      existingStudent.rollNumber = cleanRollNumber;
+      existingStudent.department = (department || '').trim();
+      existingStudent.year = (year || '').trim();
+      existingStudent.passwordHash = passwordHash;
+      existingStudent.otp = otpHash;
+      existingStudent.otpExpiresAt = otpExpiresAt;
+      existingStudent.otpAttempts = 0;
+      existingStudent.otpLastSentAt = new Date();
+      await existingStudent.save();
+
+      const token = signToken({ id: String(existingStudent._id), role: 'student' });
       setAuthCookie(res, token);
 
       res.status(200).json({
         success: true,
-        message: 'Account updated. Please verify your email with the OTP sent.',
+        message: 'Account updated. Verification OTP sent to your Gmail inbox.',
         token,
-        student: publicStudent(existingEmail),
+        student: publicStudent(existingStudent),
         requiresVerification: true,
       });
       return;
@@ -136,10 +172,27 @@ export async function register(req: AuthRequest, res: Response) {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const otp = generateOtp();
-    console.log(`\n========================================\n[auth] 🔑 OTP for ${cleanEmail}: ${otp}\n========================================\n`);
+    const otp = generateSecureOtp();
     const otpHash = hashOtp(otp);
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const otpExpiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
+
+    // Send OTP via Resend
+    const sendResult = await sendOTPEmail({
+      to: cleanEmail,
+      studentName: name.trim(),
+      otp,
+    });
+
+    if (!sendResult.success) {
+      console.error(`[auth] Failed to send OTP email to ${cleanEmail}:`, sendResult.error);
+      res.status(500).json({
+        success: false,
+        message: sendResult.error?.includes('domain') || sendResult.error?.includes('testing')
+          ? `Email delivery restricted by Resend configuration: ${sendResult.error}`
+          : 'Unable to send verification email. Please check your email address or try again.',
+      });
+      return;
+    }
 
     const student = await Student.create({
       name: name.trim(),
@@ -153,24 +206,16 @@ export async function register(req: AuthRequest, res: Response) {
       isVerified: false,
       otp: otpHash,
       otpExpiresAt,
+      otpAttempts: 0,
+      otpLastSentAt: new Date(),
     });
-
-    // Send OTP email
-    try {
-      const sendRes = await sendOtpEmail({ to: cleanEmail, studentName: student.name, otp });
-      if (!sendRes.success) {
-        console.warn(`[auth] Warning: OTP email could not be delivered to ${cleanEmail}: ${sendRes.error}`);
-      }
-    } catch (err: any) {
-      console.error(`[auth] OTP email failed for ${cleanEmail}:`, err.message);
-    }
 
     const token = signToken({ id: String(student._id), role: 'student' });
     setAuthCookie(res, token);
 
     res.status(201).json({
       success: true,
-      message: 'Account created. Please verify your email with the OTP sent.',
+      message: 'Account created. Verification OTP sent to your Gmail inbox.',
       token,
       student: publicStudent(student),
       requiresVerification: true,
@@ -193,6 +238,12 @@ export async function sendOtp(req: AuthRequest, res: Response) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
+      return;
+    }
+
     const student = await Student.findOne({ email: cleanEmail });
     if (!student) {
       res.status(404).json({ success: false, message: 'No account found with this email.' });
@@ -204,29 +255,51 @@ export async function sendOtp(req: AuthRequest, res: Response) {
       return;
     }
 
-    const otp = generateOtp();
-    if (env.nodeEnv !== 'production') {
-      console.log(`\n========================================\n[auth] 🔑 Resent OTP for ${cleanEmail}: ${otp}\n========================================\n`);
+    // Cooldown check (60 seconds)
+    if (student.otpLastSentAt) {
+      const timeSinceLastSent = Date.now() - new Date(student.otpLastSentAt).getTime();
+      if (timeSinceLastSent < RESEND_COOLDOWN_MS) {
+        const waitSeconds = Math.ceil((RESEND_COOLDOWN_MS - timeSinceLastSent) / 1000);
+        res.status(429).json({
+          success: false,
+          message: `Please wait ${waitSeconds}s before requesting a new OTP.`,
+          cooldownSeconds: waitSeconds,
+        });
+        return;
+      }
     }
+
+    const otp = generateSecureOtp();
     const otpHash = hashOtp(otp);
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const otpExpiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
+
+    // Send new OTP via Resend
+    const sendResult = await sendOTPEmail({
+      to: student.email,
+      studentName: student.name,
+      otp,
+    });
+
+    if (!sendResult.success) {
+      console.error(`[auth] Resend OTP failed for ${cleanEmail}:`, sendResult.error);
+      res.status(500).json({
+        success: false,
+        message: sendResult.error?.includes('domain') || sendResult.error?.includes('testing')
+          ? `Email delivery restricted by Resend configuration: ${sendResult.error}`
+          : 'Unable to send verification email. Please try again.',
+      });
+      return;
+    }
 
     student.otp = otpHash;
     student.otpExpiresAt = otpExpiresAt;
+    student.otpAttempts = 0;
+    student.otpLastSentAt = new Date();
     await student.save();
-
-    try {
-      const result = await sendOtpEmail({ to: student.email, studentName: student.name, otp });
-      if (!result.success) {
-        console.warn(`[auth] Warning: Resend OTP email failed for ${cleanEmail}: ${result.error}`);
-      }
-    } catch (err: any) {
-      console.error(`[auth] Resend OTP error for ${cleanEmail}:`, err.message);
-    }
 
     res.status(200).json({
       success: true,
-      message: 'OTP sent to your email address.',
+      message: 'OTP sent successfully to your Gmail.',
     });
   } catch (err: any) {
     console.error('[auth] sendOtp error:', err.message);
@@ -257,30 +330,74 @@ export async function verifyOtp(req: AuthRequest, res: Response) {
     if (student.isVerified) {
       const token = signToken({ id: String(student._id), role: 'student' });
       setAuthCookie(res, token);
-      res.json({ success: true, message: 'Email is already verified.', token, student: publicStudent(student) });
+      res.json({
+        success: true,
+        verified: true,
+        message: 'Email is already verified.',
+        token,
+        student: publicStudent(student),
+      });
       return;
     }
 
     if (!student.otp || !student.otpExpiresAt) {
-      res.status(400).json({ success: false, message: 'No active OTP found. Please request a new one.' });
+      res.status(400).json({
+        success: false,
+        verified: false,
+        message: 'No active OTP found. Please request a new OTP.',
+      });
       return;
     }
 
-    if (new Date() > student.otpExpiresAt) {
-      res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
+    // Check expiration
+    if (new Date() > new Date(student.otpExpiresAt)) {
+      res.status(400).json({
+        success: false,
+        verified: false,
+        message: 'OTP has expired. Please request a new OTP.',
+      });
       return;
     }
 
+    // Check maximum attempts limit
+    if ((student.otpAttempts || 0) >= MAX_OTP_ATTEMPTS) {
+      student.otp = null as any;
+      student.otpExpiresAt = null as any;
+      student.otpAttempts = 0;
+      await student.save();
+
+      res.status(400).json({
+        success: false,
+        verified: false,
+        message: 'Too many incorrect attempts. This OTP has been invalidated. Please request a new OTP.',
+      });
+      return;
+    }
+
+    // Compare OTP securely with bcrypt
     const otpValid = await bcrypt.compare(cleanOtp, student.otp);
     if (!otpValid) {
-      res.status(400).json({ success: false, message: 'Invalid OTP. Please check and try again.' });
+      student.otpAttempts = (student.otpAttempts || 0) + 1;
+      await student.save();
+
+      const remaining = MAX_OTP_ATTEMPTS - student.otpAttempts;
+      res.status(400).json({
+        success: false,
+        verified: false,
+        message: remaining > 0
+          ? `Invalid OTP. You have ${remaining} attempt(s) remaining.`
+          : 'Invalid OTP. Maximum attempts exceeded.',
+      });
       return;
     }
 
-    // Atomic verify
+    // Atomic verify: mark verified and clean up OTP credentials
     const updated = await Student.findOneAndUpdate(
       { _id: student._id },
-      { $set: { isVerified: true }, $unset: { otp: 1, otpExpiresAt: 1 } },
+      {
+        $set: { isVerified: true },
+        $unset: { otp: 1, otpExpiresAt: 1, otpAttempts: 1, otpLastSentAt: 1 },
+      },
       { new: true }
     );
 
@@ -289,19 +406,23 @@ export async function verifyOtp(req: AuthRequest, res: Response) {
       return;
     }
 
-    // Send Thank You / Welcome email ONLY after successful verification
-    if (updated.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updated.email)) {
-      sendThankYouEmail({ to: updated.email, studentName: updated.name }).catch((err) => {
-        console.error('[auth] Thank you email error:', err.message);
+    // Send Welcome Email upon successful verification
+    if (updated.email) {
+      sendWelcomeEmail({
+        to: updated.email,
+        studentName: updated.name,
+      }).catch((err) => {
+        console.error('[auth] Welcome email delivery error:', err.message);
       });
     }
 
-    // Generate token and automatically log student in
+    // Generate token and automatically sign student in
     const token = signToken({ id: String(updated._id), role: 'student' });
     setAuthCookie(res, token);
 
     res.json({
       success: true,
+      verified: true,
       message: 'Email verified successfully! Welcome to GDGoC GCEE.',
       token,
       student: publicStudent(updated),
@@ -341,21 +462,26 @@ export async function login(req: AuthRequest, res: Response) {
 
     if (!student.isVerified) {
       // Generate and send a fresh OTP immediately
-      const otp = generateOtp();
-      if (env.nodeEnv !== 'production') {
-        console.log(`\n========================================\n[auth] 🔑 OTP for ${student.email}: ${otp}\n========================================\n`);
-      }
+      const otp = generateSecureOtp();
       student.otp = hashOtp(otp);
-      student.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      student.otpExpiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
+      student.otpAttempts = 0;
+      student.otpLastSentAt = new Date();
       await student.save();
-      sendOtpEmail({ to: student.email, studentName: student.name, otp }).catch(() => null);
+
+      sendOTPEmail({
+        to: student.email,
+        studentName: student.name,
+        otp,
+      }).catch((err) => {
+        console.error('[auth] Login unverified OTP send error:', err.message);
+      });
 
       res.status(403).json({
         success: false,
         message: 'Please verify your email before logging in. An OTP has been sent to your email.',
         requiresVerification: true,
         email: student.email,
-        devOtp: env.nodeEnv !== 'production' ? otp : undefined,
       });
       return;
     }
@@ -370,7 +496,7 @@ export async function login(req: AuthRequest, res: Response) {
 }
 
 // POST /api/auth/logout
-export async function logout(req: AuthRequest, res: Response) {
+export async function logout(_req: AuthRequest, res: Response) {
   res.clearCookie('gdgoc_token', { path: '/' });
   res.json({ success: true, message: 'Logged out successfully.' });
 }

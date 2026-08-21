@@ -16,6 +16,8 @@ const studentSchema = new Schema(
     isVerified: { type: Boolean, default: false },
     otp: { type: String, default: null },
     otpExpiresAt: { type: Date, default: null },
+    otpAttempts: { type: Number, default: 0 },
+    otpLastSentAt: { type: Date, default: null },
     points: { type: Number, default: 0 },
     bio: { type: String, default: '' },
     socialLinks: {
@@ -28,7 +30,6 @@ const studentSchema = new Schema(
   { timestamps: true }
 );
 
-studentSchema.index({ email: 1 }, { unique: true });
 studentSchema.index({ rollNumber: 1 }, { unique: true, sparse: true });
 
 export type StudentDoc = Document & InferSchemaType<typeof studentSchema>;

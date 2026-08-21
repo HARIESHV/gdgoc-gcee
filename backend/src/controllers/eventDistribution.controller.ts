@@ -17,8 +17,8 @@ function escapeHtml(str: string): string {
 
 function getFromAddress(): string {
   const status = getEmailConfigStatus();
-  if (status.hasFromEmail) return `GDGoC GCEE <${status.fromEmail}>`;
-  return 'GDGoC GCEE <gdgocgcee@gmail.com>';
+  if (status.fromEmail) return `GDGoC GCEE <${status.fromEmail}>`;
+  return 'GDGoC GCEE <onboarding@resend.dev>';
 }
 
 // Helper to fetch all registered students for an event
@@ -110,7 +110,7 @@ export async function sendEventRegistrationPDFToAll(req: any, res: Response) {
     await connectDB();
 
     if (!emailIsConfigured()) {
-      res.status(400).json({ success: false, message: 'Email service is not configured. Configure GMAIL_USER and GMAIL_APP_PASSWORD.' });
+      res.status(400).json({ success: false, message: 'Email service is not configured. Please configure RESEND_API_KEY on the server.' });
       return;
     }
 
@@ -203,7 +203,7 @@ export async function sendEventEmails(req: any, res: Response) {
     await connectDB();
 
     if (!emailIsConfigured()) {
-      res.status(400).json({ success: false, message: 'Email service is not configured. Configure GMAIL_USER and GMAIL_APP_PASSWORD.' });
+      res.status(400).json({ success: false, message: 'Email service is not configured. Please configure RESEND_API_KEY on the server.' });
       return;
     }
 
