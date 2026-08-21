@@ -1,108 +1,195 @@
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, MapPin, Clock, Users, Award, Rocket, User2 } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, Users, Award, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 import type { GEvent } from '../../types';
 import { cn, formatHumanDate } from '../../lib/utils';
 import { StatusBadge } from '../ui/Badge';
 
-const categoryStyles: Record<string, string> = {
-  Workshop: 'from-g-blue to-blue-600',
-  Hackathon: 'from-g-red to-rose-600',
-  'Technical Talk': 'from-g-yellow to-amber-500',
-  Seminar: 'from-violet-500 to-purple-600',
-  'Coding Session': 'from-g-green to-emerald-600',
-  'Hands-on Session': 'from-cyan-500 to-sky-600',
-  'Project Showcase': 'from-fuchsia-500 to-pink-600',
-  'Community Meetup': 'from-g-green to-teal-600',
-  Other: 'from-navy-600 to-navy-800',
+const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
+  Workshop: { bg: 'bg-blue-50 text-blue-700', text: 'text-blue-700', border: 'border-blue-200' },
+  Hackathon: { bg: 'bg-rose-50 text-rose-700', text: 'text-rose-700', border: 'border-rose-200' },
+  'Technical Talk': { bg: 'bg-amber-50 text-amber-700', text: 'text-amber-700', border: 'border-amber-200' },
+  Seminar: { bg: 'bg-purple-50 text-purple-700', text: 'text-purple-700', border: 'border-purple-200' },
+  'Coding Session': { bg: 'bg-emerald-50 text-emerald-700', text: 'text-emerald-700', border: 'border-emerald-200' },
+  'Hands-on Session': { bg: 'bg-sky-50 text-sky-700', text: 'text-sky-700', border: 'border-sky-200' },
+  'Project Showcase': { bg: 'bg-pink-50 text-pink-700', text: 'text-pink-700', border: 'border-pink-200' },
+  'Community Meetup': { bg: 'bg-teal-50 text-teal-700', text: 'text-teal-700', border: 'border-teal-200' },
+  Other: { bg: 'bg-slate-50 text-slate-700', text: 'text-slate-700', border: 'border-slate-200' },
 };
 
-export function EventCard({ event, className }: { event: GEvent; className?: string }) {
-  const gradient = categoryStyles[event.category] || categoryStyles.Other;
+interface EventCardProps {
+  event: GEvent;
+  className?: string;
+  isRegistered?: boolean;
+  onRegisterClick?: (event: GEvent) => void;
+}
+
+export function EventCard({
+  event,
+  className,
+  isRegistered = false,
+  onRegisterClick,
+}: EventCardProps) {
+  const [highlightCount, setHighlightCount] = useState(false);
+  const [prevCount, setPrevCount] = useState(event.registeredCount);
+
+  // Trigger pulse effect when registration count increments
+  useEffect(() => {
+    if (event.registeredCount !== prevCount) {
+      setHighlightCount(true);
+      setPrevCount(event.registeredCount);
+      const timer = setTimeout(() => setHighlightCount(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [event.registeredCount, prevCount]);
+
+  const catStyle = categoryColors[event.category] || categoryColors.Other;
+  const isUpcoming = event.effectiveStatus === 'UPCOMING' || event.effectiveStatus === 'ONGOING';
+  const isCompleted = event.effectiveStatus === 'COMPLETED';
+  const isCancelled = event.effectiveStatus === 'CANCELLED';
+
+  const formatEventDateTime = () => {
+    const d = formatHumanDate(event.date);
+    if (event.startTime) {
+      return `${d} • ${event.startTime}`;
+    }
+    return d;
+  };
 
   return (
-    <Link
-      to={`/events/${event.eventId}`}
+    <div
       className={cn(
-        'group flex flex-col overflow-hidden rounded-2xl border border-navy-100 bg-white shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-lift',
+        'group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-300 hover:border-g-blue/40 hover:shadow-md md:rounded-3xl md:p-7',
+        highlightCount && 'ring-2 ring-g-blue ring-offset-2 transition-all',
         className
       )}
     >
-      <div className={cn('relative flex h-44 items-center justify-center overflow-hidden bg-gradient-to-br', gradient)}>
-        {event.banner ? (
-          <img src={event.banner} alt={event.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-        ) : (
-          <div className="flex flex-col items-center gap-2 p-6 text-center text-white">
-            <Rocket className="h-10 w-10 opacity-90" />
-            <span className="text-sm font-semibold">{event.category}</span>
-          </div>
-        )}
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
-          <span className="chip border border-white/20 bg-navy-950/60 text-white backdrop-blur-sm">{event.category}</span>
-          <div className="flex gap-1.5">
+      {/* Top Header: Date/Time + Category */}
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          {/* Category Chip */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span
+              className={cn(
+                'inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-semibold tracking-wide',
+                catStyle.bg,
+                catStyle.border
+              )}
+            >
+              {event.category}
+            </span>
             {event.isCertificateEligible && (
-              <span className="chip border border-white/20 bg-g-green/80 text-white backdrop-blur-sm" title="Certificate eligible">
+              <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
                 <Award className="h-3 w-3" /> Cert
               </span>
             )}
             {event.isInauguration && (
-              <span className="chip border border-white/20 bg-g-yellow/80 text-navy-900 backdrop-blur-sm" title="Inauguration">
-                <SparkleIcon className="h-3 w-3" /> Inauguration
+              <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+                <Sparkles className="h-3 w-3" /> Inauguration
               </span>
             )}
           </div>
-        </div>
-        <div className="absolute bottom-3 left-3">
+
+          {/* Status Badge */}
           <StatusBadge status={event.effectiveStatus} />
         </div>
+
+        {/* Date & Time */}
+        <div className="mt-3.5 flex items-center gap-1.5 text-xs font-medium text-g-blue">
+          <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+          <span>{formatEventDateTime()}</span>
+        </div>
+
+        {/* Title */}
+        <Link to={`/events/${event.eventId}`} className="group/title mt-2 block">
+          <h3 className="font-display text-lg font-bold leading-snug text-navy-900 transition-colors group-hover/title:text-g-blue sm:text-xl">
+            {event.title}
+          </h3>
+        </Link>
+
+        {/* Description */}
+        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500 sm:text-sm">
+          {event.shortDescription || event.description || 'Join us for this exciting GDGoC GCEE session.'}
+        </p>
+
+        {/* Venue */}
+        <div className="mt-3.5 flex items-center gap-1.5 text-xs text-slate-600">
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-g-red" />
+          <span className="truncate font-medium">{event.venue || 'Main Auditorium'}</span>
+        </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="font-display text-base font-bold leading-snug text-navy-900 transition-colors group-hover:text-g-blue">
-          {event.title}
-        </h3>
-        {event.shortDescription && (
-          <p className="mt-1.5 line-clamp-2 text-sm text-ink-muted">{event.shortDescription}</p>
-        )}
-
-        <div className="mt-4 space-y-2 text-sm text-ink-soft">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 shrink-0 text-g-blue" />
-            <span>{formatHumanDate(event.date)}</span>
-            {event.startTime && (
-              <span className="ml-auto flex items-center gap-1 text-xs text-ink-muted">
-                <Clock className="h-3.5 w-3.5" /> {event.startTime}
-              </span>
+      {/* Card Footer: Live Attendee Count & Action Button */}
+      <div className="mt-6 border-t border-slate-100 pt-4">
+        <div className="flex items-center justify-between gap-3">
+          {/* Live Attendee Count with People icon */}
+          <div
+            className={cn(
+              'flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-1.5 transition-all duration-300',
+              highlightCount && 'scale-105 border-g-blue/30 bg-blue-50/80 text-g-blue font-bold shadow-sm'
             )}
+            title="Live Attendee Count (calculated directly from database)"
+          >
+            <span className="text-base leading-none" role="img" aria-label="attendees">
+              👥
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="font-mono text-sm font-bold text-navy-900 transition-all">
+                {event.registeredCount}
+              </span>
+              <span className="text-[11px] font-medium text-slate-500">
+                {event.capacity > 0 ? `/ ${event.capacity}` : 'registered'}
+              </span>
+            </div>
+            {/* Live pulsing dot */}
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 shrink-0 text-g-green" />
-            <span className="truncate">{event.venue || 'Venue TBA'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <User2 className="h-4 w-4 shrink-0 text-g-yellow" />
-            <span className="truncate">{event.speaker || 'GDGoC GCEE'}</span>
-          </div>
-        </div>
 
-        <div className="mt-4 flex items-center justify-between border-t border-navy-50 pt-3">
-          <span className="flex items-center gap-1.5 text-xs text-ink-muted">
-            <Users className="h-4 w-4" />
-            {event.registeredCount + (event.manualRegistrationCount || 0)}
-            {event.capacity > 0 ? ` / ${event.capacity}` : ''} registered
-          </span>
-          <span className="text-xs font-semibold text-g-blue opacity-0 transition-opacity group-hover:opacity-100">
-            View details →
-          </span>
+          {/* Action Button */}
+          {isRegistered ? (
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Registered
+            </span>
+          ) : isCancelled ? (
+            <span className="rounded-xl border border-rose-100 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-600">
+              Cancelled
+            </span>
+          ) : isCompleted ? (
+            <Link
+              to={`/events/${event.eventId}`}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              Details <ArrowRight className="h-3 w-3" />
+            </Link>
+          ) : event.registrationEnabled ? (
+            onRegisterClick ? (
+              <button
+                type="button"
+                onClick={() => onRegisterClick(event)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-g-blue px-4 py-2 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-blue-600 hover:shadow active:scale-95"
+              >
+                Register Now
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            ) : (
+              <Link
+                to={`/events/${event.eventId}`}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-g-blue px-4 py-2 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-blue-600 hover:shadow active:scale-95"
+              >
+                Register Now
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            )
+          ) : (
+            <span className="rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2 text-xs font-medium text-slate-400">
+              Closed
+            </span>
+          )}
         </div>
       </div>
-    </Link>
-  );
-}
-
-function SparkleIcon(props: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="12" height="12" {...props}>
-      <path d="M12 2l1.9 5.7a2 2 0 0 0 1.3 1.3L21 11l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 20l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 11l5.8-1.9a2 2 0 0 0 1.3-1.3L12 2z" />
-    </svg>
+    </div>
   );
 }

@@ -132,7 +132,23 @@ export default function EventRegister() {
       if (res.data.registrationId) {
         setRegistrationId(res.data.registrationId);
       }
-      toast.success('Registration completed! Confirmation email sent.');
+
+      // Broadcast live count update
+      try {
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('gdgoc_events_sync');
+          channel.postMessage({
+            type: 'EVENT_REGISTERED',
+            eventId: event.eventId,
+            registeredCount: res.data.registeredCount ?? (event.registeredCount + 1),
+          });
+          channel.close();
+        }
+      } catch (bcErr) {
+        console.warn('BroadcastChannel error:', bcErr);
+      }
+
+      toast.success('Registration completed! Attendee count updated.');
 
       if (event.googleFormUrl) {
         window.open(event.googleFormUrl, '_blank', 'noopener,noreferrer');

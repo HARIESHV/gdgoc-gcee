@@ -80,9 +80,12 @@ export default function EventDetail() {
     if (!student) { setShowForm(true); return; }
     setRegBusy(true);
     try {
-      await api.post(`/events/${event.eventId}/register`);
+      const res = await api.post(`/events/${event.eventId}/register`);
       setRegistered(true);
-      toast.success('Registration successful!');
+      if (res.data.registeredCount !== undefined) {
+        setEvent((prev) => prev ? { ...prev, registeredCount: res.data.registeredCount } : null);
+      }
+      toast.success('Registration successful! Live attendee count updated.');
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -366,6 +369,10 @@ export default function EventDetail() {
         <EventRegistrationForm
           event={event}
           onClose={() => setShowForm(false)}
+          onSuccess={(newCount) => {
+            setRegistered(true);
+            setEvent((prev) => prev ? { ...prev, registeredCount: newCount } : null);
+          }}
         />
       )}
     </>

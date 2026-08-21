@@ -34,7 +34,6 @@ const certificateSchema = new Schema(
   { timestamps: true }
 );
 
-certificateSchema.index({ certificateId: 1 }, { unique: true });
 // Campaign certificates: one per student per campaign.
 certificateSchema.index({ studentId: 1, campaignId: 1 }, { unique: true, sparse: true });
 // Event certificates: one per student per event (prevents duplicate issuance).

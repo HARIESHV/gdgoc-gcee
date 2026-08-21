@@ -12,7 +12,7 @@ const googleFormRegistrationSchema = new Schema(
     department: { type: String, default: '' },
     year: { type: String, default: '' },
     college: { type: String, default: '' },
-    source: { type: String, enum: ['webhook', 'sheets-sync', 'manual'], default: 'webhook' },
+    source: { type: String, enum: ['webhook', 'sheets-sync', 'manual', 'web-registration'], default: 'webhook' },
     isRead: { type: Boolean, default: false },
     submittedAt: { type: Date, default: () => new Date() },
   },

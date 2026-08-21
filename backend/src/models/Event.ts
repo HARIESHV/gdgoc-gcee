@@ -49,7 +49,6 @@ const eventSchema = new Schema(
   { timestamps: true }
 );
 
-eventSchema.index({ eventId: 1 }, { unique: true });
 eventSchema.index({ date: 1 });
 eventSchema.index({ category: 1 });
 

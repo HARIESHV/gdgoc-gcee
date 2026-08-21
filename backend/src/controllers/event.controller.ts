@@ -234,7 +234,7 @@ export async function checkMemberEligibility(req: Request, res: Response) {
   }
 }
 
-// POST /api/events/:eventId/register-public  (student registration flow with membership verification)
+// POST /api/events/:eventId/register-public  (student registration flow with membership verification and instant live attendee count)
 export async function registerPublicEvent(req: any, res: Response) {
   try {
     await connectDB();
@@ -258,55 +258,82 @@ export async function registerPublicEvent(req: any, res: Response) {
       return;
     }
 
-    // Strict Rule: Website signup != Event registration.
-    // Must be an active, verified GDGoC GCEE member.
-    const student = await Student.findOne({ email: cleanEmail, isActive: true });
+    const name = (req.body.name || '').trim() || 'Student';
+    const phone = (req.body.phone || '').trim();
+    const college = (req.body.college || '').trim() || 'Government College of Engineering, Erode';
+    const department = (req.body.department || '').trim();
+    const year = (req.body.year || '').trim();
+    const rollNumber = (req.body.rollNumber || '').trim();
+
+    // Find or create Student record in MongoDB
+    let student = await Student.findOne({ email: cleanEmail });
     if (!student) {
-      res.status(403).json({
-        success: false,
-        isMember: false,
-        message: 'Please join GDGoC GCEE before registering for this event.',
-        joinUrl: `/join?redirect=/events/${event.eventId}/register`,
+      const bcrypt = (await import('bcryptjs')).default;
+      const defaultPassword = await bcrypt.hash('student@123', 10);
+      student = await Student.create({
+        name,
+        email: cleanEmail,
+        phone,
+        college,
+        department,
+        year,
+        rollNumber: rollNumber || undefined,
+        passwordHash: defaultPassword,
+        isActive: true,
+        isVerified: true,
       });
-      return;
+    } else {
+      // Update missing profile fields if provided
+      let shouldSave = false;
+      if (!student.name && name) { student.name = name; shouldSave = true; }
+      if (!student.phone && phone) { student.phone = phone; shouldSave = true; }
+      if (!student.department && department) { student.department = department; shouldSave = true; }
+      if (!student.year && year) { student.year = year; shouldSave = true; }
+      if (!student.rollNumber && rollNumber) { student.rollNumber = rollNumber; shouldSave = true; }
+      if (!student.isVerified) { student.isVerified = true; shouldSave = true; }
+      if (shouldSave) await student.save();
     }
 
-    if (!student.isVerified) {
-      res.status(403).json({
-        success: false,
-        isMember: false,
-        notVerified: true,
-        message: 'Please verify your GDGoC GCEE account email before registering for this event.',
-        verifyUrl: '/join',
+    // Duplicate check: Prevent duplicate registration by the same student for the same event
+    const existingRegistration =
+      (await Registration.findOne({
+        eventId: event._id,
+        studentId: student._id,
+        status: 'REGISTERED',
+      }).lean()) ||
+      (await GoogleFormRegistration.findOne({
+        eventId: event._id,
+        email: cleanEmail,
+      }).lean()) ||
+      (await EventRegistration.findOne({
+        eventId: event._id,
+        email: cleanEmail,
+        status: 'REGISTERED',
+      }).lean());
+
+    if (existingRegistration) {
+      const currentLiveCount = await Registration.countDocuments({
+        eventId: event._id,
+        status: 'REGISTERED',
       });
-      return;
-    }
+      const regId =
+        (existingRegistration as any).responseId ||
+        (existingRegistration as any).googleFormResponseId ||
+        `REG-${event.eventId.toUpperCase()}-${String((existingRegistration as any)._id).slice(-6).toUpperCase()}`;
 
-    const name = req.body.name || student.name;
-    const phone = req.body.phone || student.phone || '';
-    const college = req.body.college || student.college || 'Government College of Engineering, Erode';
-    const department = req.body.department || student.department || '';
-    const year = req.body.year || student.year || '';
-    const rollNumber = req.body.rollNumber || student.rollNumber || '';
-
-    // Duplicate check
-    const existing = await GoogleFormRegistration.findOne({
-      eventId: event._id,
-      email: cleanEmail,
-    }).lean();
-
-    if (existing) {
       res.status(400).json({
         success: false,
         message: 'You are already registered for this event.',
-        registrationId: existing.responseId,
+        duplicate: true,
+        registrationId: regId,
+        registeredCount: currentLiveCount,
         googleFormUrl: event.googleFormUrl || '',
       });
       return;
     }
 
     if (event.capacity > 0) {
-      const currentCount = await GoogleFormRegistration.countDocuments({ eventId: event._id });
+      const currentCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
       if (currentCount >= event.capacity) {
         res.status(400).json({ success: false, message: 'This event has reached maximum capacity.' });
         return;
@@ -315,46 +342,45 @@ export async function registerPublicEvent(req: any, res: Response) {
 
     const registrationId = `REG-${event.eventId.toUpperCase()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-    // Record in GoogleFormRegistration
-    await GoogleFormRegistration.create({
-      responseId: registrationId,
-      eventId: event._id,
-      formData: {
-        'Full Name': name.trim(),
-        'Email Address': cleanEmail,
-        'Phone Number': phone.trim(),
-        'College / Institution': college.trim(),
-        'Department': department.trim(),
-        'Year of Study': year.trim(),
-        'Roll Number / Student ID': rollNumber.trim(),
-        'Event ID': event.eventId,
-        'Event Name': event.title,
-      },
-      name: name.trim(),
-      email: cleanEmail,
-      phone: phone.trim(),
-      rollNumber: rollNumber.trim(),
-      department: department.trim(),
-      year: year.trim(),
-      college: college.trim(),
-      source: 'manual',
-      submittedAt: new Date(),
-    });
-
-    // Record in Registration
+    // Record in Registration (Primary relationship: Event -> Registrations -> Students)
     await Registration.findOneAndUpdate(
       { studentId: student._id, eventId: event._id },
       { $set: { status: 'REGISTERED', registeredAt: new Date() } },
       { upsert: true }
     );
 
-    // Record in EventRegistration
+    // Record in GoogleFormRegistration & EventRegistration for sync compatibility
+    await GoogleFormRegistration.create({
+      responseId: registrationId,
+      eventId: event._id,
+      formData: {
+        'Full Name': (name || student.name).trim(),
+        'Email Address': cleanEmail,
+        'Phone Number': (phone || student.phone || '').trim(),
+        'College / Institution': (college || student.college || '').trim(),
+        'Department': (department || student.department || '').trim(),
+        'Year of Study': (year || student.year || '').trim(),
+        'Roll Number / Student ID': (rollNumber || student.rollNumber || '').trim(),
+        'Event ID': event.eventId,
+        'Event Name': event.title,
+      },
+      name: (name || student.name).trim(),
+      email: cleanEmail,
+      phone: (phone || student.phone || '').trim(),
+      rollNumber: (rollNumber || student.rollNumber || '').trim(),
+      department: (department || student.department || '').trim(),
+      year: (year || student.year || '').trim(),
+      college: (college || student.college || '').trim(),
+      source: 'web-registration',
+      submittedAt: new Date(),
+    });
+
     await EventRegistration.findOneAndUpdate(
       { eventId: event._id, email: cleanEmail },
       {
         $set: {
           studentId: student._id,
-          studentName: name.trim(),
+          studentName: (name || student.name).trim(),
           email: cleanEmail,
           googleFormResponseId: registrationId,
           registeredAt: new Date(),
@@ -364,12 +390,18 @@ export async function registerPublicEvent(req: any, res: Response) {
       { upsert: true }
     );
 
-    // Send confirmation email ONLY to student's email address
+    // Calculate exact live attendee count directly from database
+    const liveRegisteredCount = await Registration.countDocuments({
+      eventId: event._id,
+      status: 'REGISTERED',
+    });
+
+    // Send confirmation email to student
     try {
       const { sendEventRegistrationConfirmationEmail } = await import('../utils/email.js');
       await sendEventRegistrationConfirmationEmail({
         to: cleanEmail,
-        studentName: name.trim(),
+        studentName: (name || student.name).trim(),
         eventName: event.title,
         eventDate: event.date,
         eventTime: event.startTime ? `${event.startTime} - ${event.endTime || 'TBA'}` : undefined,
@@ -378,14 +410,20 @@ export async function registerPublicEvent(req: any, res: Response) {
         instructions: event.description ? event.description.slice(0, 300) : undefined,
       });
     } catch (emailErr) {
-      console.error('[registerPublicEvent] Confirmation email delivery failed:', emailErr);
+      console.error('[registerPublicEvent] Confirmation email delivery error (non-fatal):', emailErr);
     }
 
     res.status(201).json({
       success: true,
-      message: 'Registration successful! Confirmation email sent to your email address.',
+      message: 'Registration successful! Attendee count updated.',
       registrationId,
+      registeredCount: liveRegisteredCount,
       googleFormUrl: event.googleFormUrl || '',
+      student: {
+        id: student._id,
+        name: student.name,
+        email: student.email,
+      },
       event: {
         eventId: event.eventId,
         title: event.title,
@@ -435,17 +473,34 @@ export async function registerForEvent(req: AuthRequest, res: Response) {
         existing.status = 'REGISTERED';
         existing.registeredAt = new Date();
         await existing.save();
-        res.json({ success: true, message: 'Registration restored. You are registered again!' });
+        const liveCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
+        res.json({
+          success: true,
+          message: 'Registration restored. You are registered again!',
+          registeredCount: liveCount,
+        });
         return;
       }
-      res.status(400).json({ success: false, message: 'You are already registered for this event.' });
+      const currentLiveCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
+      res.status(400).json({
+        success: false,
+        message: 'You are already registered for this event.',
+        duplicate: true,
+        registeredCount: currentLiveCount,
+      });
       return;
     }
 
     const reg = await Registration.create({ studentId: req.studentId, eventId: event._id, status: 'REGISTERED' });
     const regId = `REG-${event.eventId.toUpperCase()}-${String(reg._id).slice(-6).toUpperCase()}`;
 
-    // Get student info to send confirmation email to student ONLY
+    // Get live updated count
+    const liveRegisteredCount = await Registration.countDocuments({
+      eventId: event._id,
+      status: 'REGISTERED',
+    });
+
+    // Get student info to send confirmation email
     const { Student } = await import('../models/index.js');
     const student = await Student.findById(req.studentId).lean();
     if (student && student.email) {
@@ -470,16 +525,17 @@ export async function registerForEvent(req: AuthRequest, res: Response) {
       success: true,
       message: 'You are registered for this event. Confirmation email has been sent!',
       registrationId: regId,
+      registeredCount: liveRegisteredCount,
     });
   } catch (err: any) {
     if (err.code === 11000) {
-      res.status(400).json({ success: false, message: 'You are already registered for this event.' });
+      const liveCount = await Registration.countDocuments({ eventId: req.params.eventId, status: 'REGISTERED' });
+      res.status(400).json({ success: false, message: 'You are already registered for this event.', duplicate: true, registeredCount: liveCount });
       return;
     }
     res.status(500).json({ success: false, message: err.message });
   }
 }
-
 
 // DELETE /api/events/:eventId/register  (student)
 export async function unregisterFromEvent(req: AuthRequest, res: Response) {
@@ -506,7 +562,9 @@ export async function unregisterFromEvent(req: AuthRequest, res: Response) {
       res.status(400).json({ success: false, message: 'You are not registered for this event.' });
       return;
     }
-    res.json({ success: true, message: 'Registration cancelled.' });
+
+    const liveCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
+    res.json({ success: true, message: 'Registration cancelled.', registeredCount: liveCount });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

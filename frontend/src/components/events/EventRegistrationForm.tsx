@@ -1,30 +1,47 @@
-import { useState } from 'react';
-import { X, CheckCircle2, Loader2, User, Mail, Phone, Building2, GraduationCap, Hash } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, CheckCircle2, Loader2, User, Mail, Phone, Building2, GraduationCap, Hash, Sparkles, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getErrorMessage } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import type { GEvent } from '../../types';
 
 interface Props {
   event: GEvent;
   onClose: () => void;
+  onSuccess?: (registeredCount: number, registrationId: string, eventId: string) => void;
 }
 
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', 'PG - 1st Year', 'PG - 2nd Year', 'Other'];
 const DEPARTMENTS = ['CSE', 'IT', 'CSDS', 'ECE', 'EEE', 'MECH', 'CIVIL', 'AIDS', 'AIML', 'Other'];
 
-export function EventRegistrationForm({ event, onClose }: Props) {
+export function EventRegistrationForm({ event, onClose, onSuccess }: Props) {
+  const { student: authStudent } = useAuth();
   const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    college: 'Government College of Engineering, Erode',
-    department: '',
-    year: '',
-    rollNumber: '',
+    name: authStudent?.name || '',
+    email: authStudent?.email || '',
+    phone: authStudent?.phone || '',
+    college: authStudent?.college || 'Government College of Engineering, Erode',
+    department: authStudent?.department || '',
+    year: authStudent?.year || '',
+    rollNumber: authStudent?.rollNumber || '',
   });
   const [busy, setBusy] = useState(false);
-  const [success, setSuccess] = useState<{ registrationId: string } | null>(null);
+  const [success, setSuccess] = useState<{ registrationId: string; registeredCount: number } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (authStudent) {
+      setForm({
+        name: authStudent.name || '',
+        email: authStudent.email || '',
+        phone: authStudent.phone || '',
+        college: authStudent.college || 'Government College of Engineering, Erode',
+        department: authStudent.department || '',
+        year: authStudent.year || '',
+        rollNumber: authStudent.rollNumber || '',
+      });
+    }
+  }, [authStudent]);
 
   function validate() {
     const e: Record<string, string> = {};
@@ -58,9 +75,41 @@ export function EventRegistrationForm({ event, onClose }: Props) {
         year: form.year,
         rollNumber: form.rollNumber.trim(),
       });
-      setSuccess({ registrationId: res.data.registrationId });
-    } catch (err) {
-      toast.error(getErrorMessage(err));
+
+      const newCount = res.data.registeredCount ?? event.registeredCount + 1;
+      const regId = res.data.registrationId;
+
+      setSuccess({
+        registrationId: regId,
+        registeredCount: newCount,
+      });
+
+      // Broadcast across tabs/windows for immediate live sync
+      try {
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('gdgoc_events_sync');
+          channel.postMessage({
+            type: 'EVENT_REGISTERED',
+            eventId: event.eventId,
+            registeredCount: newCount,
+          });
+          channel.close();
+        }
+      } catch (bcErr) {
+        console.warn('BroadcastChannel error:', bcErr);
+      }
+
+      if (onSuccess) {
+        onSuccess(newCount, regId, event.eventId);
+      }
+
+      toast.success(`Registration successful! Attendee count is now ${newCount}`);
+    } catch (err: any) {
+      const errorMsg = getErrorMessage(err);
+      toast.error(errorMsg);
+      if (err.response?.data?.duplicate) {
+        setErrors({ email: 'You are already registered for this event.' });
+      }
     } finally {
       setBusy(false);
     }
@@ -68,19 +117,24 @@ export function EventRegistrationForm({ event, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-navy-950/60 p-0 sm:p-4 backdrop-blur-sm sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative w-full max-w-lg overflow-hidden rounded-t-2xl border border-black/10 bg-white shadow-2xl sm:rounded-2xl">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:rounded-3xl animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-black/10 px-6 py-4">
-          <div>
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-black/30">Registration</p>
-            <h2 className="mt-0.5 font-mono text-sm font-bold text-black line-clamp-1">{event.title}</h2>
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-g-blue/10 text-g-blue">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-g-blue">GDGoC GCEE Registration</p>
+              <h2 className="font-display text-sm font-bold text-navy-900 line-clamp-1">{event.title}</h2>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-black/40 transition hover:bg-black hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition hover:bg-slate-100 hover:text-navy-900"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -89,41 +143,62 @@ export function EventRegistrationForm({ event, onClose }: Props) {
 
         {/* Success state */}
         {success ? (
-          <div className="flex flex-col items-center gap-4 p-8 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+          <div className="flex flex-col items-center gap-5 p-6 sm:p-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/50">
+              <CheckCircle2 className="h-8 w-8" />
             </div>
             <div>
-              <h3 className="font-mono text-lg font-bold text-black">Registration Successful!</h3>
-              <p className="mt-2 text-sm text-black/50">
-                A confirmation email has been sent to <strong>{form.email}</strong>.
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                ✓ Registration Confirmed
+              </span>
+              <h3 className="mt-2 font-display text-xl font-bold text-navy-900">You're on the attendee list!</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                A confirmation email has been dispatched to <strong className="text-navy-900">{form.email}</strong>.
               </p>
             </div>
-            <div className="w-full rounded border border-black/10 bg-gray-50 p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-black/30">Registration ID</p>
-              <p className="mt-1 font-mono text-base font-bold text-black">{success.registrationId}</p>
+
+            {/* Live Count Update Display */}
+            <div className="grid w-full grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Live Attendee Count</p>
+                <div className="mt-1 flex items-center justify-center gap-1.5 font-display text-2xl font-black text-g-blue">
+                  <span>👥</span>
+                  <span>{success.registeredCount}</span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Registration ID</p>
+                <p className="mt-1.5 font-mono text-xs font-bold text-navy-900 truncate">
+                  {success.registrationId}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-black/40">Please keep your Registration ID handy for check-in.</p>
+
+            <p className="text-[11px] text-slate-400">
+              The event attendee count has been updated live in the database.
+            </p>
+
             <button
               onClick={onClose}
-              className="w-full border border-black bg-black py-3 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black"
+              className="w-full rounded-xl bg-g-blue py-3 font-semibold text-sm text-white shadow-sm transition hover:bg-blue-600 active:scale-98"
             >
-              Close
+              Done
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="max-h-[80vh] overflow-y-auto">
+          <form onSubmit={handleSubmit} className="max-h-[75vh] overflow-y-auto">
             <div className="space-y-4 p-6">
               {/* Name */}
               <Field label="Full Name" error={errors.name} required>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" />
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={form.name}
                     onChange={(e) => handleChange('name', e.target.value)}
-                    placeholder="Your full name"
-                    className="w-full border border-black/10 bg-white py-2.5 pl-10 pr-4 text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
+                    placeholder="e.g. John Doe"
+                    className="input pl-10 text-sm"
                   />
                 </div>
               </Field>
@@ -131,13 +206,13 @@ export function EventRegistrationForm({ event, onClose }: Props) {
               {/* Email */}
               <Field label="Student Email Address" error={errors.email} required>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="email"
                     value={form.email}
                     onChange={(e) => handleChange('email', e.target.value)}
-                    placeholder="your@email.com"
-                    className="w-full border border-black/10 bg-white py-2.5 pl-10 pr-4 text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
+                    placeholder="student@example.com"
+                    className="input pl-10 text-sm"
                   />
                 </div>
               </Field>
@@ -145,13 +220,13 @@ export function EventRegistrationForm({ event, onClose }: Props) {
               {/* Phone */}
               <Field label="Phone Number" error={errors.phone} required>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" />
+                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="tel"
                     value={form.phone}
                     onChange={(e) => handleChange('phone', e.target.value)}
                     placeholder="10-digit mobile number"
-                    className="w-full border border-black/10 bg-white py-2.5 pl-10 pr-4 text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
+                    className="input pl-10 text-sm"
                   />
                 </div>
               </Field>
@@ -159,13 +234,13 @@ export function EventRegistrationForm({ event, onClose }: Props) {
               {/* College */}
               <Field label="College / Institution">
                 <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" />
+                  <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={form.college}
                     onChange={(e) => handleChange('college', e.target.value)}
-                    placeholder="Your college name"
-                    className="w-full border border-black/10 bg-white py-2.5 pl-10 pr-4 text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
+                    placeholder="Government College of Engineering, Erode"
+                    className="input pl-10 text-sm"
                   />
                 </div>
               </Field>
@@ -174,13 +249,13 @@ export function EventRegistrationForm({ event, onClose }: Props) {
                 {/* Department */}
                 <Field label="Department" error={errors.department} required>
                   <div className="relative">
-                    <GraduationCap className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" />
+                    <GraduationCap className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <select
                       value={form.department}
                       onChange={(e) => handleChange('department', e.target.value)}
-                      className="w-full appearance-none border border-black/10 bg-white py-2.5 pl-10 pr-4 text-sm text-black focus:border-black focus:outline-none"
+                      className="input pl-10 text-sm"
                     >
-                      <option value="">Select</option>
+                      <option value="">Select Dept</option>
                       {DEPARTMENTS.map((d) => (
                         <option key={d} value={d}>{d}</option>
                       ))}
@@ -193,9 +268,9 @@ export function EventRegistrationForm({ event, onClose }: Props) {
                   <select
                     value={form.year}
                     onChange={(e) => handleChange('year', e.target.value)}
-                    className="w-full appearance-none border border-black/10 bg-white px-3 py-2.5 text-sm text-black focus:border-black focus:outline-none"
+                    className="input text-sm"
                   >
-                    <option value="">Select</option>
+                    <option value="">Select Year</option>
                     {YEARS.map((y) => (
                       <option key={y} value={y}>{y}</option>
                     ))}
@@ -204,41 +279,44 @@ export function EventRegistrationForm({ event, onClose }: Props) {
               </div>
 
               {/* Roll Number */}
-              <Field label="Student ID / Roll Number">
+              <Field label="Roll Number / Student ID">
                 <div className="relative">
-                  <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" />
+                  <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={form.rollNumber}
                     onChange={(e) => handleChange('rollNumber', e.target.value)}
-                    placeholder="Optional"
-                    className="w-full border border-black/10 bg-white py-2.5 pl-10 pr-4 text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none"
+                    placeholder="e.g. 2024CSE001"
+                    className="input pl-10 text-sm"
                   />
                 </div>
               </Field>
 
-              {/* Auto-filled info note */}
-              <div className="rounded border border-black/5 bg-gray-50 px-4 py-3 text-xs text-black/40">
-                Event: <span className="font-semibold text-black/60">{event.title}</span> · Date: <span className="font-semibold text-black/60">{event.date}</span>
-                {event.venue && (<> · Venue: <span className="font-semibold text-black/60">{event.venue}</span></>)}
+              {/* Live Attendee Counter Info Box */}
+              <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-g-blue" />
+                  <span>Current Attendees:</span>
+                </div>
+                <span className="font-mono font-bold text-g-blue">👥 {event.registeredCount}</span>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="border-t border-black/10 px-6 py-4">
+            <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-4">
               <button
                 type="submit"
                 disabled={busy}
-                className="flex w-full items-center justify-center gap-2 border border-black bg-black py-3 font-mono text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-50"
+                className="btn-primary w-full !py-3 text-sm font-semibold flex items-center justify-center gap-2"
               >
                 {busy ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Registering...</>
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Registering & Updating Count...</>
                 ) : (
-                  'Register Now'
+                  'Complete Registration'
                 )}
               </button>
-              <p className="mt-2 text-center text-[10px] text-black/30">
-                A confirmation email will be sent to your email address.
+              <p className="mt-2 text-center text-[10px] text-slate-400">
+                Your registration will immediately increment the live attendee count on this event card.
               </p>
             </div>
           </form>
@@ -251,11 +329,11 @@ export function EventRegistrationForm({ event, onClose }: Props) {
 function Field({ label, children, error, required }: { label: string; children: React.ReactNode; error?: string; required?: boolean }) {
   return (
     <div>
-      <label className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-widest text-black/40">
-        {label}{required && <span className="ml-1 text-red-500">*</span>}
+      <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-600">
+        {label}{required && <span className="ml-1 text-g-red">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-[11px] text-red-500">{error}</p>}
+      {error && <p className="mt-1 text-[11px] font-medium text-g-red">{error}</p>}
     </div>
   );
 }
