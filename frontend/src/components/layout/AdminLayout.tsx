@@ -22,6 +22,7 @@ export function AdminLayout() {
     { label: 'Events', to: '/admin/events', icon: CalendarDays },
     { label: 'Event Registrations', to: '/admin/form-registrations', icon: ClipboardList },
     { label: 'Members', to: '/admin/members', icon: UsersRound },
+    { label: 'Emails', to: '/admin/bulk-email', icon: Mail },
     { label: 'Certificates', to: '/admin/certificates', icon: Award },
     { label: 'Gallery', to: '/admin/gallery', icon: Image },
     { label: 'Messages', to: '/admin/messages', icon: MessageSquare },
