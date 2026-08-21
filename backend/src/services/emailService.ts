@@ -226,27 +226,21 @@ export interface ContactEmailOptions {
 }
 
 /**
- * Send the Contact Us notification through Resend ONLY.
- * Delivered to gdgocgcee@gmail.com with the student's email as Reply-To.
- * Never use this for normal website emails; never route Contact Us through Nodemailer.
+ * Send Contact Us notification to the GDGoC GCEE team via Gmail SMTP (Nodemailer).
  */
-export async function sendContactEmailWithResend(opts: ContactEmailOptions): Promise<EmailSendResult> {
-  if (!isResendConfigured()) {
-    console.error('[emailService] Resend is not configured. Missing RESEND_API_KEY.');
-    return { success: false, error: 'Message service is not configured on the server.' };
-  }
-
+export async function sendContactUsNotification(opts: ContactEmailOptions): Promise<EmailSendResult> {
   const cleanEmail = (opts.email || '').trim().toLowerCase();
   if (!isValidEmail(cleanEmail)) {
     return { success: false, error: 'Please provide a valid email address.' };
   }
 
+  const recipient = getContactRecipientEmail();
   const submittedAt = opts.submittedAt || new Date();
   const safeName = escapeHtml(opts.name);
   const safeEmail = escapeHtml(cleanEmail);
   const safeSubject = escapeHtml(sanitizeHeaderValue(opts.subject));
   const safeMessage = escapeHtml(opts.message);
-  const safePhone = opts.phone ? escapeHtml(opts.phone.trim()) : '';
+  const safePhone = opts.phone ? escapeHtml(opts.phone.trim()) : 'Not provided';
   const safeDate = escapeHtml(
     submittedAt.toLocaleString('en-IN', { timeZone: CLUB.timezone, dateStyle: 'medium', timeStyle: 'short' })
   );
@@ -254,42 +248,137 @@ export async function sendContactEmailWithResend(opts: ContactEmailOptions): Pro
   const html = baseEmailHtml(`
     <tr>
       <td style="padding: 28px 32px;">
-        <h2 style="margin:0 0 16px 0; color:#0b1b33; font-size:18px;">New Contact Us Message</h2>
-        <p style="margin:0 0 8px 0; color:#374151;"><strong>Name:</strong> ${safeName}</p>
-        <p style="margin:0 0 8px 0; color:#374151;"><strong>Email:</strong> ${safeEmail}</p>
-        ${safePhone ? `<p style="margin:0 0 8px 0; color:#374151;"><strong>Phone:</strong> ${safePhone}</p>` : ''}
-        <p style="margin:0 0 16px 0; color:#374151;"><strong>Subject:</strong> ${safeSubject}</p>
-        <div style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin:16px 0; white-space:pre-wrap; color:#1e293b; font-size:14px; line-height:1.6;">${safeMessage}</div>
-        <p style="margin:16px 0 0 0; color:#64748b; font-size:13px;"><strong>Submitted:</strong> ${safeDate} (IST)</p>
-        <p style="color:#94a3b8; font-size:12px; margin:12px 0 0 0;">Reply directly to this email to respond to ${safeName}. Submitted via GDGoC GCEE Contact Form.</p>
+        <h2 style="margin:0 0 16px 0; color:#0b1b33; font-size:20px; font-weight:700;">New Contact Form Submission</h2>
+        <div style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:18px; margin:16px 0;">
+          <p style="margin:0 0 8px 0; color:#374151; font-size:14px;"><strong>Name:</strong> ${safeName}</p>
+          <p style="margin:0 0 8px 0; color:#374151; font-size:14px;"><strong>Email:</strong> ${safeEmail}</p>
+          <p style="margin:0 0 8px 0; color:#374151; font-size:14px;"><strong>Phone:</strong> ${safePhone}</p>
+          <p style="margin:0 0 8px 0; color:#374151; font-size:14px;"><strong>Subject:</strong> ${safeSubject}</p>
+          <p style="margin:0; color:#64748b; font-size:13px;"><strong>Date:</strong> ${safeDate} (IST)</p>
+        </div>
+        <p style="margin:16px 0 6px 0; color:#0b1b33; font-size:14px; font-weight:600;">Message:</p>
+        <div style="background-color:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; white-space:pre-wrap; color:#1e293b; font-size:14px; line-height:1.6;">${safeMessage}</div>
+        <hr style="border:none; border-top:1px solid #e2e8f0; margin:24px 0;" />
+        <p style="color:#94a3b8; font-size:12px; margin:0;">You can reply directly to this email to respond to ${safeName}.</p>
       </td>
     </tr>
   `);
 
-  try {
-    const resend = getResendClient()!;
-    const res = await resend.emails.send({
-      from: `${CLUB.name} Website <${env.resendFromEmail}>`,
-      to: [WEBSITE_GMAIL_ADDRESS],
-      replyTo: cleanEmail,
-      subject: `[GDGoC GCEE Contact] ${sanitizeHeaderValue(opts.subject)}`,
-      html,
-      text: `New contact message from ${opts.name} <${cleanEmail}>\nSubject: ${sanitizeHeaderValue(opts.subject)}\n${safePhone ? `Phone: ${opts.phone!.trim()}\n` : ''}Submitted: ${submittedAt.toISOString()}\n\n${opts.message}`,
-    });
+  const text = `New Contact Form Submission
 
-    if (res.error) {
-      console.error('[emailService] Resend rejected contact message:', {
-        status: (res.error as any).statusCode || (res.error as any).name,
-        message: res.error.message,
-      });
-      return { success: false, error: 'Your message could not be sent right now. Please try again later.' };
-    }
+Name: ${opts.name}
+Email: ${cleanEmail}
+Phone: ${opts.phone || 'Not provided'}
+Subject: ${opts.subject}
+Date: ${submittedAt.toISOString()}
 
-    return { success: true, id: res.data?.id };
-  } catch (err: any) {
-    console.error('[emailService] Resend unexpected error:', err?.message);
-    return { success: false, error: 'Your message could not be sent right now. Please try again later.' };
+Message:
+${opts.message}
+`;
+
+  return sendGmailEmail({
+    to: recipient,
+    replyTo: cleanEmail,
+    subject: `[Contact Form] ${sanitizeHeaderValue(opts.subject)} – ${opts.name}`,
+    html,
+    text,
+  });
+}
+
+/**
+ * Send an automated confirmation/thank-you email to the visitor via Gmail SMTP (Nodemailer).
+ */
+export async function sendContactVisitorConfirmation(opts: {
+  name: string;
+  email: string;
+  subject: string;
+}): Promise<EmailSendResult> {
+  const cleanEmail = (opts.email || '').trim().toLowerCase();
+  if (!isValidEmail(cleanEmail)) {
+    return { success: false, error: 'Invalid recipient email.' };
   }
+
+  const safeName = escapeHtml(opts.name || 'Friend');
+  const safeSubject = escapeHtml(sanitizeHeaderValue(opts.subject));
+
+  const html = baseEmailHtml(`
+    <tr>
+      <td style="padding: 32px 32px 24px 32px;">
+        <h2 style="margin:0 0 16px 0; color:#0b1b33; font-size:20px; font-weight:700;">Thank You for Reaching Out!</h2>
+        <p style="margin:0; color:#334155; font-size:15px; line-height:1.5;">Hello <strong>${safeName}</strong>,</p>
+        <p style="margin:16px 0 0 0; color:#475569; font-size:14px; line-height:1.6;">
+          Thank you for contacting <strong>${CLUB.name}</strong> regarding <em>"${safeSubject}"</em>.
+        </p>
+        <p style="margin:12px 0 0 0; color:#475569; font-size:14px; line-height:1.6;">
+          We have received your message and our team will review it and get back to you as soon as possible.
+        </p>
+        <div style="background-color:#eff6ff; border:1px solid #dbeafe; border-radius:10px; padding:14px 18px; margin:20px 0;">
+          <p style="margin:0; color:#1e40af; font-size:13px; line-height:1.5;">
+            💡 While you wait, feel free to explore our upcoming events and student community programs on our website.
+          </p>
+        </div>
+        <hr style="border:none; border-top:1px solid #e2e8f0; margin:24px 0;" />
+        <p style="margin:0; color:#475569; font-size:13px; line-height:1.5;">
+          Warm regards,<br/>
+          <strong>${CLUB.name} Team</strong><br/>
+          ${CLUB.institution}
+        </p>
+      </td>
+    </tr>
+  `);
+
+  const text = `Hello ${opts.name || 'Friend'},
+
+Thank you for contacting ${CLUB.name} regarding "${opts.subject}".
+
+We have received your message and our team will get back to you as soon as possible.
+
+Warm regards,
+${CLUB.name} Team
+${CLUB.institution}`;
+
+  return sendGmailEmail({
+    to: cleanEmail,
+    subject: `Thank you for contacting ${CLUB.name}`,
+    html,
+    text,
+  });
+}
+
+/**
+ * Send Contact Message to Admin and Visitor Confirmation — Centralized Email Service
+ */
+export async function sendContactEmail(opts: {
+  fromName: string;
+  fromEmail: string;
+  subject: string;
+  message: string;
+  phone?: string;
+}): Promise<{ id?: string; error?: string }> {
+  // 1. Send notification to official club inbox
+  const adminResult = await sendContactUsNotification({
+    name: opts.fromName,
+    email: opts.fromEmail,
+    subject: opts.subject,
+    message: opts.message,
+    phone: opts.phone,
+    submittedAt: new Date(),
+  });
+
+  if (!adminResult.success) {
+    throw new Error(adminResult.error || 'Failed to deliver contact message.');
+  }
+
+  // 2. Send confirmation to visitor (async, does not fail main submission)
+  sendContactVisitorConfirmation({
+    name: opts.fromName,
+    email: opts.fromEmail,
+    subject: opts.subject,
+  }).catch((err) => {
+    console.warn('[emailService] Visitor confirmation email warning:', err?.message);
+  });
+
+  return { id: adminResult.id };
 }
 
 // ── 3. High-level website emails (ALL routed through Gmail/Nodemailer) ──

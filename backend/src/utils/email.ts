@@ -9,7 +9,9 @@ import {
   sendCertificateEmail as sendCertEmail,
   sendAdminAnnouncementEmail,
   sendBulkAnnouncementEmails,
-  sendContactEmailWithResend,
+  sendContactEmail,
+  sendContactUsNotification,
+  sendContactVisitorConfirmation,
   isGmailConfigured,
 } from '../services/emailService';
 import { getEmailConfigStatus, escapeHtml } from '../lib/mailer';
@@ -27,34 +29,10 @@ export {
   sendCertEmail as sendCertificateEmail,
   sendAdminAnnouncementEmail,
   sendBulkAnnouncementEmails,
+  sendContactEmail,
+  sendContactUsNotification,
+  sendContactVisitorConfirmation,
 };
-
-/**
- * Send Contact Message to Admin — RESEND ONLY.
- * Never routes through Nodemailer/Gmail SMTP.
- */
-export async function sendContactEmail(opts: {
-  fromName: string;
-  fromEmail: string;
-  subject: string;
-  message: string;
-  phone?: string;
-}): Promise<{ id?: string; error?: string }> {
-  const result = await sendContactEmailWithResend({
-    name: opts.fromName,
-    email: opts.fromEmail,
-    subject: opts.subject,
-    message: opts.message,
-    phone: opts.phone,
-    submittedAt: new Date(),
-  });
-
-  if (!result.success) {
-    throw new Error(result.error || 'Failed to deliver contact message.');
-  }
-
-  return { id: result.id };
-}
 
 /**
  * Send Event Registration Confirmation Email with Registration ID

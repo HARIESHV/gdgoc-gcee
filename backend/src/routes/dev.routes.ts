@@ -3,10 +3,9 @@ import rateLimit from 'express-rate-limit';
 import { env } from '../config/env';
 import {
   isGmailConfigured,
-  isResendConfigured,
   verifyGmailConnection,
   sendGmailEmail,
-  sendContactEmailWithResend,
+  sendContactUsNotification,
 } from '../services/emailService';
 
 /**
@@ -73,7 +72,6 @@ router.post('/test-email', devTestLimiter, async (req: Request, res: Response) =
     }
     results.testA_gmailSmtp = {
       provider: 'Nodemailer → Gmail SMTP',
-      usesResend: false,
       smtpAuthVerified: auth.ok,
       authError: auth.error,
       sent: sendResult.success,
@@ -82,30 +80,29 @@ router.post('/test-email', devTestLimiter, async (req: Request, res: Response) =
     };
   }
 
-  // ── TEST B: Contact Us form flow → Resend API ONLY ───────────────────
+  // ── TEST B: Contact Us form flow → Centralized Gmail SMTP ────────────
   if (suite === 'contact' || suite === 'all') {
-    const configured = isResendConfigured();
+    const configured = isGmailConfigured();
     let sendResult: { success: boolean; id?: string; error?: string } = {
       success: false,
-      error: configured ? undefined : 'RESEND_API_KEY is not configured.',
+      error: configured ? undefined : 'Gmail SMTP is not configured.',
     };
     if (configured) {
-      sendResult = await sendContactEmailWithResend({
+      sendResult = await sendContactUsNotification({
         name: 'Dev Test (Contact Us)',
         email: to,
-        subject: 'Dev Test B — Resend contact flow',
+        subject: 'Dev Test B — Contact form flow',
         message:
-          'This is an automated development test of the Contact Us flow (Resend ONLY). Reply-To should be set to this test address.',
+          'This is an automated development test of the Contact Us flow. Reply-To should be set to this test address.',
         phone: '+91 90000 00000',
         submittedAt: new Date(),
       });
     }
-    results.testB_contactResend = {
-      provider: 'Resend API',
-      usesNodemailer: false,
+    results.testB_contact = {
+      provider: 'Nodemailer → Gmail SMTP',
       recipient: 'gceegdgoc@gmail.com',
       replyTo: to,
-      resendKeyConfigured: configured,
+      configured,
       sent: sendResult.success,
       messageId: sendResult.id,
       error: sendResult.error,

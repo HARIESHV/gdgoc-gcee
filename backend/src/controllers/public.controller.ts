@@ -111,23 +111,25 @@ export async function contactForm(req: any, res: Response) {
     const safeEmail = sanitizeHeaderValue(email).toLowerCase();
     const safeSubject = sanitizeHeaderValue(subject);
 
-    if (!isResendConfigured()) {
-      console.error('[contact] Contact Us delivery unavailable: RESEND_API_KEY is not configured.');
+    if (!emailIsConfigured()) {
+      console.error('[contact] Email service is not configured. Missing GMAIL_USER or GMAIL_APP_PASSWORD.');
       res.status(503).json({
         success: false,
-        message: 'Message service is not configured. Please contact the administrator.',
+        message: 'Email service is not configured on the server. Please contact the administrator.',
       });
       return;
     }
 
-    // Persist first so messages are never lost even if Resend hiccups.
+    // Persist to MongoDB first so messages are never lost
     try {
       await ContactMessage.create({
         name: safeName,
         email: safeEmail,
+        phone: safePhone,
         subject: safeSubject,
         message: message.trim(),
       });
+      console.log(`[contact] Contact message saved from ${safeEmail}`);
     } catch (dbErr: any) {
       console.error('[contact] Failed to store contact message:', dbErr.message);
     }
@@ -140,19 +142,19 @@ export async function contactForm(req: any, res: Response) {
         message: message.trim(),
         phone: safePhone,
       });
+      console.log(`[contact] Contact email sent to official inbox and confirmation dispatched to ${safeEmail}`);
     } catch (sendErr: any) {
-      // Log server-side; return a SAFE error to the frontend (no provider details).
-      console.error('[contact] Resend delivery failed:', sendErr.message);
-      res.status(502).json({
+      console.error('[contact] Email delivery failed:', sendErr.message);
+      res.status(500).json({
         success: false,
-        message: 'Your message could not be sent right now. Please try again later.',
+        message: 'Unable to send your message right now. Please try again later.',
       });
       return;
     }
 
     res.json({
       success: true,
-      message: 'Your message has been sent successfully. We will get back to you soon.',
+      message: 'Message sent successfully! We will get back to you soon.',
     });
   } catch (err: any) {
     console.error('[contact] Unexpected error:', err.message);

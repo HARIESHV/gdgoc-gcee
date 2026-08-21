@@ -16,10 +16,9 @@
 import { env } from '../config/env';
 import {
   isGmailConfigured,
-  isResendConfigured,
   verifyGmailConnection,
   sendGmailEmail,
-  sendContactEmailWithResend,
+  sendContactUsNotification,
 } from '../services/emailService';
 
 const WEBSITE_GMAIL = 'gceegdgoc@gmail.com';
@@ -72,27 +71,26 @@ async function testA(): Promise<boolean> {
     return false;
   }
   console.log(`PASS: Email sent via Gmail SMTP (messageId: ${sent.id})`);
-  console.log('CONFIRMED: Test A did NOT use Resend.');
   return true;
 }
 
 async function testB(): Promise<boolean> {
   line('=');
-  console.log('TEST B — Contact Us form flow via Resend API ONLY');
+  console.log('TEST B — Contact Us form flow via Centralized Gmail SMTP');
   line('=');
 
-  if (!isResendConfigured()) {
-    console.error('FAIL: RESEND_API_KEY is not configured.');
+  if (!isGmailConfigured()) {
+    console.error('FAIL: Gmail SMTP credentials are not configured.');
     return false;
   }
-  console.log('PASS: RESEND_API_KEY is configured');
+  console.log('PASS: Gmail SMTP credentials configured');
 
   // Validation checks (mirrors backend contact-form rules)
-  const invalidRejected = await sendContactEmailWithResend({
+  const invalidRejected = await sendContactUsNotification({
     name: 'Dev Test',
     email: 'not-an-email',
     subject: 'Should be rejected',
-    message: 'This must fail validation and never reach Resend.',
+    message: 'This must fail validation and never send.',
   });
   if (invalidRejected.success) {
     console.error('FAIL: Invalid email address was not rejected by validation.');
@@ -101,23 +99,22 @@ async function testB(): Promise<boolean> {
   console.log('PASS: Contact form validation rejects invalid email addresses');
 
   console.log(`Sending Contact Us test (recipient: ${WEBSITE_GMAIL}, reply-to: ${to})…`);
-  const sent = await sendContactEmailWithResend({
+  const sent = await sendContactUsNotification({
     name: 'Dev Test (Contact Us)',
     email: to,
-    subject: 'Dev Test B — Resend contact flow',
+    subject: 'Dev Test B — Contact flow',
     message:
-      'Automated development test of the Contact Us flow. If you can read this, Resend delivery works. Reply-To should point to the address that submitted this message.',
+      'Automated development test of the Contact Us flow. Reply-To should point to the address that submitted this message.',
     phone: '+91 90000 00000',
     submittedAt: new Date(),
   });
 
   if (!sent.success) {
-    console.error(`FAIL: Resend delivery failed — ${sent.error}`);
+    console.error(`FAIL: Contact email delivery failed — ${sent.error}`);
     return false;
   }
-  console.log(`PASS: Contact message delivered through Resend (id: ${sent.id})`);
+  console.log(`PASS: Contact message delivered through Gmail SMTP (id: ${sent.id})`);
   console.log(`CONFIRMED: Recipient is ${WEBSITE_GMAIL}; Reply-To is ${to}.`);
-  console.log('CONFIRMED: Test B did NOT use Nodemailer/Gmail SMTP.');
   return true;
 }
 
