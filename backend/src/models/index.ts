@@ -15,3 +15,4 @@ export { Feedback } from './Feedback';
 export { BulkEmailLog } from './BulkEmailLog';
 export { EmailLog } from './EmailLog';
 export { EventRegistration } from './EventRegistration';
+export { ContactMessage } from './ContactMessage';

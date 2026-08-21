@@ -1,8 +1,9 @@
 import type { Response } from 'express';
-import { EventModel, Registration, Attendance, Certificate, Member, Student } from '../models';
+import { EventModel, Registration, Attendance, Certificate, Member, Student, ContactMessage } from '../models';
 import { todayIST } from '../utils/dates';
 import { connectDB } from '../config/db';
 import { sendContactEmail, emailIsConfigured, getEmailConfigStatus } from '../utils/email';
+import { isResendConfigured, sanitizeHeaderValue } from '../services/emailService';
 
 // GET /api/stats  (public — homepage)
 export async function publicStats(_: any, res: Response) {
@@ -61,11 +62,11 @@ export async function emailStatus(_req: any, res: Response) {
   }
 }
 
-// POST /api/contact
+// POST /api/contact  — Contact Us form. Delivery via RESEND ONLY.
 export async function contactForm(req: any, res: Response) {
   try {
     await connectDB();
-    const { name, email, subject, message } = req.body;
+    const { name, email, subject, message, phone } = req.body;
 
     if (!name || !email || !subject || !message) {
       res.status(400).json({ success: false, message: 'Name, email, subject and message are required.' });
@@ -78,7 +79,7 @@ export async function contactForm(req: any, res: Response) {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (typeof email !== 'string' || !emailRegex.test(email)) {
       res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
       return;
     }
@@ -93,32 +94,68 @@ export async function contactForm(req: any, res: Response) {
       return;
     }
 
-    if (!emailIsConfigured()) {
-      const status = getEmailConfigStatus();
-      const missing = [
-        !status.hasApiKey ? 'GMAIL_USER / GMAIL_APP_PASSWORD' : null,
-        !status.hasFromEmail ? 'GMAIL_USER' : null,
-      ].filter(Boolean);
-      console.error(`[contact] Email not configured. Missing env vars: ${missing.join(', ') || 'unknown'}`);
+    // Optional phone number — digits, spaces, +, -, ( ) only; max 20 chars.
+    let safePhone: string | undefined;
+    if (phone !== undefined && phone !== null && String(phone).trim() !== '') {
+      const phoneStr = String(phone).trim();
+      if (!/^[+()\-\s\d]{6,20}$/.test(phoneStr)) {
+        res.status(400).json({ success: false, message: 'Please provide a valid phone number.' });
+        return;
+      }
+      safePhone = phoneStr;
+    }
+
+    // Header-injection protection: strip CR/LF/control chars from fields that
+    // end up in SMTP/MIME headers or the email subject line.
+    const safeName = sanitizeHeaderValue(name);
+    const safeEmail = sanitizeHeaderValue(email).toLowerCase();
+    const safeSubject = sanitizeHeaderValue(subject);
+
+    if (!isResendConfigured()) {
+      console.error('[contact] Contact Us delivery unavailable: RESEND_API_KEY is not configured.');
       res.status(503).json({
         success: false,
-        message: `Email service is not configured. Missing: ${missing.join(', ') || 'check server environment'}. Please contact the administrator.`,
+        message: 'Message service is not configured. Please contact the administrator.',
       });
       return;
     }
 
-    const sanitizedSubject = subject.trim();
+    // Persist first so messages are never lost even if Resend hiccups.
+    try {
+      await ContactMessage.create({
+        name: safeName,
+        email: safeEmail,
+        subject: safeSubject,
+        message: message.trim(),
+      });
+    } catch (dbErr: any) {
+      console.error('[contact] Failed to store contact message:', dbErr.message);
+    }
 
-    await sendContactEmail({
-      fromName: name.trim(),
-      fromEmail: email.trim().toLowerCase(),
-      subject: sanitizedSubject,
-      message: message.trim(),
+    try {
+      await sendContactEmail({
+        fromName: safeName,
+        fromEmail: safeEmail,
+        subject: safeSubject,
+        message: message.trim(),
+        phone: safePhone,
+      });
+    } catch (sendErr: any) {
+      // Log server-side; return a SAFE error to the frontend (no provider details).
+      console.error('[contact] Resend delivery failed:', sendErr.message);
+      res.status(502).json({
+        success: false,
+        message: 'Your message could not be sent right now. Please try again later.',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: 'Your message has been sent successfully. We will get back to you soon.',
     });
-
-    res.json({ success: true, message: 'Message sent successfully. We will get back to you soon.' });
   } catch (err: any) {
-    console.error('[contact] Failed to send contact email:', err.message);
+    console.error('[contact] Unexpected error:', err.message);
     res.status(500).json({ success: false, message: 'Failed to send your message. Please try again later.' });
   }
 }

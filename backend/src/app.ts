@@ -20,6 +20,7 @@ import dashboardRoutes from './routes/dashboard.routes';
 import publicRoutes from './routes/public.routes';
 import adminRoutes from './routes/admin.routes';
 import googleFormRoutes, { registrationWebhookRouter } from './routes/googleForm.routes';
+import devRoutes from './routes/dev.routes';
 import { notFound, errorHandler } from './middleware/error';
 
 export function createApp(): Express {
@@ -125,6 +126,12 @@ export function createApp(): Express {
   app.use('/api/admin', adminRoutes);
   app.use('/api/google-form', googleFormRoutes);
   app.use('/api/registrations', registrationWebhookRouter);
+
+  // Dev-only email test endpoints — never mounted in production.
+  if (!env.isProd) {
+    app.use('/api/dev', devRoutes);
+  }
+
   app.use('/api', publicRoutes);
 
   app.use(notFound);

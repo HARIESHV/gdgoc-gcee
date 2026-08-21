@@ -1,5 +1,5 @@
 import {
-  sendEmail,
+  sendGmailEmail,
   sendOTPEmail,
   sendWelcomeEmail,
   sendEventRegistrationEmail,
@@ -8,16 +8,16 @@ import {
   sendCertificateEmail,
   sendAdminAnnouncementEmail,
   sendBulkAnnouncementEmails,
-  isEmailConfigured,
-  getResendSender,
-  type SendMailOptions,
-  type SendMailResult,
-} from '../services/email/resend.service';
+  isGmailConfigured,
+  getGmailFromAddress,
+  type GmailMailOptions as SendMailOptions,
+  type EmailSendResult as SendMailResult,
+} from '../services/emailService';
 import { env, CLUB } from '../config/env';
 
 export {
-  sendEmail,
-  sendEmail as sendMail,
+  sendGmailEmail as sendEmail,
+  sendGmailEmail as sendMail,
   sendOTPEmail,
   sendOTPEmail as sendOtpEmail,
   sendWelcomeEmail,
@@ -27,9 +27,10 @@ export {
   sendCertificateEmail,
   sendAdminAnnouncementEmail,
   sendBulkAnnouncementEmails,
-  isEmailConfigured,
-  isEmailConfigured as emailIsConfigured,
-  getResendSender,
+  isGmailConfigured as isEmailConfigured,
+  isGmailConfigured as emailIsConfigured,
+  getGmailFromAddress as getResendSender,
+  getGmailFromAddress,
   type SendMailOptions,
   type SendMailResult,
 };
@@ -96,17 +97,16 @@ export async function sendBulkEventRegistrationEmails(opts: {
 
 /** Public config status safe to return to client/admin UI */
 export function getEmailConfigStatus() {
-  const configured = isEmailConfigured();
-  const gmailConfigured = Boolean(env.gmail.user && env.gmail.appPassword);
+  const configured = isGmailConfigured();
   return {
     configured,
-    provider: env.resendApiKey ? 'resend' : gmailConfigured ? 'gmail' : 'none',
+    provider: env.resendApiKey ? 'resend' : configured ? 'gmail' : 'none',
     hasApiKey: Boolean(env.resendApiKey),
     hasUser: Boolean(env.gmail.user),
-    hasFromEmail: Boolean(env.resendFromEmail || env.gmail.user),
+    hasFromEmail: Boolean(env.gmail.user),
     hasAppPassword: Boolean(env.gmail.appPassword),
-    adminEmail: env.adminEmail || 'gdgocgcee@gmail.com',
-    fromEmail: (env.resendFromEmail || env.gmail.user) || '',
+    adminEmail: env.contactRecipientEmail || 'gdgocgcee@gmail.com',
+    fromEmail: env.gmail.user || '',
   };
 }
 
@@ -121,6 +121,7 @@ export function escapeHtml(str: string): string {
 
 /**
  * Resend-compatible shim for legacy call-sites.
+ * Backed by Nodemailer/Gmail SMTP — normal website emails never touch Resend.
  */
 export function getResendCompatibleMailer() {
   return {
@@ -134,7 +135,7 @@ export function getResendCompatibleMailer() {
         text?: string;
         attachments?: Array<{ filename: string; content: Buffer | string }>;
       }): Promise<{ data?: { id: string } | null; error?: { message: string } | null }> => {
-        const result = await sendEmail({
+        const result = await sendGmailEmail({
           to: msg.to || '',
           subject: msg.subject || '',
           html: msg.html || '',

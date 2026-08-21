@@ -1,30 +1,53 @@
 import { useState } from 'react';
-import toast from 'react-hot-toast';
-import { Mail, MapPin, Clock3, Send, ExternalLink } from 'lucide-react';
+import { Mail, MapPin, Clock3, Send, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api, getErrorMessage } from '../../lib/api';
 
 const MAPS_URL = 'https://www.google.com/maps/search/Government+College+of+Engineering+Erode+Vasavi+College+Post+Erode+638316+Tamil+Nadu+India';
 const MAPS_EMBED = 'https://maps.google.com/maps?q=Government+College+of+Engineering+Erode+Vasavi+College+Post+Erode+638316+Tamil+Nadu+India&t=&z=15&ie=UTF8&iwloc=&output=embed';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMPTY_FORM = { name: '', email: '', phone: '', subject: '', message: '' };
+
 export default function Contact() {
-  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [sending, setSending] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.subject || !form.message) {
-      toast.error('Please fill in all fields.');
+    if (sending) return;
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    if (!form.name.trim() || !form.email.trim() || !form.subject.trim() || !form.message.trim()) {
+      setErrorMsg('Please fill in all required fields.');
       return;
     }
+    if (!EMAIL_RE.test(form.email.trim())) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    if (form.message.trim().length < 10) {
+      setErrorMsg('Your message must be at least 10 characters long.');
+      return;
+    }
+
     setSending(true);
     try {
-      const res = await api.post('/contact', form);
-      toast.success(res.data.message);
-      setForm({ name: '', email: '', subject: '', message: '' });
+      const res = await api.post('/contact', {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || undefined,
+        subject: form.subject.trim(),
+        message: form.message.trim(),
+      });
+      setSuccessMsg(res.data?.message || 'Your message has been sent successfully. We will get back to you soon.');
+      setForm(EMPTY_FORM);
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      setErrorMsg(getErrorMessage(err));
     } finally {
       setSending(false);
     }
@@ -120,33 +143,51 @@ export default function Contact() {
           <div className="card p-6 sm:p-8 lg:col-span-3">
             <h2 className="font-display text-xl font-bold text-navy-900">Send us a message</h2>
             <p className="mt-1 text-sm text-ink-muted">We usually respond within a couple of days.</p>
-            <form onSubmit={submit} className="mt-6 space-y-5">
+            <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
+              {successMsg && (
+                <div role="status" aria-live="polite" className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  {successMsg}
+                </div>
+              )}
+              {errorMsg && (
+                <div role="alert" aria-live="assertive" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  {errorMsg}
+                </div>
+              )}
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label className="label" htmlFor="name">Full name</label>
-                  <input id="name" className="input" value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Your name" />
+                  <input id="name" name="name" autoComplete="name" maxLength={200} className="input" value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Your name" />
                 </div>
                 <div>
                   <label className="label" htmlFor="email">Email</label>
-                  <input id="email" type="email" className="input" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="you@example.com" />
+                  <input id="email" name="email" type="email" autoComplete="email" maxLength={254} className="input" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="you@example.com" />
                 </div>
               </div>
               <div>
+                <label className="label" htmlFor="phone">Phone <span className="font-normal text-ink-faint">(optional)</span></label>
+                <input id="phone" name="phone" type="tel" autoComplete="tel" maxLength={20} className="input" value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="+91 98765 43210" />
+              </div>
+              <div>
                 <label className="label" htmlFor="subject">Subject</label>
-                <input id="subject" className="input" value={form.subject} onChange={(e) => update('subject', e.target.value)} placeholder="What is this about?" />
+                <input id="subject" name="subject" maxLength={200} className="input" value={form.subject} onChange={(e) => update('subject', e.target.value)} placeholder="What is this about?" />
               </div>
               <div>
                 <label className="label" htmlFor="message">Message</label>
                 <textarea
                   id="message"
+                  name="message"
                   rows={6}
+                  maxLength={5000}
                   className="input resize-y"
                   value={form.message}
                   onChange={(e) => update('message', e.target.value)}
                   placeholder="Tell us what you need help with..."
                 />
               </div>
-              <button type="submit" disabled={sending} className="btn-primary !px-6 !py-3">
+              <button type="submit" disabled={sending} className="btn-primary !px-6 !py-3 disabled:cursor-not-allowed disabled:opacity-60">
                 <Send className="h-4 w-4" />
                 {sending ? 'Sending...' : 'Send Message'}
               </button>

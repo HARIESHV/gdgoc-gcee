@@ -6,7 +6,7 @@ import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import type { AuthRequest } from '../middleware/auth';
 import { connectDB, isDbConnectionError } from '../config/db';
-import { sendOTPEmail, sendWelcomeEmail } from '../services/email/resend.service';
+import { sendOTPEmail, sendWelcomeEmail } from '../services/emailService';
 
 const COOKIE_OPTS = {
   httpOnly: true,

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { connectDB } from '../config/db';
 import { Student } from '../models/Student';
-import { sendOTPEmail, sendWelcomeEmail } from '../services/email/resend.service';
+import { sendOTPEmail, sendWelcomeEmail } from '../services/emailService';
 
 async function testFullAuthLifecycle() {
   console.log('--- Testing Full Auth & OTP Lifecycle ---');

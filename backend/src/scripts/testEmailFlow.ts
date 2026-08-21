@@ -1,119 +1,142 @@
-import crypto from 'node:crypto';
-import bcrypt from 'bcryptjs';
+/**
+ * GDGoC GCEE — Email System Verification (development only)
+ *
+ * Run: npm run test:email --prefix backend
+ *
+ * TEST A — Normal website email:
+ *   Nodemailer → Gmail SMTP (smtp.gmail.com:465) → gdgocgcee@gmail.com account.
+ *   Verifies SMTP authentication, connection, and a real send.
+ *   MUST NOT use Resend.
+ *
+ * TEST B — Contact Us form flow:
+ *   Resend API → gdgocgcee@gmail.com, Reply-To = student/test address.
+ *   Verifies RESEND_API_KEY, validation, delivery, recipient and Reply-To.
+ *   MUST NOT use Nodemailer.
+ */
 import { env } from '../config/env';
 import {
-  sendOTPEmail,
-  sendWelcomeEmail,
-  sendEventRegistrationEmail,
-  sendWorkshopEmail,
-  sendHackathonEmail,
-  sendCertificateEmail,
-  sendAdminAnnouncementEmail,
-  isEmailConfigured,
-  getResendSender,
-} from '../services/email/resend.service';
-import { generateOtpEmailHtml } from '../services/email/templates/otp.template';
-import { generateWelcomeEmailHtml } from '../services/email/templates/welcome.template';
-import { generateEventRegistrationEmailHtml } from '../services/email/templates/eventRegistration.template';
+  isGmailConfigured,
+  isResendConfigured,
+  verifyGmailConnection,
+  sendGmailEmail,
+  sendContactEmailWithResend,
+} from '../services/emailService';
 
-async function runTests() {
-  console.log('--- Starting GDGoC GCEE Email System Tests ---');
+const WEBSITE_GMAIL = 'gdgocgcee@gmail.com';
+const argTo = process.argv[2] || '';
+const to = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(argTo) ? argTo : env.gmail.user || env.adminEmail;
 
-  // Test 1: Config check
-  console.log('\n[Test 1] Checking Email & Resend Configuration...');
-  console.log(`- Email configured: ${isEmailConfigured()}`);
-  console.log(`- Resend API key configured: ${Boolean(env.resendApiKey)}`);
-  console.log(`- Sender address: ${getResendSender()}`);
-  if (!env.resendApiKey) {
-    console.error('FAIL: RESEND_API_KEY is missing');
-  } else {
-    console.log('PASS: Resend configuration is loaded');
-  }
-
-  // Test 2: Cryptographic OTP generation
-  console.log('\n[Test 2] Testing Cryptographic OTP generation...');
-  const otps = Array.from({ length: 5 }, () => crypto.randomInt(100000, 1000000).toString());
-  const all6Digits = otps.every((otp) => /^\d{6}$/.test(otp));
-  console.log(`- Sample OTPs: ${otps.join(', ')}`);
-  console.log(`- All 6-digit numeric: ${all6Digits}`);
-  if (all6Digits) {
-    console.log('PASS: Cryptographic 6-digit OTP generation working');
-  } else {
-    console.error('FAIL: OTP generation did not produce 6 digits');
-  }
-
-  // Test 3: OTP Hashing & Secure Verification
-  console.log('\n[Test 3] Testing Bcrypt OTP Hashing and Verification...');
-  const testOtp = crypto.randomInt(100000, 1000000).toString();
-  const hash = bcrypt.hashSync(testOtp, 10);
-  const matchCorrect = await bcrypt.compare(testOtp, hash);
-  const matchWrong = await bcrypt.compare('000000', hash);
-  console.log(`- Correct OTP match: ${matchCorrect}`);
-  console.log(`- Wrong OTP mismatch: ${!matchWrong}`);
-  if (matchCorrect && !matchWrong) {
-    console.log('PASS: OTP hashing and verification logic verified');
-  } else {
-    console.error('FAIL: OTP hashing mismatch');
-  }
-
-  // Test 4: OTP Expiration calculation (5 minutes)
-  console.log('\n[Test 4] Testing 5-minute OTP Expiry...');
-  const expiry = new Date(Date.now() + 5 * 60 * 1000);
-  const now = new Date();
-  const diffMinutes = (expiry.getTime() - now.getTime()) / (60 * 1000);
-  console.log(`- Expiry duration: ${diffMinutes.toFixed(2)} minutes`);
-  if (Math.round(diffMinutes) === 5) {
-    console.log('PASS: OTP expiration set to exactly 5 minutes');
-  } else {
-    console.error('FAIL: OTP expiration is not 5 minutes');
-  }
-
-  // Test 5: Template HTML Generation & Security
-  console.log('\n[Test 5] Testing Template Generation...');
-  const otpHtml = generateOtpEmailHtml({ studentName: 'Alex Doe', otp: testOtp });
-  const welcomeHtml = generateWelcomeEmailHtml({ studentName: 'Alex Doe' });
-  const eventHtml = generateEventRegistrationEmailHtml({
-    studentName: 'Alex Doe',
-    eventName: 'Cloud DevFest 2026',
-    eventDate: '2026-09-15',
-    eventTime: '10:00 AM - 1:00 PM',
-    venue: 'Auditorium',
-    registrationId: 'REG-TEST-1234',
-  });
-
-  const otpIncluded = otpHtml.html.includes(testOtp) && otpHtml.text.includes(testOtp);
-  const welcomeValid = welcomeHtml.html.includes('Account Activated') && welcomeHtml.html.includes('Alex Doe');
-  const eventValid = eventHtml.html.includes('REG-TEST-1234') && eventHtml.html.includes('Cloud DevFest 2026');
-
-  console.log(`- OTP template contains code & 5-min notice: ${otpIncluded && otpHtml.html.includes('5 minutes')}`);
-  console.log(`- Welcome template valid: ${welcomeValid}`);
-  console.log(`- Event registration template valid: ${eventValid}`);
-
-  if (otpIncluded && welcomeValid && eventValid) {
-    console.log('PASS: All HTML email templates generated successfully');
-  } else {
-    console.error('FAIL: Template generation issue');
-  }
-
-  // Test 6: Resend API Direct Call
-  console.log('\n[Test 6] Testing Resend API dispatch with simulated / test address...');
-  try {
-    const testResult = await sendOTPEmail({
-      to: 'delivered@resend.dev', // Resend official test address
-      studentName: 'Test Student',
-      otp: '654321',
-    });
-    console.log(`- Resend API response:`, testResult);
-    if (testResult.success) {
-      console.log('PASS: Resend API accepted and processed email successfully!');
-    } else {
-      console.log(`- Resend result details: ${testResult.error}`);
-    }
-  } catch (err: any) {
-    console.error('Resend test call error:', err.message);
-  }
-
-  console.log('\n--- All Automated Verification Checks Complete ---');
+function line(char = '─', n = 64) {
+  console.log(char.repeat(n));
 }
 
-runTests().catch(console.error);
+async function testA(): Promise<boolean> {
+  line('=');
+  console.log('TEST A — Normal website email via Nodemailer + Gmail SMTP');
+  line('=');
+
+  if (!isGmailConfigured()) {
+    console.error('FAIL: GMAIL_USER / GMAIL_APP_PASSWORD are not configured.');
+    return false;
+  }
+  console.log(`PASS: Gmail credentials loaded (user: ${env.gmail.user})`);
+
+  console.log('Verifying Gmail SMTP authentication & connection…');
+  const auth = await verifyGmailConnection();
+  if (!auth.ok) {
+    console.error(`FAIL: ${auth.error}`);
+    return false;
+  }
+  console.log('PASS: SMTP authentication and connection verified');
+
+  console.log(`Sending branded test email to ${to}…`);
+  const sent = await sendGmailEmail({
+    to,
+    subject: '[GDGoC GCEE] Test A — Nodemailer + Gmail SMTP works',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:#0b1b33;padding:18px 24px;color:#fff;">
+          <h2 style="margin:0;font-size:18px;">GDGoC GCEE</h2>
+          <p style="margin:4px 0 0 0;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;">Google Developer Groups on Campus</p>
+        </div>
+        <div style="padding:24px;">
+          <p style="margin-top:0;color:#374151;"><strong>Test A passed.</strong> Normal website emails are being delivered through Nodemailer over Gmail SMTP.</p>
+          <p style="color:#64748b;font-size:13px;">Sent at ${new Date().toISOString()}.</p>
+        </div>
+      </div>`,
+    text: 'Test A passed. Normal website emails are delivered through Nodemailer + Gmail SMTP.',
+  });
+
+  if (!sent.success) {
+    console.error(`FAIL: Send failed — ${sent.error}`);
+    return false;
+  }
+  console.log(`PASS: Email sent via Gmail SMTP (messageId: ${sent.id})`);
+  console.log('CONFIRMED: Test A did NOT use Resend.');
+  return true;
+}
+
+async function testB(): Promise<boolean> {
+  line('=');
+  console.log('TEST B — Contact Us form flow via Resend API ONLY');
+  line('=');
+
+  if (!isResendConfigured()) {
+    console.error('FAIL: RESEND_API_KEY is not configured.');
+    return false;
+  }
+  console.log('PASS: RESEND_API_KEY is configured');
+
+  // Validation checks (mirrors backend contact-form rules)
+  const invalidRejected = await sendContactEmailWithResend({
+    name: 'Dev Test',
+    email: 'not-an-email',
+    subject: 'Should be rejected',
+    message: 'This must fail validation and never reach Resend.',
+  });
+  if (invalidRejected.success) {
+    console.error('FAIL: Invalid email address was not rejected by validation.');
+    return false;
+  }
+  console.log('PASS: Contact form validation rejects invalid email addresses');
+
+  console.log(`Sending Contact Us test (recipient: ${WEBSITE_GMAIL}, reply-to: ${to})…`);
+  const sent = await sendContactEmailWithResend({
+    name: 'Dev Test (Contact Us)',
+    email: to,
+    subject: 'Dev Test B — Resend contact flow',
+    message:
+      'Automated development test of the Contact Us flow. If you can read this, Resend delivery works. Reply-To should point to the address that submitted this message.',
+    phone: '+91 90000 00000',
+    submittedAt: new Date(),
+  });
+
+  if (!sent.success) {
+    console.error(`FAIL: Resend delivery failed — ${sent.error}`);
+    return false;
+  }
+  console.log(`PASS: Contact message delivered through Resend (id: ${sent.id})`);
+  console.log(`CONFIRMED: Recipient is ${WEBSITE_GMAIL}; Reply-To is ${to}.`);
+  console.log('CONFIRMED: Test B did NOT use Nodemailer/Gmail SMTP.');
+  return true;
+}
+
+async function run() {
+  console.log('\nGDGoC GCEE — Email System Verification\n');
+  const suite = (process.env.TEST_SUITE || 'all').toLowerCase();
+
+  let okA = true;
+  let okB = true;
+  if (suite === 'all' || suite === 'a' || suite === 'gmail') okA = await testA();
+  if (suite === 'all' || suite === 'b' || suite === 'contact') okB = await testB();
+
+  line('=');
+  console.log(`RESULT: Test A (Gmail/Nodemailer): ${okA ? 'PASS' : 'FAIL'} | Test B (Resend/Contact): ${okB ? 'PASS' : 'FAIL'}`);
+  line('=');
+  process.exit(okA && okB ? 0 : 1);
+}
+
+run().catch((err) => {
+  console.error('Unexpected error:', err);
+  process.exit(1);
+});

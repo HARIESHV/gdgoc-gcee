@@ -1,6 +1,6 @@
-import { env, CLUB } from '../config/env';
+import { CLUB } from '../config/env';
 import {
-  sendEmail,
+  sendGmailEmail,
   sendOTPEmail,
   sendWelcomeEmail,
   sendEventRegistrationEmail,
@@ -9,15 +9,14 @@ import {
   sendCertificateEmail as sendCertEmail,
   sendAdminAnnouncementEmail,
   sendBulkAnnouncementEmails,
-  isEmailConfigured,
-  type SendMailOptions,
-  type SendMailResult,
-} from '../services/email/resend.service';
+  sendContactEmailWithResend,
+  isGmailConfigured,
+} from '../services/emailService';
 import { getEmailConfigStatus, escapeHtml } from '../lib/mailer';
 import { baseEmailHtml } from '../services/email/templates/base.template';
 
 export {
-  isEmailConfigured as emailIsConfigured,
+  isGmailConfigured as emailIsConfigured,
   getEmailConfigStatus,
   sendOTPEmail as sendOtpEmail,
   sendWelcomeEmail as sendThankYouEmail,
@@ -31,42 +30,23 @@ export {
 };
 
 /**
- * Send Contact Message to Admin
+ * Send Contact Message to Admin — RESEND ONLY.
+ * Never routes through Nodemailer/Gmail SMTP.
  */
 export async function sendContactEmail(opts: {
   fromName: string;
   fromEmail: string;
   subject: string;
   message: string;
+  phone?: string;
 }): Promise<{ id?: string; error?: string }> {
-  if (!isEmailConfigured()) {
-    console.error('[email] Email service is not configured.');
-    throw new Error('Email service is not configured.');
-  }
-
-  const adminEmail = env.adminEmail || 'gdgocgcee@gmail.com';
-  const safeName = escapeHtml(opts.fromName);
-  const safeEmail = escapeHtml(opts.fromEmail);
-  const safeSubject = escapeHtml(opts.subject);
-  const safeMessage = escapeHtml(opts.message);
-
-  const html = baseEmailHtml(`
-    <tr>
-      <td style="padding: 28px 32px;">
-        <h2 style="margin:0 0 16px 0; color:#0b1b33; font-size:18px;">New Contact Message</h2>
-        <p style="margin:0 0 8px 0; color:#374151;"><strong>From:</strong> ${safeName} (&lt;${safeEmail}&gt;)</p>
-        <p style="margin:0 0 16px 0; color:#374151;"><strong>Subject:</strong> ${safeSubject}</p>
-        <div style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin:16px 0; white-space:pre-wrap; color:#1e293b; font-size:14px; line-height:1.6;">${safeMessage}</div>
-        <p style="color:#94a3b8; font-size:12px; margin:16px 0 0 0;">Submitted via GDGoC GCEE Contact Form</p>
-      </td>
-    </tr>
-  `);
-
-  const result = await sendEmail({
-    to: adminEmail,
-    replyTo: opts.fromEmail,
-    subject: `[GDGoC GCEE Contact] ${opts.subject}`,
-    html,
+  const result = await sendContactEmailWithResend({
+    name: opts.fromName,
+    email: opts.fromEmail,
+    subject: opts.subject,
+    message: opts.message,
+    phone: opts.phone,
+    submittedAt: new Date(),
   });
 
   if (!result.success) {
@@ -138,7 +118,7 @@ export async function sendEventRegistrationPDFEmail(opts: {
     </tr>
   `);
 
-  const result = await sendEmail({
+  const result = await sendGmailEmail({
     to: opts.to,
     subject: `${opts.eventName} – Student Registration List`,
     html,
@@ -193,7 +173,7 @@ export async function sendBulkEmail(opts: {
     </tr>
   `);
 
-  const result = await sendEmail({
+  const result = await sendGmailEmail({
     to: opts.to,
     subject: opts.subject,
     html,

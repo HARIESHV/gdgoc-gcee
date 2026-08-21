@@ -1,20 +1,19 @@
 import { env, CLUB } from '../config/env';
 import { EmailLog } from '../models/EmailLog';
 import {
-  sendEmail,
-  sendWelcomeEmail,
   sendAdminAnnouncementEmail,
-  isEmailConfigured,
-  getResendSender,
-} from './email/resend.service';
+  sendWelcomeEmail,
+  isGmailConfigured,
+  getGmailFromAddress,
+} from './emailService';
 
 export {
   sendWelcomeEmail,
-  isEmailConfigured as emailIsConfigured,
+  isGmailConfigured as emailIsConfigured,
 };
 
 function getFromAddress(): string {
-  return getResendSender();
+  return getGmailFromAddress();
 }
 
 /**
@@ -34,7 +33,7 @@ export async function sendEventAnnouncementEmail(opts: {
   customSubject?: string;
   customMessage?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  if (!isEmailConfigured()) {
+  if (!isGmailConfigured()) {
     return { success: false, error: 'Email service is not configured.' };
   }
 
