@@ -235,7 +235,7 @@ function EventEmailSection({ event, onSent }: { event: GEvent; onSent: () => voi
             <li className="flex items-center gap-2"><CheckCircle2 className="h-3 w-3 text-g-green" /> GDGoC GCEE branding</li>
             <li className="flex items-center gap-2"><CheckCircle2 className="h-3 w-3 text-g-green" /> Event name, description, date, time, venue</li>
             {event.banner && <li className="flex items-center gap-2"><CheckCircle2 className="h-3 w-3 text-g-green" /> Event poster image</li>}
-            <li className="flex items-center gap-2"><CheckCircle2 className="h-3 w-3 text-g-green" /> "Register Now" button → {event.registrationLink || event.googleFormUrl || 'event page'}</li>
+            <li className="flex items-center gap-2"><CheckCircle2 className="h-3 w-3 text-g-green" /> "Register Now" button → {event.registrationLink || 'Official GDGoC GCEE event page'}</li>
           </ul>
         </div>
 

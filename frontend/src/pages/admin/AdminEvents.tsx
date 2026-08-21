@@ -68,7 +68,7 @@ export default function AdminEvents() {
       />
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-navy-100 bg-white p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">Total Events</p>
           <p className="mt-1 font-mono text-2xl font-bold text-navy-900">{events.length}</p>
@@ -80,12 +80,6 @@ export default function AdminEvents() {
         <div className="rounded-xl border border-g-green/20 bg-g-green/5 p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-g-green">Total Registrations</p>
           <p className="mt-1 font-mono text-2xl font-bold text-g-green">{totalRegistrations}</p>
-        </div>
-        <div className="rounded-xl border border-navy-100 bg-white p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">With Google Form</p>
-          <p className="mt-1 font-mono text-2xl font-bold text-navy-900">
-            {events.filter((e) => Boolean(e.googleFormUrl)).length}
-          </p>
         </div>
       </div>
 
@@ -122,14 +116,13 @@ export default function AdminEvents() {
         />
       ) : (
         <div className="overflow-x-auto rounded border border-black/10 bg-white">
-          <table className="w-full min-w-[960px] text-left text-sm">
+          <table className="w-full min-w-[850px] text-left text-sm">
             <thead>
               <tr className="border-b border-black/5 bg-gray-50">
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Event</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Date</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Category</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Registrations</th>
-                <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Google Form</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Email</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Status</th>
                 <th className="p-4 font-mono text-[10px] font-bold uppercase tracking-wider text-black/40">Actions</th>
@@ -156,15 +149,6 @@ export default function AdminEvents() {
                         <span className="font-mono text-xs text-black/30">/ {ev.capacity}</span>
                       )}
                     </div>
-                  </td>
-                  <td className="p-4">
-                    {ev.googleFormUrl ? (
-                      <a href={ev.googleFormUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-mono text-xs text-black/50 hover:text-black">
-                        <ExternalLink className="h-3 w-3" /> Form
-                      </a>
-                    ) : (
-                      <span className="font-mono text-xs text-black/20">—</span>
-                    )}
                   </td>
                   <td className="p-4">
                     {ev.emailSent ? (

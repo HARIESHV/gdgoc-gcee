@@ -180,16 +180,6 @@ export default function AdminDashboard() {
                     >
                       <Search className="h-3 w-3" /> View Registrations
                     </Link>
-                    {ev.googleFormUrl && (
-                      <a
-                        href={ev.googleFormUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-g-blue transition hover:bg-g-blue/10"
-                      >
-                        <ExternalLink className="h-3 w-3" /> Google Form
-                      </a>
-                    )}
                   </div>
                 </div>
               );
