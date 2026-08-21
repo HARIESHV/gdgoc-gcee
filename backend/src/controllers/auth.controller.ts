@@ -5,7 +5,7 @@ import { Student } from '../models/Student';
 import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import type { AuthRequest } from '../middleware/auth';
-import { connectDB } from '../config/db';
+import { connectDB, isDbConnectionError } from '../config/db';
 import { sendOTPEmail, sendWelcomeEmail } from '../services/email/resend.service';
 
 const COOKIE_OPTS = {
@@ -222,7 +222,19 @@ export async function register(req: AuthRequest, res: Response) {
     });
   } catch (err: any) {
     console.error('[auth] register error:', err.message);
-    res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+    if (err && err.code === 11000) {
+      const field = Object.keys(err.keyValue || {})[0] || 'field';
+      res.status(409).json({
+        success: false,
+        message: field === 'rollNumber' ? 'This register number is already registered.' : 'An account with this email already exists. Please log in.',
+      });
+      return;
+    }
+    if (isDbConnectionError(err)) {
+      res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Registration failed due to a server error. Please try again.' });
   }
 }
 
@@ -303,7 +315,11 @@ export async function sendOtp(req: AuthRequest, res: Response) {
     });
   } catch (err: any) {
     console.error('[auth] sendOtp error:', err.message);
-    res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+    if (isDbConnectionError(err)) {
+      res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Could not process the request. Please try again.' });
   }
 }
 
@@ -429,7 +445,11 @@ export async function verifyOtp(req: AuthRequest, res: Response) {
     });
   } catch (err: any) {
     console.error('[auth] verifyOtp error:', err.message);
-    res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+    if (isDbConnectionError(err)) {
+      res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Verification failed due to a server error. Please try again.' });
   }
 }
 
@@ -491,7 +511,11 @@ export async function login(req: AuthRequest, res: Response) {
     res.json({ success: true, message: 'Welcome back!', token, student: publicStudent(student) });
   } catch (err: any) {
     console.error('[auth] login error:', err.message);
-    res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+    if (isDbConnectionError(err)) {
+      res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Login failed due to a server error. Please try again.' });
   }
 }
 

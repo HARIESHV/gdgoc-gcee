@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { Admin } from '../models/Admin';
 import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
-import { connectDB } from '../config/db';
+import { connectDB, isDbConnectionError } from '../config/db';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -50,7 +50,11 @@ export async function adminLogin(req: any, res: Response) {
     res.json({ success: true, message: 'Admin login successful.', token, admin: publicAdmin(admin) });
   } catch (err: any) {
     console.error('[adminAuth] login error:', err.message);
-    res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+    if (isDbConnectionError(err)) {
+      res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Login failed due to a server error. Please try again.' });
   }
 }
 
@@ -107,6 +111,10 @@ export async function adminChangePassword(req: any, res: Response) {
     res.json({ success: true, message: 'Password updated successfully.' });
   } catch (err: any) {
     console.error('[adminAuth] changePassword error:', err.message);
-    res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+    if (isDbConnectionError(err)) {
+      res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again.' });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Could not update password due to a server error.' });
   }
 }

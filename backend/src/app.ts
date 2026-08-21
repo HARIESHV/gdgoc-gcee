@@ -71,15 +71,28 @@ export function createApp(): Express {
     })
   );
 
-  app.get('/api/health', (_req, res) => {
-    const dbConnected = isConnected();
-    res.status(dbConnected ? 200 : 503).json({
-      success: dbConnected,
-      database: dbConnected ? 'connected' : 'disconnected',
-      status: dbConnected ? 'ok' : 'degraded',
-      message: 'GDGoC GCEE API',
-      time: new Date().toISOString(),
-    });
+  app.get('/api/health', async (_req, res) => {
+    try {
+      if (!isConnected()) {
+        await connectDB();
+      }
+      res.status(200).json({
+        success: true,
+        database: 'connected',
+        status: 'ok',
+        message: 'GDGoC GCEE API',
+        time: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('[DB] Health check connection failed:', (err as Error).message);
+      res.status(503).json({
+        success: false,
+        database: 'disconnected',
+        status: 'degraded',
+        message: 'GDGoC GCEE API',
+        time: new Date().toISOString(),
+      });
+    }
   });
 
   // Ensure MongoDB is connected (cached) before handling API requests.
@@ -92,6 +105,7 @@ export function createApp(): Express {
       await connectDB();
       next();
     } catch (err) {
+      console.error('[DB] Connection failed for API request:', (err as Error).message);
       res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again later.' });
     }
   });
