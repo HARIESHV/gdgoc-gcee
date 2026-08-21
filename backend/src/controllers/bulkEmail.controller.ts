@@ -68,7 +68,7 @@ export async function sendBulkEmailToAll(req: Request, res: Response) {
 
     const log = await BulkEmailLog.create({
       subject,
-      sentBy: (req as any).adminEmail || 'admin@gdgocgcee@gmail.com',
+      sentBy: (req as any).adminEmail || 'gceegdgoc@gmail.com',
       totalRecipients: validStudents.length,
       successfulSends: 0,
       failedSends: 0,

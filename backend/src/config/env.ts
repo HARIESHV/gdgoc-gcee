@@ -59,7 +59,7 @@ export const env = {
   resendFromEmail: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
   resendFromName: process.env.RESEND_FROM_NAME || 'GDGoC GCEE',
   // Where Contact Us (Resend) notifications are delivered.
-  contactRecipientEmail: (process.env.CONTACT_RECIPIENT_EMAIL || 'gdgocgcee@gmail.com').trim().toLowerCase(),
+  contactRecipientEmail: (process.env.CONTACT_RECIPIENT_EMAIL || 'gceegdgoc@gmail.com').trim().toLowerCase(),
   googleFormWebhookSecret: process.env.GOOGLE_FORM_WEBHOOK_SECRET || '',
   emailTestSecret: process.env.EMAIL_TEST_SECRET || '',
 };

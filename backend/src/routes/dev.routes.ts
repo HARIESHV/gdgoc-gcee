@@ -103,7 +103,7 @@ router.post('/test-email', devTestLimiter, async (req: Request, res: Response) =
     results.testB_contactResend = {
       provider: 'Resend API',
       usesNodemailer: false,
-      recipient: 'gdgocgcee@gmail.com',
+      recipient: 'gceegdgoc@gmail.com',
       replyTo: to,
       resendKeyConfigured: configured,
       sent: sendResult.success,

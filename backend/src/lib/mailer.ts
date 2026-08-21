@@ -105,7 +105,7 @@ export function getEmailConfigStatus() {
     hasUser: Boolean(env.gmail.user),
     hasFromEmail: Boolean(env.gmail.user),
     hasAppPassword: Boolean(env.gmail.appPassword),
-    adminEmail: env.contactRecipientEmail || 'gdgocgcee@gmail.com',
+    adminEmail: env.contactRecipientEmail || 'gceegdgoc@gmail.com',
     fromEmail: env.gmail.user || '',
   };
 }

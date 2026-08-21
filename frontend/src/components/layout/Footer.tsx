@@ -35,7 +35,7 @@ export function Footer() {
           <div className="mt-5 flex gap-3">
             {[
               { icon: Github, href: 'https://github.com/HARIESHV', label: 'GitHub' },
-              { icon: Mail, href: 'mailto:gdgocgcee@gmail.com', label: 'Email us' },
+              { icon: Mail, href: 'mailto:gceegdgoc@gmail.com', label: 'Email us' },
             ].map(({ icon: Icon, href, label }, i) => (
               <a
                 key={i}
@@ -75,7 +75,7 @@ export function Footer() {
             <span className="text-white/20">|</span>
             <span className="flex items-center gap-1">
               <Mail className="h-3.5 w-3.5" />
-              <a href="mailto:gdgocgcee@gmail.com" className="transition hover:text-white/70">gdgocgcee@gmail.com</a>
+              <a href="mailto:gceegdgoc@gmail.com" className="transition hover:text-white/70">gceegdgoc@gmail.com</a>
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="h-3.5 w-3.5" /> Erode, Tamil Nadu

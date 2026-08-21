@@ -15,15 +15,15 @@ import { generateCertificateEmailHtml } from './email/templates/certificate.temp
  * STRICT PROVIDER SEPARATION:
  *   1. ALL normal website emails (registration, verification, password reset,
  *      event confirmations, notifications, announcements, bulk email…)
- *        → Nodemailer → Gmail SMTP (smtp.gmail.com:465) → gdgocgcee@gmail.com
+ *        → Nodemailer → Gmail SMTP (smtp.gmail.com:465) → gceegdgoc@gmail.com
  *   2. Contact Us form ONLY
- *        → Resend API → gdgocgcee@gmail.com
+ *        → Resend API → gceegdgoc@gmail.com
  *
  * This is the ONLY file that configures SMTP or Resend credentials.
  * Secrets are read from environment variables and never leave the server.
  */
 
-const WEBSITE_GMAIL_ADDRESS = 'gdgocgcee@gmail.com';
+const WEBSITE_GMAIL_ADDRESS = 'gceegdgoc@gmail.com';
 
 // ── Shared header-injection / input sanitization helpers ─────────────
 

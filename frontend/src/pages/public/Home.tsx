@@ -383,7 +383,7 @@ export default function Home() {
                 <div className="mt-6 flex flex-col items-center gap-3 text-sm text-ink-soft sm:flex-row sm:justify-center">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-g-blue" />
-                    <span>gdgocgcee@gmail.com</span>
+                    <span>gceegdgoc@gmail.com</span>
                   </div>
                   <div className="hidden h-1 w-1 rounded-full bg-ink-faint sm:block" />
                   <div className="flex items-center gap-2">
@@ -396,7 +396,7 @@ export default function Home() {
                     Contact us
                     <ArrowRight className="h-4 w-4" />
                   </Link>
-                  <a href="mailto:gdgocgcee@gmail.com" className="btn-outline">
+                  <a href="mailto:gceegdgoc@gmail.com" className="btn-outline">
                     <Mail className="h-4 w-4" />
                     Send email
                   </a>
