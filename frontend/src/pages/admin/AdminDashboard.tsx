@@ -51,7 +51,6 @@ interface EventRegistration {
   category: string;
   capacity: number;
   registrationEnabled: boolean;
-  googleFormUrl: string;
   responseSheetId: string;
   lastSyncedAt: string | null;
   registrationCount: number;
