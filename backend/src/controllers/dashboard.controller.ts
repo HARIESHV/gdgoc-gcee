@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { Student, EventModel, Registration, Attendance, Certificate, CertificateCampaign, Member, GoogleFormRegistration } from '../models';
+import { Student, EventModel, Registration, Attendance, Certificate, CertificateCampaign, Member, GoogleFormRegistration, Resource } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { todayIST, formatHumanDate } from '../utils/dates';
 import { connectDB } from '../config/db';
@@ -87,6 +87,8 @@ export async function adminDashboard(_: any, res: Response) {
       totalFormRegistrations,
       recentFormRegistrations,
       eventsEmailSent,
+      totalResources,
+      recentResources,
     ] = await Promise.all([
       Student.countDocuments({ isActive: true }),
       Student.countDocuments({ isActive: true, isVerified: true }),
@@ -101,6 +103,8 @@ export async function adminDashboard(_: any, res: Response) {
       GoogleFormRegistration.countDocuments(),
       GoogleFormRegistration.find().sort({ submittedAt: -1 }).limit(5).lean(),
       EventModel.countDocuments({ emailSent: true }),
+      Resource.countDocuments(),
+      Resource.find().sort({ createdAt: -1 }).limit(6).lean(),
     ]);
 
     // Chart: registrations per event (top 8)
@@ -166,6 +170,12 @@ export async function adminDashboard(_: any, res: Response) {
       { $limit: 8 },
     ]);
 
+    // Chart: resources by category
+    const resourcesByCategory = await Resource.aggregate([
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
     res.json({
       success: true,
       stats: {
@@ -181,6 +191,7 @@ export async function adminDashboard(_: any, res: Response) {
         members,
         totalFormRegistrations,
         eventsEmailSent,
+        totalResources,
       },
       charts: {
         registrationTrends,
@@ -188,6 +199,7 @@ export async function adminDashboard(_: any, res: Response) {
         participationByCategory,
         certByStatus,
         attendanceByEvent,
+        resourcesByCategory,
       },
       recentFormRegistrations: recentFormRegistrations.map((r) => ({
         _id: r._id,
@@ -197,6 +209,15 @@ export async function adminDashboard(_: any, res: Response) {
         year: r.year,
         isRead: r.isRead,
         submittedAt: r.submittedAt,
+      })),
+      recentResources: recentResources.map((r) => ({
+        _id: r._id,
+        title: r.title,
+        description: r.description,
+        url: r.url,
+        category: r.category,
+        uploadedBy: r.uploadedBy,
+        createdAt: r.createdAt,
       })),
       campaigns,
     });

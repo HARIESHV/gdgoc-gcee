@@ -217,4 +217,5 @@ export interface AdminStats {
   pendingCertificates: number;
   members: number;
   eventsEmailSent?: number;
+  totalResources?: number;
 }

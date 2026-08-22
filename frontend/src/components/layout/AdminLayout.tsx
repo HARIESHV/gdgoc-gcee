@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Image,
   Mail,
+  BookOpen,
 } from 'lucide-react';
 import { DashboardShell } from './DashboardShell';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +21,7 @@ export function AdminLayout() {
     { label: 'Students', to: '/admin/students', icon: Users },
     { label: 'Events', to: '/admin/events', icon: CalendarDays },
     { label: 'Event Registrations', to: '/admin/form-registrations', icon: ClipboardList },
+    { label: 'Resources', to: '/admin/resources', icon: BookOpen },
     { label: 'Members', to: '/admin/members', icon: UsersRound },
     { label: 'Emails', to: '/admin/bulk-email', icon: Mail },
     { label: 'Certificates', to: '/admin/certificates', icon: Award },

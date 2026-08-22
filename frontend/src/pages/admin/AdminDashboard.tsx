@@ -19,6 +19,7 @@ import {
   Search,
   Download,
   Mail,
+  BookOpen,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -123,6 +124,7 @@ export default function AdminDashboard() {
         <StatCard label="Attendance Records" value={s.attendanceRecords} icon={<ClipboardCheck className="h-5 w-5" />} color="bg-g-red/10 text-g-red" />
         <StatCard label="Community Members" value={s.members} icon={<UsersRound className="h-5 w-5" />} color="bg-g-yellow/15 text-yellow-700" />
         <StatCard label="Form Registrations" value={totalWebhookRegistrations} icon={<ClipboardList className="h-5 w-5" />} color="bg-g-blue/10 text-g-blue" />
+        <StatCard label="Learning Resources" value={s.totalResources || 0} icon={<BookOpen className="h-5 w-5" />} color="bg-purple-100 text-purple-800" />
       </div>
 
       {/* Event Registration Cards */}
@@ -280,6 +282,81 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
+
+      {/* Resource Center Overview */}
+      <div className="card overflow-hidden">
+        <div className="border-b border-navy-50 p-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-700">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-display text-base font-bold text-navy-900">
+                Resource Center
+              </h3>
+              <p className="text-xs text-ink-muted">
+                Curated tutorials, guides, and learning resources ({s.totalResources || 0} total)
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/admin/resources"
+            className="btn-outline !py-1.5 !px-3 text-xs flex items-center gap-1.5"
+          >
+            Manage Resources <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        {data.recentResources && data.recentResources.length > 0 ? (
+          <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+            {data.recentResources.map((res: any) => (
+              <div
+                key={res._id}
+                className="flex flex-col justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition hover:border-purple-200 hover:bg-purple-50/30"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="chip text-[10px] bg-purple-100 text-purple-800 font-semibold">
+                      {res.category}
+                    </span>
+                    <a
+                      href={res.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-slate-400 hover:text-purple-600 transition"
+                      title="Open Resource Link"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                  <h4 className="mt-2.5 font-bold text-sm text-navy-900 line-clamp-1">
+                    {res.title}
+                  </h4>
+                  {res.description && (
+                    <p className="mt-1 text-xs text-slate-500 line-clamp-2">
+                      {res.description}
+                    </p>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-slate-200/60 pt-2 text-[11px] text-slate-400">
+                  <span>By {res.uploadedBy || 'GDGoC Team'}</span>
+                  <span>{formatHumanDate(res.createdAt)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-8 text-center">
+            <p className="text-sm text-ink-muted">No learning resources added yet.</p>
+            <Link
+              to="/admin/resources"
+              className="mt-2 inline-block text-xs font-semibold text-g-blue hover:underline"
+            >
+              + Add first learning resource
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Recent form registrations */}
