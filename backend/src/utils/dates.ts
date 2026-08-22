@@ -32,6 +32,104 @@ export function nowISTTime(): string {
   return `${get('hour')}:${get('minute')}`;
 }
 
+/**
+ * Returns current minutes from midnight in Asia/Kolkata timezone (0..1439).
+ */
+export function nowISTMinutes(): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '0';
+  const hour = parseInt(get('hour'), 10) || 0;
+  const minute = parseInt(get('minute'), 10) || 0;
+  return hour * 60 + minute;
+}
+
+/**
+ * Parses time strings like "10:00 AM", "4:00 PM", "16:00", "09:30" into minutes from midnight (0..1439).
+ * Returns null if invalid or cannot be parsed.
+ */
+export function parseTimeToMinutes(timeStr?: string): number | null {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const t = timeStr.trim();
+  if (!t) return null;
+
+  // Check 12-hour format with AM/PM (e.g. "10:00 AM", "4:30 pm", "12:00 PM")
+  const match12 = t.match(/^(\d{1,2})[:.](\d{2})\s*(AM|PM)$/i);
+  if (match12) {
+    let hours = parseInt(match12[1], 10);
+    const minutes = parseInt(match12[2], 10);
+    const period = match12[3].toUpperCase();
+    if (period === 'PM' && hours < 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+      return hours * 60 + minutes;
+    }
+  }
+
+  // Check 24-hour format (e.g. "16:00", "09:30", "17:00:00")
+  const match24 = t.match(/^(\d{1,2})[:.](\d{2})(?::\d{2})?$/);
+  if (match24) {
+    const hours = parseInt(match24[1], 10);
+    const minutes = parseInt(match24[2], 10);
+    if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+      return hours * 60 + minutes;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Centralized function to determine the real-time lifecycle status of an event in Asia/Kolkata:
+ * 1. 'CANCELLED' if explicitly cancelled.
+ * 2. 'COMPLETED' if explicitly marked completed OR if event date/end time has passed.
+ * 3. 'ONGOING' (Live / Ongoing) if today is the event date and current time is between start and end times.
+ * 4. 'UPCOMING' if event date/start time is in the future.
+ */
+export function getEffectiveEventStatus(event?: {
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  status?: string;
+}): 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED' {
+  if (!event) return 'UPCOMING';
+  if (event.status === 'CANCELLED') return 'CANCELLED';
+  if (event.status === 'COMPLETED') return 'COMPLETED';
+
+  const eventDateISO = normalizeDateToISO(event.date);
+  if (!eventDateISO) return 'UPCOMING';
+
+  const today = todayIST();
+
+  if (today > eventDateISO) {
+    return 'COMPLETED';
+  }
+
+  if (today < eventDateISO) {
+    return 'UPCOMING';
+  }
+
+  // Today is the event date! Check start & end times in IST
+  const currentMinutes = nowISTMinutes();
+  const startMinutes = parseTimeToMinutes(event.startTime) ?? 0;
+  const endMinutes = parseTimeToMinutes(event.endTime) ?? (23 * 60 + 59);
+
+  if (currentMinutes > endMinutes) {
+    return 'COMPLETED';
+  }
+
+  if (currentMinutes >= startMinutes) {
+    return 'ONGOING';
+  }
+
+  return 'UPCOMING';
+}
+
 export function isISTToday(dateStr: string): boolean {
   return normalizeDateToISO(dateStr) === todayIST();
 }

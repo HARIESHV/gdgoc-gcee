@@ -7,7 +7,7 @@ import { PageLoader } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StatusBadge } from '../../components/ui/Badge';
 import { api, getErrorMessage } from '../../lib/api';
-import { formatHumanDate, cn, downloadBlob } from '../../lib/utils';
+import { formatHumanDate, cn, downloadBlob, getEffectiveEventStatus } from '../../lib/utils';
 import type { GEvent } from '../../types';
 
 export default function AdminEvents() {
@@ -65,10 +65,13 @@ export default function AdminEvents() {
     }
   };
 
-  const totalUpcoming = events.filter((e) => (e.effectiveStatus || e.status) === 'UPCOMING' || (e.effectiveStatus || e.status) === 'ONGOING').length;
-  const totalCompleted = events.filter((e) => (e.effectiveStatus || e.status) === 'COMPLETED').length;
+  const totalUpcoming = events.filter((e) => {
+    const s = getEffectiveEventStatus(e);
+    return s === 'UPCOMING' || s === 'ONGOING';
+  }).length;
+  const totalCompleted = events.filter((e) => getEffectiveEventStatus(e) === 'COMPLETED').length;
   const totalRegistrations = events.reduce((acc, e) => acc + (e.registeredCount || 0) + (e.manualRegistrationCount || 0), 0);
-  const filtered = filter === 'ALL' ? events : events.filter((e) => (e.effectiveStatus || e.status) === filter);
+  const filtered = filter === 'ALL' ? events : events.filter((e) => getEffectiveEventStatus(e) === filter);
 
   return (
     <div className="space-y-6">
@@ -149,7 +152,7 @@ export default function AdminEvents() {
             </thead>
             <tbody className="divide-y divide-black/5">
               {filtered.map((ev) => {
-                const currentStatus = ev.effectiveStatus || ev.status;
+                const currentStatus = getEffectiveEventStatus(ev);
                 const isCompleted = currentStatus === 'COMPLETED';
                 return (
                   <tr key={ev._id} className="transition hover:bg-gray-50">

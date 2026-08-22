@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, MapPin, Clock, Users, Award, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 import type { GEvent } from '../../types';
-import { cn, formatHumanDate, isEventRegistrationOpen } from '../../lib/utils';
+import { cn, formatHumanDate, isEventRegistrationOpen, getEffectiveEventStatus } from '../../lib/utils';
 import { StatusBadge } from '../ui/Badge';
 
 const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -44,9 +44,11 @@ export function EventCard({
   }, [event.registeredCount, prevCount]);
 
   const catStyle = categoryColors[event.category] || categoryColors.Other;
-  const isUpcoming = event.effectiveStatus === 'UPCOMING' || event.effectiveStatus === 'ONGOING';
-  const isCompleted = event.effectiveStatus === 'COMPLETED';
-  const isCancelled = event.effectiveStatus === 'CANCELLED';
+  const effectiveStatus = getEffectiveEventStatus(event);
+  const isUpcoming = effectiveStatus === 'UPCOMING';
+  const isOngoing = effectiveStatus === 'ONGOING';
+  const isCompleted = effectiveStatus === 'COMPLETED';
+  const isCancelled = effectiveStatus === 'CANCELLED';
 
   const formatEventDateTime = () => {
     const d = formatHumanDate(event.date);
@@ -89,9 +91,8 @@ export function EventCard({
               </span>
             )}
           </div>
-
           {/* Status Badge */}
-          <StatusBadge status={event.effectiveStatus} />
+          <StatusBadge status={effectiveStatus} />
         </div>
 
         {/* Date & Time */}
@@ -107,9 +108,9 @@ export function EventCard({
           </h3>
         </Link>
 
-        {/* Description */}
-        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500 sm:text-sm">
-          {event.shortDescription || event.description || 'Join us for this exciting GDGoC GCEE session.'}
+        {/* Short Description */}
+        <p className="mt-2 text-xs leading-relaxed text-slate-500 line-clamp-2">
+          {event.shortDescription || event.description}
         </p>
 
         {/* Venue */}
@@ -119,29 +120,17 @@ export function EventCard({
         </div>
       </div>
 
-      {/* Card Footer: Live Attendee Count & Action Button */}
+      {/* Card Footer: Live Registration Count + Action Button */}
       <div className="mt-6 border-t border-slate-100 pt-4">
         <div className="flex items-center justify-between gap-3">
-          {/* Live Attendee Count with People icon */}
-          <div
-            className={cn(
-              'flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-1.5 transition-all duration-300',
-              highlightCount && 'scale-105 border-g-blue/30 bg-blue-50/80 text-g-blue font-bold shadow-sm'
-            )}
-            title="Live Attendee Count (calculated directly from database)"
-          >
-            <span className="text-base leading-none" role="img" aria-label="attendees">
-              👥
+          {/* Live Attendee Counter */}
+          <div className="flex items-center gap-1.5">
+            <Users className="h-4 w-4 text-slate-400" />
+            <span className="text-xs font-semibold text-slate-700">
+              <span className="font-bold text-navy-900">{event.registeredCount}</span>
+              {event.capacity > 0 && <span className="text-slate-400">/{event.capacity}</span>}
+              <span className="ml-1 text-[11px] font-normal text-slate-400">registered</span>
             </span>
-            <div className="flex items-baseline gap-1">
-              <span className="font-mono text-sm font-bold text-navy-900 transition-all">
-                {event.registeredCount}
-              </span>
-              <span className="text-[11px] font-medium text-slate-500">
-                {event.capacity > 0 ? `/ ${event.capacity}` : 'registered'}
-              </span>
-            </div>
-            {/* Live pulsing dot */}
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
@@ -160,9 +149,9 @@ export function EventCard({
           ) : isCompleted ? (
             <Link
               to={`/events/${event.eventId}`}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
             >
-              Details <ArrowRight className="h-3 w-3" />
+              Event Completed <ArrowRight className="h-3 w-3" />
             </Link>
           ) : isEventRegistrationOpen(event) ? (
             onRegisterClick ? (

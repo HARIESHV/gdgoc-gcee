@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { EventModel, Registration, GoogleFormRegistration, Student, SendingHistory, EventRegistration } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { nextEventId } from '../utils/ids';
-import { todayIST, isDateBefore, formatTimeRange, isEventRegistrationOpen } from '../utils/dates';
+import { todayIST, isDateBefore, formatTimeRange, isEventRegistrationOpen, getEffectiveEventStatus } from '../utils/dates';
 import { connectDB } from '../config/db';
 import { env, getPublicAppUrl } from '../config/env';
 import { sendEventEmail, sendBulkEventRegistrationEmails, emailIsConfigured } from '../lib/mailer';
@@ -29,18 +29,7 @@ function isValidGoogleFormUrl(url: string): boolean {
 }
 
 export function serializeEvent(event: any) {
-  const today = todayIST();
-  let effectiveStatus = event.status;
-  if (event.status === 'COMPLETED' || event.status === 'CANCELLED') {
-    effectiveStatus = event.status;
-  } else if (isDateBefore(event.date, today)) {
-    effectiveStatus = 'COMPLETED';
-  } else if (event.date === today) {
-    effectiveStatus = 'ONGOING';
-  } else {
-    effectiveStatus = 'UPCOMING';
-  }
-
+  const effectiveStatus = getEffectiveEventStatus(event);
   const isRegistrationOpen = isEventRegistrationOpen(event);
 
   return {
@@ -87,22 +76,6 @@ export async function listEvents(req: AuthRequest, res: Response) {
     const { category, status, q, limit } = req.query;
     const filter: Record<string, unknown> = {};
     if (category) filter.category = category;
-    if (status) filter.status = status;
-
-    const today = todayIST();
-    if (status === 'UPCOMING') {
-      filter.$and = [
-        { status: { $nin: ['COMPLETED', 'CANCELLED'] } },
-        { date: { $gte: today } },
-      ];
-      delete filter.status;
-    } else if (status === 'COMPLETED') {
-      filter.$or = [
-        { status: 'COMPLETED' },
-        { date: { $lt: today }, status: { $ne: 'CANCELLED' } },
-      ];
-      delete filter.status;
-    }
 
     if (q) {
       filter.$or = [
@@ -124,9 +97,12 @@ export async function listEvents(req: AuthRequest, res: Response) {
     ]);
     const countMap = new Map(regCounts.map((r) => [String(r._id), r.count]));
 
+    const serialized = events.map((e) => serializeEvent({ ...e, registeredCount: countMap.get(String(e._id)) || 0 }));
+    const filteredEvents = status ? serialized.filter((e) => e.effectiveStatus === status) : serialized;
+
     res.json({
       success: true,
-      events: events.map((e) => serializeEvent({ ...e, registeredCount: countMap.get(String(e._id)) || 0 })),
+      events: filteredEvents,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

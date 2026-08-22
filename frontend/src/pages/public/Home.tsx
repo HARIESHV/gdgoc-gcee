@@ -30,7 +30,7 @@ import { Reveal } from '../../components/ui/Reveal';
 import { CountUp } from '../../components/ui/CountUp';
 import { PageLoader } from '../../components/ui/Spinner';
 import { api, getErrorMessage } from '../../lib/api';
-import { formatHumanDate, cn } from '../../lib/utils';
+import { formatHumanDate, cn, getEffectiveEventStatus } from '../../lib/utils';
 import type { GEvent, GalleryItem, Member } from '../../types';
 
 const whyJoin = [
@@ -74,8 +74,12 @@ export default function Home() {
         if (!mounted) return;
         setStats(statsRes.data.stats);
         const events = eventsRes.data.events as GEvent[];
-        setUpcoming(events.filter((e) => e.effectiveStatus !== 'COMPLETED' && e.effectiveStatus !== 'CANCELLED').slice(0, 3));
-        setFeatured(events.find((e) => e.isInauguration) || events[0] || null);
+        const validUpcoming = events.filter((e) => {
+          const s = getEffectiveEventStatus(e);
+          return s === 'UPCOMING' || s === 'ONGOING';
+        });
+        setUpcoming(validUpcoming.slice(0, 3));
+        setFeatured(events.find((e) => e.isInauguration) || validUpcoming[0] || events[0] || null);
         setMembers(membersRes.data.members.slice(0, 6));
         setGallery(galleryRes.data.items.slice(0, 6));
       } catch (err) {
@@ -226,8 +230,11 @@ export default function Home() {
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       <span className="chip bg-g-blue/10 text-blue-700">{featured.category}</span>
                       <span className="chip bg-navy-900/5 text-navy-700">{formatHumanDate(featured.date)}</span>
-                      {featured.effectiveStatus === 'COMPLETED' && (
-                        <span className="chip bg-slate-100 text-slate-700 font-semibold">Completed</span>
+                      {getEffectiveEventStatus(featured) === 'COMPLETED' && (
+                        <span className="chip bg-slate-100 text-slate-700 font-semibold">Event Completed</span>
+                      )}
+                      {getEffectiveEventStatus(featured) === 'ONGOING' && (
+                        <span className="chip bg-amber-100 text-amber-800 font-semibold">Live / Ongoing</span>
                       )}
                       {featured.isInauguration && <span className="chip bg-g-yellow/15 text-yellow-700">Inauguration</span>}
                     </div>
@@ -242,7 +249,7 @@ export default function Home() {
                     </div>
                     <div className="mt-8">
                       <Link to={`/events/${featured.eventId}`} className="btn-primary">
-                        {featured.effectiveStatus === 'COMPLETED' ? 'View event details' : 'View event'}
+                        {getEffectiveEventStatus(featured) === 'COMPLETED' ? 'View event details' : 'View event'}
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </div>

@@ -18,7 +18,7 @@ import { PageLoader } from '../../components/ui/Spinner';
 import { StatusBadge } from '../../components/ui/Badge';
 import { EventRegistrationForm } from '../../components/events/EventRegistrationForm';
 import { api, getErrorMessage } from '../../lib/api';
-import { formatHumanDate, formatHumanDateTime, isEventRegistrationOpen } from '../../lib/utils';
+import { formatHumanDate, formatHumanDateTime, isEventRegistrationOpen, getEffectiveEventStatus } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import type { GEvent } from '../../types';
 
@@ -32,23 +32,20 @@ export default function EventDetail() {
   const { student } = useAuth();
 
   useEffect(() => {
-    let mounted = true;
-    async function load() {
-      setLoading(true);
-      try {
-        const res = await api.get(`/events/${eventId}`);
-        if (!mounted) return;
-        setEvent(res.data.event);
-        if (res.data.isRegistered) setRegistered(true);
-      } catch (err) {
-        toast.error(getErrorMessage(err));
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-    load();
-    return () => { mounted = false; };
+    fetchEvent();
   }, [eventId]);
+
+  const fetchEvent = async () => {
+    try {
+      const res = await api.get(`/events/${eventId}`);
+      setEvent(res.data.event);
+      setRegistered(Boolean(res.data.registered));
+    } catch {
+      setEvent(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -71,8 +68,11 @@ export default function EventDetail() {
     );
   }
 
-  const isUpcoming = event.effectiveStatus === 'UPCOMING' || event.effectiveStatus === 'ONGOING';
-  const isCompleted = event.effectiveStatus === 'COMPLETED';
+  const effectiveStatus = getEffectiveEventStatus(event);
+  const isUpcoming = effectiveStatus === 'UPCOMING';
+  const isOngoing = effectiveStatus === 'ONGOING';
+  const isCompleted = effectiveStatus === 'COMPLETED';
+  const isCancelled = effectiveStatus === 'CANCELLED';
   const hasGoogleForm = Boolean(event.googleFormUrl);
   const totalRegistered = event.registeredCount + (event.manualRegistrationCount || 0);
 
@@ -210,10 +210,22 @@ export default function EventDetail() {
                       EVENT COMPLETED
                     </p>
                     <p className="mt-2 text-sm text-black/40">
-                      Outcomes and gallery link will be posted soon.
+                      This event has finished. Photos, outcomes, and certificates will be updated soon.
                     </p>
                   </div>
-                ) : event.effectiveStatus === 'CANCELLED' ? (
+                ) : isOngoing ? (
+                  <div className="text-center">
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                      <span className="h-3 w-3 animate-ping rounded-full bg-amber-500" />
+                    </div>
+                    <p className="mt-2 font-mono text-sm font-bold uppercase tracking-wider text-amber-700">
+                      LIVE / ONGOING NOW
+                    </p>
+                    <p className="mt-2 text-sm text-black/40">
+                      This event is currently in session!
+                    </p>
+                  </div>
+                ) : isCancelled ? (
                   <div className="text-center">
                     <p className="font-mono text-sm font-bold uppercase tracking-wider text-red-600">
                       EVENT CANCELLED

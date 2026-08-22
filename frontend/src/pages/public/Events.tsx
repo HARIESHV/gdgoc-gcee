@@ -6,7 +6,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { EventCard } from '../../components/events/EventCard';
 import { EventRegistrationForm } from '../../components/events/EventRegistrationForm';
 import { api, getErrorMessage } from '../../lib/api';
-import { EVENT_CATEGORIES, cn } from '../../lib/utils';
+import { EVENT_CATEGORIES, cn, getEffectiveEventStatus } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import type { GEvent } from '../../types';
 
@@ -136,12 +136,14 @@ export default function Events() {
     setRegisteredEventIds((prev) => new Set([...prev, eventId]));
   };
 
-  const upcomingEvents = events.filter(
-    (e) => e.effectiveStatus === 'UPCOMING' || e.effectiveStatus === 'ONGOING'
-  );
-  const pastEvents = events.filter(
-    (e) => e.effectiveStatus === 'COMPLETED' || e.effectiveStatus === 'CANCELLED'
-  );
+  const upcomingEvents = events.filter((e) => {
+    const s = getEffectiveEventStatus(e);
+    return s === 'UPCOMING' || s === 'ONGOING';
+  });
+  const pastEvents = events.filter((e) => {
+    const s = getEffectiveEventStatus(e);
+    return s === 'COMPLETED' || s === 'CANCELLED';
+  });
 
   return (
     <section className="min-h-screen bg-slate-50/50 pb-24 pt-24 md:pt-28">

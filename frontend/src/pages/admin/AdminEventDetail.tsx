@@ -21,7 +21,7 @@ import { ButtonSpinner } from '../../components/ui/Spinner';
 import { StatusBadge } from '../../components/ui/Badge';
 import { EventForm } from '../../components/admin/EventForm';
 import { api, getErrorMessage, downloadPdf } from '../../lib/api';
-import { formatHumanDate, cn, downloadBlob } from '../../lib/utils';
+import { formatHumanDate, cn, downloadBlob, getEffectiveEventStatus } from '../../lib/utils';
 import type { GEvent } from '../../types';
 
 type Tab = 'details' | 'registrations' | 'email';
@@ -55,7 +55,7 @@ export default function AdminEventDetail() {
 
   const handleToggleStatus = async () => {
     if (!event) return;
-    const currentStatus = event.effectiveStatus || event.status;
+    const currentStatus = getEffectiveEventStatus(event);
     const nextStatus = currentStatus === 'COMPLETED' ? 'UPCOMING' : 'COMPLETED';
     const actionLabel = currentStatus === 'COMPLETED' ? 'reopen' : 'mark as completed';
     if (!window.confirm(`Are you sure you want to ${actionLabel} "${event.title}"?`)) return;
@@ -72,7 +72,7 @@ export default function AdminEventDetail() {
   if (loading) return <PageLoader label="Loading event..." />;
   if (!event) return <div className="text-ink-muted">Event not found.</div>;
 
-  const currentStatus = event.effectiveStatus || event.status;
+  const currentStatus = getEffectiveEventStatus(event);
   const isCompleted = currentStatus === 'COMPLETED';
 
   return (
