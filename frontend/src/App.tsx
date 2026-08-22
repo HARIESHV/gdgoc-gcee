@@ -41,7 +41,6 @@ import AdminResources from './pages/admin/AdminResources';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminFormRegistrations from './pages/admin/AdminFormRegistrations';
 import AdminBulkEmail from './pages/admin/AdminBulkEmail';
-import AdminMessages from './pages/admin/AdminMessages';
 
 function RequireStudent({ children }: { children: React.ReactNode }) {
   const { student, loading } = useAuth();
@@ -134,7 +133,6 @@ export default function App() {
         <Route path="resources" element={<AdminResources />} />
         <Route path="form-registrations" element={<AdminFormRegistrations />} />
         <Route path="bulk-email" element={<AdminBulkEmail />} />
-        <Route path="messages" element={<AdminMessages />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 

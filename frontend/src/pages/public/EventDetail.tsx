@@ -18,7 +18,7 @@ import { PageLoader } from '../../components/ui/Spinner';
 import { StatusBadge } from '../../components/ui/Badge';
 import { EventRegistrationForm } from '../../components/events/EventRegistrationForm';
 import { api, getErrorMessage } from '../../lib/api';
-import { formatHumanDate, formatHumanDateTime } from '../../lib/utils';
+import { formatHumanDate, formatHumanDateTime, isEventRegistrationOpen } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import type { GEvent } from '../../types';
 
@@ -77,6 +77,11 @@ export default function EventDetail() {
   const totalRegistered = event.registeredCount + (event.manualRegistrationCount || 0);
 
   const handleStudentRegister = async () => {
+    if (!event) return;
+    if (!isEventRegistrationOpen(event)) {
+      toast.error('Registration for this event is closed (closes 1 day before event date).');
+      return;
+    }
     if (!student) { setShowForm(true); return; }
     setRegBusy(true);
     try {
@@ -279,9 +284,13 @@ export default function EventDetail() {
                     </div>
                   )}
 
-                  {event.registrationDeadline && (
+                  {event.registrationDeadline ? (
                     <p className="mt-3 font-mono text-xs text-black/40">
                       Deadline: {formatHumanDateTime(event.registrationDeadline)}
+                    </p>
+                  ) : (
+                    <p className="mt-3 font-mono text-xs text-black/40">
+                      Deadline: 1 day before event date (until 11:59 PM IST)
                     </p>
                   )}
 
@@ -306,7 +315,7 @@ export default function EventDetail() {
                           </a>
                         )}
                       </div>
-                    ) : isUpcoming && event.registrationEnabled ? (
+                    ) : isUpcoming && isEventRegistrationOpen(event) ? (
                       student ? (
                         <div className="space-y-3">
                           <button
@@ -329,12 +338,13 @@ export default function EventDetail() {
                         </div>
                       ) : (
                         <div className="space-y-2.5">
-                          <Link
-                            to={`/events/${event.eventId}/register`}
+                          <button
+                            type="button"
+                            onClick={() => setShowForm(true)}
                             className="flex w-full items-center justify-center gap-2 border border-black bg-black px-6 py-3 font-mono text-sm font-bold text-white transition hover:bg-white hover:text-black"
                           >
                             Register for Event <ExternalLink className="h-4 w-4" />
-                          </Link>
+                          </button>
                           <div className="grid grid-cols-2 gap-2 pt-1 text-center">
                             <Link
                               to={`/login?redirect=${encodeURIComponent(`/events/${event.eventId}`)}`}
@@ -352,8 +362,13 @@ export default function EventDetail() {
                         </div>
                       )
                     ) : (
-                      <div className="rounded border border-black/10 bg-gray-50 p-3 text-center font-mono text-sm text-black/40">
-                        {isUpcoming ? 'Registration opens soon' : 'Registration closed'}
+                      <div className="rounded border border-black/10 bg-gray-50 p-4 text-center font-mono text-sm">
+                        <p className="font-bold text-black/70">Registration Closed</p>
+                        <p className="mt-1 text-xs text-black/40">
+                          {isCompleted
+                            ? 'This event has concluded.'
+                            : 'Registration closed 1 day before the event date.'}
+                        </p>
                       </div>
                     )}
                   </div>

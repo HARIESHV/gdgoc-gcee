@@ -172,13 +172,27 @@ export default function Home() {
               subtitle="Mark your calendar — workshops, hackathons and meetups are always around the corner."
             />
           </Reveal>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {upcoming.map((event, i) => (
-              <Reveal key={event._id} delay={i * 90}>
-                <EventCard event={event} />
-              </Reveal>
-            ))}
-          </div>
+          {upcoming.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {upcoming.map((event, i) => (
+                <Reveal key={event._id} delay={i * 90}>
+                  <EventCard event={event} />
+                </Reveal>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+              <p className="text-sm font-medium text-slate-500">
+                All scheduled events are currently completed. Stay tuned for upcoming announcements!
+              </p>
+              <div className="mt-4">
+                <Link to="/events" className="btn-outline text-xs">
+                  Explore completed events & workshops
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+          )}
           <Reveal>
             <div className="mt-10 text-center">
               <Link to="/events" className="btn-outline">
@@ -212,6 +226,9 @@ export default function Home() {
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       <span className="chip bg-g-blue/10 text-blue-700">{featured.category}</span>
                       <span className="chip bg-navy-900/5 text-navy-700">{formatHumanDate(featured.date)}</span>
+                      {featured.effectiveStatus === 'COMPLETED' && (
+                        <span className="chip bg-slate-100 text-slate-700 font-semibold">Completed</span>
+                      )}
                       {featured.isInauguration && <span className="chip bg-g-yellow/15 text-yellow-700">Inauguration</span>}
                     </div>
                     <h3 className="font-display text-2xl font-bold text-navy-900 sm:text-3xl">{featured.title}</h3>
@@ -225,7 +242,7 @@ export default function Home() {
                     </div>
                     <div className="mt-8">
                       <Link to={`/events/${featured.eventId}`} className="btn-primary">
-                        View event
+                        {featured.effectiveStatus === 'COMPLETED' ? 'View event details' : 'View event'}
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </div>

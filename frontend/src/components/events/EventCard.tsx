@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, MapPin, Clock, Users, Award, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 import type { GEvent } from '../../types';
-import { cn, formatHumanDate } from '../../lib/utils';
+import { cn, formatHumanDate, isEventRegistrationOpen } from '../../lib/utils';
 import { StatusBadge } from '../ui/Badge';
 
 const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -164,7 +164,7 @@ export function EventCard({
             >
               Details <ArrowRight className="h-3 w-3" />
             </Link>
-          ) : event.registrationEnabled ? (
+          ) : isEventRegistrationOpen(event) ? (
             onRegisterClick ? (
               <button
                 type="button"
@@ -184,8 +184,11 @@ export function EventCard({
               </Link>
             )
           ) : (
-            <span className="rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2 text-xs font-medium text-slate-400">
-              Closed
+            <span
+              className="rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2 text-xs font-medium text-slate-400 cursor-not-allowed select-none"
+              title="Registration closed (registration closes 1 day before the event date)"
+            >
+              Registration Closed
             </span>
           )}
         </div>

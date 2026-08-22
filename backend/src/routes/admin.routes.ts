@@ -9,6 +9,7 @@ import {
   adminCreateEvent,
   adminUpdateEvent,
   adminDeleteEvent,
+  adminSetEventStatus,
   sendEventToAllStudents,
   getVerifiedStudentCount,
 } from '../controllers/event.controller';
@@ -94,6 +95,7 @@ import {
 } from '../controllers/eventDistribution.controller';
 import {
   deleteEventRegistration,
+  clearEventRegistrations,
 } from '../controllers/registration.controller';
 import {
   getBulkEmailRecipients,
@@ -113,6 +115,7 @@ router.get('/events', adminListEvents);
 router.get('/events/:eventId', adminGetEvent);
 router.post('/events', adminCreateEvent);
 router.put('/events/:eventId', adminUpdateEvent);
+router.patch('/events/:eventId/status', adminSetEventStatus);
 router.delete('/events/:eventId', adminDeleteEvent);
 
 // Send event email to all or selected verified students (rate-limited to prevent accidental mass resends)
@@ -141,7 +144,8 @@ router.post('/events/:eventId/send-pdf', sendEventRegistrationPDFToAll);
 router.post('/events/:eventId/send-emails', sendEventEmails);
 router.get('/events/:eventId/sending-history', getEventSendingHistory);
 
-// Delete a single event registration
+// Event registrations deletion / clear
+router.delete('/events/:eventId/registrations/clear', clearEventRegistrations);
 router.delete('/events/:eventId/registrations/:registrationId', deleteEventRegistration);
 
 // Event certificate management (register → participate → certificate)

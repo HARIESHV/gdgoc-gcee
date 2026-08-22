@@ -33,12 +33,104 @@ export function nowISTTime(): string {
 }
 
 export function isISTToday(dateStr: string): boolean {
-  return normalizeDate(dateStr) === todayIST();
+  return normalizeDateToISO(dateStr) === todayIST();
+}
+
+/**
+ * Normalizes any date string (YYYY-MM-DD, DD-MM-YYYY, ISO) to standard YYYY-MM-DD.
+ * Returns empty string if invalid or missing.
+ */
+export function normalizeDateToISO(dateStr?: string): string {
+  if (!dateStr || typeof dateStr !== 'string') return '';
+  const trimmed = dateStr.trim();
+  if (!trimmed) return '';
+
+  // Match YYYY-MM-DD or YYYY/MM/DD
+  const ymd = trimmed.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (ymd) {
+    const y = ymd[1];
+    const m = ymd[2].padStart(2, '0');
+    const d = ymd[3].padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // Match DD-MM-YYYY or DD/MM/YYYY
+  const dmy = trimmed.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+  if (dmy) {
+    const d = dmy[1].padStart(2, '0');
+    const m = dmy[2].padStart(2, '0');
+    const y = dmy[3];
+    return `${y}-${m}-${d}`;
+  }
+
+  // Fallback Date parser using Asia/Kolkata
+  try {
+    const d = new Date(trimmed);
+    if (!Number.isNaN(d.getTime())) {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: TZ,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(d);
+      const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+      const year = get('year');
+      const month = get('month');
+      const day = get('day');
+      if (year && month && day) {
+        return `${year}-${month}-${day}`;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return '';
 }
 
 export function normalizeDate(dateStr: string): string {
-  if (!dateStr) return '';
-  return dateStr.slice(0, 10);
+  return normalizeDateToISO(dateStr) || (dateStr ? dateStr.slice(0, 10) : '');
+}
+
+/**
+ * Checks if registration for an event is currently open.
+ * Rule:
+ * 1. Event must have registrationEnabled !== false.
+ * 2. Event status must not be COMPLETED or CANCELLED.
+ * 3. The event date is the final deadline date: registration automatically closes at 00:00:00 IST on the event date (1 day before event date ends).
+ *    Therefore, registration is only open when current IST date < eventDate (i.e. strictly before event date).
+ * 4. If an explicit registrationDeadline is configured, current IST date must also be < registrationDeadline.
+ */
+export function isEventRegistrationOpen(event: {
+  date?: string;
+  registrationDeadline?: string;
+  registrationEnabled?: boolean;
+  status?: string;
+}): boolean {
+  if (!event) return false;
+  if (event.registrationEnabled === false) return false;
+  if (event.status === 'COMPLETED' || event.status === 'CANCELLED') return false;
+
+  const eventDateISO = normalizeDateToISO(event.date);
+  if (!eventDateISO) return false;
+
+  const today = todayIST();
+
+  // Registration closes from 00:00:00 IST on the event date
+  // So if today in IST is >= eventDateISO, registration is CLOSED.
+  if (today >= eventDateISO) {
+    return false;
+  }
+
+  // If custom registrationDeadline is specified and earlier than event date
+  if (event.registrationDeadline) {
+    const deadlineISO = normalizeDateToISO(event.registrationDeadline);
+    if (deadlineISO && today >= deadlineISO) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /** Convert YYYY-MM-DD to DD.MM.YYYY */

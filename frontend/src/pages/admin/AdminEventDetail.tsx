@@ -53,8 +53,27 @@ export default function AdminEventDetail() {
     return () => { mounted = false; };
   }, [eventId, reloadKey]);
 
+  const handleToggleStatus = async () => {
+    if (!event) return;
+    const currentStatus = event.effectiveStatus || event.status;
+    const nextStatus = currentStatus === 'COMPLETED' ? 'UPCOMING' : 'COMPLETED';
+    const actionLabel = currentStatus === 'COMPLETED' ? 'reopen' : 'mark as completed';
+    if (!window.confirm(`Are you sure you want to ${actionLabel} "${event.title}"?`)) return;
+
+    try {
+      const res = await api.patch(`/admin/events/${event.eventId}/status`, { status: nextStatus });
+      toast.success(res.data.message || `Event marked as ${nextStatus}.`);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   if (loading) return <PageLoader label="Loading event..." />;
   if (!event) return <div className="text-ink-muted">Event not found.</div>;
+
+  const currentStatus = event.effectiveStatus || event.status;
+  const isCompleted = currentStatus === 'COMPLETED';
 
   return (
     <div className="space-y-6">
@@ -62,7 +81,19 @@ export default function AdminEventDetail() {
         title="Event Management"
         subtitle={`${event.eventId} — ${event.title}`}
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusBadge status={currentStatus} />
+            <button
+              onClick={handleToggleStatus}
+              className={cn(
+                'border px-3 py-2 font-mono text-xs font-bold uppercase tracking-wider transition',
+                isCompleted
+                  ? 'border-yellow-400 bg-yellow-50 text-yellow-800 hover:bg-yellow-100'
+                  : 'border-green-400 bg-green-50 text-green-800 hover:bg-green-100'
+              )}
+            >
+              {isCompleted ? 'Reopen Event' : 'Mark Completed'}
+            </button>
             <Link to="/admin/events" className="border border-black/10 px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-black/50 transition hover:text-black">
               <ArrowLeft className="mr-1 inline h-4 w-4" /> All Events
             </Link>
@@ -454,6 +485,17 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
     }
   };
 
+  const handleClearAllRegistrations = async () => {
+    if (!window.confirm(`⚠️ WARNING: Are you sure you want to DELETE ALL ${count} registrations for "${event.title}"? This cannot be undone.`)) return;
+    try {
+      const res = await api.delete(`/admin/events/${eventId}/registrations/clear`);
+      toast.success(res.data.message || 'All registrations cleared.');
+      load();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Stats bar */}
@@ -475,6 +517,14 @@ function EventRegistrations({ eventId, event }: { eventId: string; event: GEvent
           </div>
         )}
         <div className="ml-auto flex flex-wrap gap-2">
+          <button
+            onClick={handleClearAllRegistrations}
+            disabled={count === 0}
+            className="flex items-center gap-1.5 border border-red-200 bg-red-50 px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-red-600 transition hover:bg-red-100 disabled:opacity-40"
+            title="Delete all registration data for this event"
+          >
+            Clear All
+          </button>
           <button
             onClick={handleSendPdf}
             disabled={sendingPdf || count === 0}

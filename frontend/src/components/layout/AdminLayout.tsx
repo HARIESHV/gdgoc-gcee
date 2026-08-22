@@ -6,7 +6,6 @@ import {
   Award,
   Settings,
   ClipboardList,
-  MessageSquare,
   Image,
   Mail,
 } from 'lucide-react';
@@ -25,7 +24,6 @@ export function AdminLayout() {
     { label: 'Emails', to: '/admin/bulk-email', icon: Mail },
     { label: 'Certificates', to: '/admin/certificates', icon: Award },
     { label: 'Gallery', to: '/admin/gallery', icon: Image },
-    { label: 'Messages', to: '/admin/messages', icon: MessageSquare },
     { label: 'Settings', to: '/admin/settings', icon: Settings },
   ];
 

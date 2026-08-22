@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { EventModel, Registration, GoogleFormRegistration, Student, SendingHistory, EventRegistration } from '../models';
 import type { AuthRequest } from '../middleware/auth';
 import { nextEventId } from '../utils/ids';
-import { todayIST, isDateBefore, formatTimeRange } from '../utils/dates';
+import { todayIST, isDateBefore, formatTimeRange, isEventRegistrationOpen } from '../utils/dates';
 import { connectDB } from '../config/db';
 import { env, getPublicAppUrl } from '../config/env';
 import { sendEventEmail, sendBulkEventRegistrationEmails, emailIsConfigured } from '../lib/mailer';
@@ -31,11 +31,18 @@ function isValidGoogleFormUrl(url: string): boolean {
 export function serializeEvent(event: any) {
   const today = todayIST();
   let effectiveStatus = event.status;
-  if (event.status !== 'CANCELLED') {
-    if (isDateBefore(event.date, today)) effectiveStatus = 'COMPLETED';
-    else if (event.date === today) effectiveStatus = 'ONGOING';
-    else effectiveStatus = 'UPCOMING';
+  if (event.status === 'COMPLETED' || event.status === 'CANCELLED') {
+    effectiveStatus = event.status;
+  } else if (isDateBefore(event.date, today)) {
+    effectiveStatus = 'COMPLETED';
+  } else if (event.date === today) {
+    effectiveStatus = 'ONGOING';
+  } else {
+    effectiveStatus = 'UPCOMING';
   }
+
+  const isRegistrationOpen = isEventRegistrationOpen(event);
+
   return {
     _id: event._id,
     eventId: event.eventId,
@@ -52,6 +59,7 @@ export function serializeEvent(event: any) {
     category: event.category,
     technologies: event.technologies,
     registrationEnabled: event.registrationEnabled,
+    isRegistrationOpen,
     registrationDeadline: event.registrationDeadline,
     capacity: event.capacity,
     googleFormUrl: event.googleFormUrl || '',
@@ -83,10 +91,16 @@ export async function listEvents(req: AuthRequest, res: Response) {
 
     const today = todayIST();
     if (status === 'UPCOMING') {
-      filter.date = { $gte: today };
+      filter.$and = [
+        { status: { $nin: ['COMPLETED', 'CANCELLED'] } },
+        { date: { $gte: today } },
+      ];
       delete filter.status;
     } else if (status === 'COMPLETED') {
-      filter.date = { $lte: today };
+      filter.$or = [
+        { status: 'COMPLETED' },
+        { date: { $lt: today }, status: { $ne: 'CANCELLED' } },
+      ];
       delete filter.status;
     }
 
@@ -245,8 +259,11 @@ export async function registerPublicEvent(req: any, res: Response) {
       return;
     }
 
-    if (!event.registrationEnabled) {
-      res.status(400).json({ success: false, message: 'Registration for this event is currently closed.' });
+    if (!isEventRegistrationOpen(event)) {
+      res.status(400).json({
+        success: false,
+        message: 'Registration for this event is closed. Registration closes 1 day before the event date.',
+      });
       return;
     }
 
@@ -448,14 +465,11 @@ export async function registerForEvent(req: AuthRequest, res: Response) {
       return;
     }
 
-    if (!event.registrationEnabled) {
-      res.status(400).json({ success: false, message: 'Registration for this event is closed.' });
-      return;
-    }
-
-    const today = todayIST();
-    if (event.registrationDeadline && event.registrationDeadline < today) {
-      res.status(400).json({ success: false, message: 'The registration deadline has passed.' });
+    if (!isEventRegistrationOpen(event)) {
+      res.status(400).json({
+        success: false,
+        message: 'Registration for this event is closed. Registration closes 1 day before the event date.',
+      });
       return;
     }
 
@@ -698,6 +712,44 @@ export async function adminUpdateEvent(req: any, res: Response) {
 
     const registeredCount = await Registration.countDocuments({ eventId: existing._id, status: 'REGISTERED' });
     res.json({ success: true, message: 'Event updated successfully.', event: serializeEvent({ ...existing.toObject(), registeredCount }) });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// PATCH /api/admin/events/:eventId/status
+export async function adminSetEventStatus(req: any, res: Response) {
+  try {
+    await connectDB();
+    const { eventId } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'];
+    if (!status || !validStatuses.includes(status)) {
+      res.status(400).json({ success: false, message: 'Invalid status provided.' });
+      return;
+    }
+
+    const event = await EventModel.findOne(eventQuery(eventId));
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    event.status = status;
+    if (status === 'COMPLETED') {
+      event.registrationEnabled = false;
+    } else if (status === 'UPCOMING' || status === 'ONGOING') {
+      event.registrationEnabled = true;
+    }
+    await event.save();
+
+    const registeredCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
+    res.json({
+      success: true,
+      message: `Event status updated to ${status}.`,
+      event: serializeEvent({ ...event.toObject(), registeredCount }),
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

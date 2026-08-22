@@ -39,7 +39,7 @@ import { PageHeader, StatCard } from '../../components/ui/PageHeader';
 import { PageLoader } from '../../components/ui/Spinner';
 import { ButtonSpinner } from '../../components/ui/Spinner';
 import { api, getErrorMessage } from '../../lib/api';
-import { formatHumanDate, formatHumanDateTime, cn } from '../../lib/utils';
+import { formatHumanDate, formatHumanDateTime, cn, isEventRegistrationOpen } from '../../lib/utils';
 import type { AdminStats } from '../../types';
 
 const COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#1b3a66', '#3b6fc4'];
@@ -144,6 +144,7 @@ export default function AdminDashboard() {
           <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             {events.map((ev) => {
               const pct = ev.capacity > 0 ? Math.round((ev.registrationCount / ev.capacity) * 100) : 0;
+              const regOpen = isEventRegistrationOpen(ev);
               return (
                 <div key={ev.eventId} className="rounded-xl border border-navy-100 bg-white p-4 transition hover:shadow-md">
                   <div className="flex items-start justify-between gap-2">
@@ -151,8 +152,15 @@ export default function AdminDashboard() {
                       <p className="truncate font-semibold text-navy-900">{ev.title}</p>
                       <p className="mt-0.5 text-xs text-ink-muted">{formatHumanDate(ev.date)} · {ev.category}</p>
                     </div>
-                    <span className={cn('chip shrink-0 text-[10px]', ev.registrationEnabled ? 'bg-g-green/10 text-green-700' : 'bg-slate-100 text-slate-500')}>
-                      {ev.registrationEnabled ? 'Open' : 'Closed'}
+                    <span className={cn(
+                      'chip shrink-0 text-[10px]',
+                      ev.status === 'COMPLETED'
+                        ? 'bg-slate-100 text-slate-700 font-semibold'
+                        : regOpen
+                        ? 'bg-g-green/10 text-green-700'
+                        : 'bg-slate-100 text-slate-500'
+                    )}>
+                      {ev.status === 'COMPLETED' ? 'Completed' : regOpen ? 'Open' : 'Closed'}
                     </span>
                   </div>
                   <div className="mt-3">

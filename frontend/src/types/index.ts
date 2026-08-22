@@ -45,6 +45,7 @@ export interface GEvent {
   category: string;
   technologies: string[];
   registrationEnabled: boolean;
+  isRegistrationOpen?: boolean;
   registrationDeadline: string;
   capacity: number;
   googleFormUrl: string;

@@ -23,7 +23,7 @@ export async function publicStats(_: any, res: Response) {
       totalRegistrations,
     ] = await Promise.all([
       EventModel.countDocuments(),
-      EventModel.countDocuments({ status: { $ne: 'CANCELLED' }, date: { $gte: today } }),
+      EventModel.countDocuments({ status: { $nin: ['COMPLETED', 'CANCELLED'] }, date: { $gte: today } }),
       EventModel.countDocuments({ category: 'Workshop' }),
       EventModel.countDocuments({ category: 'Hackathon' }),
       Student.countDocuments({ isActive: true }),

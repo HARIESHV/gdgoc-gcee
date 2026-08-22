@@ -51,9 +51,24 @@ export default function AdminEvents() {
     }
   };
 
-  const totalUpcoming = events.filter((e) => e.status === 'UPCOMING' || e.status === 'ONGOING').length;
+  const handleToggleStatus = async (eventId: string, currentStatus: string, title: string) => {
+    const nextStatus = currentStatus === 'COMPLETED' ? 'UPCOMING' : 'COMPLETED';
+    const actionLabel = currentStatus === 'COMPLETED' ? 'reopen' : 'mark as completed';
+    if (!window.confirm(`Are you sure you want to ${actionLabel} "${title}"?`)) return;
+
+    try {
+      const res = await api.patch(`/admin/events/${eventId}/status`, { status: nextStatus });
+      toast.success(res.data.message || `Event marked as ${nextStatus}.`);
+      load();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const totalUpcoming = events.filter((e) => (e.effectiveStatus || e.status) === 'UPCOMING' || (e.effectiveStatus || e.status) === 'ONGOING').length;
+  const totalCompleted = events.filter((e) => (e.effectiveStatus || e.status) === 'COMPLETED').length;
   const totalRegistrations = events.reduce((acc, e) => acc + (e.registeredCount || 0) + (e.manualRegistrationCount || 0), 0);
-  const filtered = filter === 'ALL' ? events : events.filter((e) => e.status === filter);
+  const filtered = filter === 'ALL' ? events : events.filter((e) => (e.effectiveStatus || e.status) === filter);
 
   return (
     <div className="space-y-6">
@@ -68,7 +83,7 @@ export default function AdminEvents() {
       />
 
       {/* Stats row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-navy-100 bg-white p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">Total Events</p>
           <p className="mt-1 font-mono text-2xl font-bold text-navy-900">{events.length}</p>
@@ -78,8 +93,12 @@ export default function AdminEvents() {
           <p className="mt-1 font-mono text-2xl font-bold text-g-blue">{totalUpcoming}</p>
         </div>
         <div className="rounded-xl border border-g-green/20 bg-g-green/5 p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-g-green">Total Registrations</p>
-          <p className="mt-1 font-mono text-2xl font-bold text-g-green">{totalRegistrations}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-green-700">Completed</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-green-700">{totalCompleted}</p>
+        </div>
+        <div className="rounded-xl border border-navy-100 bg-white p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">Registrations</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-navy-900">{totalRegistrations}</p>
         </div>
       </div>
 
@@ -129,82 +148,98 @@ export default function AdminEvents() {
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5">
-              {filtered.map((ev) => (
-                <tr key={ev._id} className="transition hover:bg-gray-50">
-                  <td className="max-w-[220px] p-4">
-                    <p className="truncate font-semibold text-black">{ev.title}</p>
-                    <p className="font-mono text-[11px] text-black/30">{ev.eventId}</p>
-                  </td>
-                  <td className="p-4 font-mono text-xs text-black/50">{formatHumanDate(ev.date)}</td>
-                  <td className="p-4">
-                    <span className="rounded bg-black/5 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-black/40">
-                      {ev.category}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5 text-black/30" />
-                      <span className="font-mono text-sm font-bold">{ev.registeredCount}</span>
-                      {ev.capacity > 0 && (
-                        <span className="font-mono text-xs text-black/30">/ {ev.capacity}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    {ev.emailSent ? (
-                      <div className="flex items-center gap-1.5 text-green-700">
-                        <MailCheck className="h-3.5 w-3.5" />
-                        <span className="font-mono text-xs">Sent ({ev.emailSentCount || 0})</span>
-                      </div>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-black/20">
-                        <MailX className="h-3.5 w-3.5" />
-                        <span className="font-mono text-xs">Not sent</span>
+              {filtered.map((ev) => {
+                const currentStatus = ev.effectiveStatus || ev.status;
+                const isCompleted = currentStatus === 'COMPLETED';
+                return (
+                  <tr key={ev._id} className="transition hover:bg-gray-50">
+                    <td className="max-w-[220px] p-4">
+                      <p className="truncate font-semibold text-black">{ev.title}</p>
+                      <p className="font-mono text-[11px] text-black/30">{ev.eventId}</p>
+                    </td>
+                    <td className="p-4 font-mono text-xs text-black/50">{formatHumanDate(ev.date)}</td>
+                    <td className="p-4">
+                      <span className="rounded bg-black/5 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-black/40">
+                        {ev.category}
                       </span>
-                    )}
-                  </td>
-                  <td className="p-4"><StatusBadge status={ev.status} /></td>
-                  <td className="p-4">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Link
-                        to={`/admin/events/${ev.eventId}?tab=email`}
-                        className="rounded border border-g-blue/30 bg-g-blue/5 px-2 py-1 font-mono text-[11px] font-semibold text-g-blue transition hover:bg-g-blue hover:text-white"
-                        title="Send Registration Link to Members"
-                      >
-                        <Send className="mr-1 inline h-3 w-3" /> Send Link
-                      </Link>
-                      <Link
-                        to={`/admin/events/${ev.eventId}?tab=registrations`}
-                        className="rounded border border-black/10 bg-white px-2 py-1 font-mono text-[11px] font-semibold text-black/70 transition hover:bg-black/5 hover:text-black"
-                        title="View Registrations"
-                      >
-                        <Users className="mr-1 inline h-3 w-3" /> Registrations
-                      </Link>
-                      <button
-                        onClick={(e) => handleExportCsv(ev.eventId, e)}
-                        className="rounded border border-black/10 bg-white px-2 py-1 font-mono text-[11px] font-semibold text-black/70 transition hover:bg-black/5 hover:text-black"
-                        title="Export CSV"
-                      >
-                        CSV
-                      </button>
-                      <Link
-                        to={`/admin/events/${ev.eventId}?tab=details`}
-                        className="rounded p-1.5 text-black/40 transition hover:bg-black/5 hover:text-black"
-                        title="Edit event"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Link>
-                      <button
-                        onClick={() => remove(ev.eventId, ev.title)}
-                        className="rounded p-1.5 text-black/40 transition hover:bg-red-50 hover:text-red-600"
-                        title="Delete event"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-black/30" />
+                        <span className="font-mono text-sm font-bold">{ev.registeredCount}</span>
+                        {ev.capacity > 0 && (
+                          <span className="font-mono text-xs text-black/30">/ {ev.capacity}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      {ev.emailSent ? (
+                        <div className="flex items-center gap-1.5 text-green-700">
+                          <MailCheck className="h-3.5 w-3.5" />
+                          <span className="font-mono text-xs">Sent ({ev.emailSentCount || 0})</span>
+                        </div>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-black/20">
+                          <MailX className="h-3.5 w-3.5" />
+                          <span className="font-mono text-xs">Not sent</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-4"><StatusBadge status={currentStatus} /></td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          onClick={() => handleToggleStatus(ev.eventId, currentStatus, ev.title)}
+                          className={cn(
+                            'rounded border px-2 py-1 font-mono text-[11px] font-semibold transition',
+                            isCompleted
+                              ? 'border-yellow-300 bg-yellow-50 text-yellow-800 hover:bg-yellow-100'
+                              : 'border-green-300 bg-green-50 text-green-800 hover:bg-green-100'
+                          )}
+                          title={isCompleted ? 'Reopen event registration' : 'Mark event as completed'}
+                        >
+                          {isCompleted ? 'Reopen' : 'Complete'}
+                        </button>
+                        <Link
+                          to={`/admin/events/${ev.eventId}?tab=email`}
+                          className="rounded border border-g-blue/30 bg-g-blue/5 px-2 py-1 font-mono text-[11px] font-semibold text-g-blue transition hover:bg-g-blue hover:text-white"
+                          title="Send Registration Link to Members"
+                        >
+                          <Send className="mr-1 inline h-3 w-3" /> Send Link
+                        </Link>
+                        <Link
+                          to={`/admin/events/${ev.eventId}?tab=registrations`}
+                          className="rounded border border-black/10 bg-white px-2 py-1 font-mono text-[11px] font-semibold text-black/70 transition hover:bg-black/5 hover:text-black"
+                          title="View Registrations"
+                        >
+                          <Users className="mr-1 inline h-3 w-3" /> Registrations
+                        </Link>
+                        <button
+                          onClick={(e) => handleExportCsv(ev.eventId, e)}
+                          className="rounded border border-black/10 bg-white px-2 py-1 font-mono text-[11px] font-semibold text-black/70 transition hover:bg-black/5 hover:text-black"
+                          title="Export CSV"
+                        >
+                          CSV
+                        </button>
+                        <Link
+                          to={`/admin/events/${ev.eventId}?tab=details`}
+                          className="rounded p-1.5 text-black/40 transition hover:bg-black/5 hover:text-black"
+                          title="Edit event"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Link>
+                        <button
+                          onClick={() => remove(ev.eventId, ev.title)}
+                          className="rounded p-1.5 text-black/40 transition hover:bg-red-50 hover:text-red-600"
+                          title="Delete event"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

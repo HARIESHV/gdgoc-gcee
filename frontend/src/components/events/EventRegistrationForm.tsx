@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { X, CheckCircle2, Loader2, User, Mail, Phone, Building2, GraduationCap, Hash, Sparkles, Users } from 'lucide-react';
+import { X, CheckCircle2, Loader2, User, Mail, Phone, Building2, GraduationCap, Hash, Sparkles, Users, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getErrorMessage } from '../../lib/api';
+import { isEventRegistrationOpen } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import type { GEvent } from '../../types';
 
@@ -61,6 +62,10 @@ export function EventRegistrationForm({ event, onClose, onSuccess }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isEventRegistrationOpen(event)) {
+      toast.error('Registration for this event is closed (closes 1 day before event date).');
+      return;
+    }
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
@@ -141,8 +146,30 @@ export function EventRegistrationForm({ event, onClose, onSuccess }: Props) {
           </button>
         </div>
 
-        {/* Success state */}
-        {success ? (
+        {/* Closed state */}
+        {!isEventRegistrationOpen(event) ? (
+          <div className="flex flex-col items-center gap-5 p-6 sm:p-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-8 ring-amber-50/50">
+              <AlertCircle className="h-8 w-8" />
+            </div>
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                Registration Closed
+              </span>
+              <h3 className="mt-2 font-display text-xl font-bold text-navy-900">Registration is closed</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 max-w-xs mx-auto">
+                Registrations automatically close 1 day prior to the event date (from 12:00 AM IST on the event date).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-xl border border-slate-200 py-3 font-semibold text-sm text-slate-700 hover:bg-slate-50 transition"
+            >
+              Close
+            </button>
+          </div>
+        ) : success ? (
           <div className="flex flex-col items-center gap-5 p-6 sm:p-8 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/50">
               <CheckCircle2 className="h-8 w-8" />

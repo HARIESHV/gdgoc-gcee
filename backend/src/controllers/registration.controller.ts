@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { GoogleFormRegistration, EventModel } from '../models';
+import { GoogleFormRegistration, EventModel, Registration, EventRegistration } from '../models';
 import { connectDB } from '../config/db';
 
 function extractField(data: Record<string, any>, keys: string[]): string {
@@ -335,18 +335,58 @@ export async function deleteEventRegistration(req: any, res: Response) {
       return;
     }
 
-    const deleted = await GoogleFormRegistration.findOneAndDelete({
+    const deletedForm = await GoogleFormRegistration.findOneAndDelete({
       _id: registrationId,
       eventId: event._id,
     });
 
-    if (!deleted) {
+    const deletedReg = await Registration.findOneAndDelete({
+      _id: registrationId,
+      eventId: event._id,
+    });
+
+    const deletedEventReg = await EventRegistration.findOneAndDelete({
+      _id: registrationId,
+      eventId: event._id,
+    });
+
+    if (!deletedForm && !deletedReg && !deletedEventReg) {
       res.status(404).json({ success: false, message: 'Registration not found.' });
       return;
     }
 
-    const newCount = await GoogleFormRegistration.countDocuments({ eventId: event._id });
-    res.json({ success: true, message: 'Registration deleted successfully.', remainingCount: newCount });
+    const formCount = await GoogleFormRegistration.countDocuments({ eventId: event._id });
+    const regCount = await Registration.countDocuments({ eventId: event._id, status: 'REGISTERED' });
+    const totalCount = formCount + regCount;
+
+    res.json({ success: true, message: 'Registration deleted successfully.', remainingCount: totalCount });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// DELETE /api/admin/events/:eventId/registrations/clear
+export async function clearEventRegistrations(req: any, res: Response) {
+  try {
+    await connectDB();
+    const { eventId } = req.params;
+
+    const event = await EventModel.findOne({ eventId });
+    if (!event) {
+      res.status(404).json({ success: false, message: 'Event not found.' });
+      return;
+    }
+
+    await Promise.all([
+      GoogleFormRegistration.deleteMany({ eventId: event._id }),
+      Registration.deleteMany({ eventId: event._id }),
+      EventRegistration.deleteMany({ eventId: event._id }),
+    ]);
+
+    event.manualRegistrationCount = 0;
+    await event.save();
+
+    res.json({ success: true, message: 'All registrations for this event have been cleared.', remainingCount: 0 });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
